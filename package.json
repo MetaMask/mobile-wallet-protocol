@@ -1,0 +1,35 @@
+{
+	"name": "mobile-wallet-protocol",
+	"private": true,
+	"workspaces": [
+		"packages/*",
+		"apps/*"
+	],
+	"scripts": {
+		"build": "yarn workspaces foreach run build",
+		"test": "vitest run",
+		"test:watch": "vitest watch",
+		"test:ci": "vitest run --coverage --coverage.reporter=text --silent",
+		"lint": "yarn biome lint ./apps ./packages",
+		"lint:ci": "yarn biome ci ./apps ./packages",
+		"lint:fix": "yarn biome format --write ./apps ./packages",
+		"llm": "npx repomix -o .llm.txt"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.0.0",
+		"@lavamoat/allow-scripts": "^3.3.3",
+		"@types/node": "^24.0.3",
+		"@vitest/coverage-v8": "3.2.4",
+		"tsup": "^8.5.0",
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4"
+	},
+	"packageManager": "yarn@3.2.1",
+	"lavamoat": {
+		"allowScripts": {
+			"@lavamoat/preinstall-always-fail": false,
+			"simple-git-hooks": false,
+			"tsup>esbuild": false
+		}
+	}
+}
