@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+		// Type Checking
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+
+		// Modules
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"resolveJsonModule": true,
+
+		// Language and Environment
+		"target": "ES2022",
+		"lib": ["es2022", "dom"],
+		"esModuleInterop": true,
+
+		// Output
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+
+		// Project Structure
+		"composite": true, // Essential for project references in a monorepo
+		"skipLibCheck": true,
+		"baseUrl": "."
+	}
+}

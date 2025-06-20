@@ -1,0 +1,23 @@
+{
+	"name": "@metamask/mobile-wallet-protocol-core",
+	"version": "0.1.0",
+	"private": true,
+	"homepage": "https://github.com/MetaMask/mobile-wallet-protocol/tree/main/packages/core#readme",
+	"bugs": {
+		"url": "https://github.com/MetaMask/mobile-wallet-protocol/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/MetaMask/mobile-wallet-protocol.git"
+	},
+	"license": "MIT",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"build": "tsup src/index.ts --dts"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	}
+}
