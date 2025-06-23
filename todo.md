@@ -1,0 +1,1 @@
+- websocket -> channel history, fault tolerant connection/message-delivery/message-receive

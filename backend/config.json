@@ -1,0 +1,29 @@
+{
+	"admin": {
+		"enabled": true,
+		"password": "d0683813-0916-4c49-979f-0e08a686b727",
+		"secret": "4e9eafcf-0120-4ddd-b668-8dc40072c78e"
+	},
+	"client": {
+		"allowed_origins": ["*"],
+		"allow_anonymous_connect_without_token": true
+	},
+	"channel": {
+		"namespaces": [
+			{
+				"name": "session",
+				"channel_regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+				"allow_subscribe_for_client": true,
+				"allow_subscribe_for_anonymous": true,
+				"allow_publish_for_client": true,
+				"allow_publish_for_anonymous": true,
+				"allow_history_for_client": true,
+				"allow_history_for_anonymous": true,
+				"history_size": 5,
+				"history_ttl": "300s",
+				"force_positioning": true,
+				"force_recovery": true
+			}
+		]
+	}
+}

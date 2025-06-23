@@ -1,0 +1,9 @@
+version: '3'
+services:
+  centrifugo:
+    image: centrifugo/centrifugo:latest
+    ports:
+      - 8000:8000
+    volumes:
+      - ./config.json:/centrifugo/config.json
+    command: centrifugo -c config.json
