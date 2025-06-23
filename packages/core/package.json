@@ -23,7 +23,8 @@
 	"dependencies": {
 		"@noble/curves": "^1.9.2",
 		"@noble/hashes": "^1.8.0",
-		"centrifuge": "^5.3.5"
+		"centrifuge": "^5.3.5",
+		"eciesjs": "^0.4.15"
 	},
 	"devDependencies": {
 		"@types/node": "^24.0.3",
