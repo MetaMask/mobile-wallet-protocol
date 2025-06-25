@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { Centrifuge, type Subscription } from "centrifuge";
+import { Centrifuge, type ErrorContext, type Subscription } from "centrifuge";
 import type { ITransport } from "../domain/transport";
 
 export interface WebSocketTransportOptions {
@@ -8,47 +8,58 @@ export interface WebSocketTransportOptions {
 	websocket?: any;
 }
 
+type TransportState = "disconnected" | "connecting" | "connected" | "error";
+
 /**
  * An ITransport implementation using the `centrifuge-js` library.
- * It manages the WebSocket connection and channel subscriptions.
+ * It manages the WebSocket connection, channel subscriptions, and provides
+ * robust connection and state management.
  */
 export class WebSocketTransport extends EventEmitter implements ITransport {
 	private readonly centrifuge: Centrifuge;
 	private readonly subscriptions: Map<string, Subscription> = new Map();
-	private isConnected = false;
+	private state: TransportState = "disconnected";
 
 	constructor(options: WebSocketTransportOptions) {
 		super();
+
 		this.centrifuge = new Centrifuge(options.url, { websocket: options.websocket });
 
-		this.centrifuge.on("connected", () => {
-			this.isConnected = true;
-			this.emit("connected");
+		this.centrifuge.on("connecting", () => { this.setState("connecting"); });
+		this.centrifuge.on("connected", () => { this.setState("connected"); });
+		this.centrifuge.on("disconnected", () => { this.setState("disconnected"); });
+		this.centrifuge.on("error", (ctx: ErrorContext) => {
+			this.setState("error");
+			this.emit("error", new Error(ctx.error.message));
 		});
+	}
 
-		this.centrifuge.on("disconnected", () => {
-			this.isConnected = false;
-			this.emit("disconnected");
-		});
-
-		this.centrifuge.on("error", (ctx) => this.emit("error", new Error(ctx.error.message)));
+	private setState(newState: TransportState) {
+		if (this.state === newState) return;
+		this.state = newState;
+		this.emit(newState);
 	}
 
 	public async connect(): Promise<void> {
-		if (this.isConnected) {
+		if (this.state === "connected" || this.state === "connecting") {
 			return;
 		}
-		return new Promise((resolve) => {
+
+		this.setState("connecting");
+
+		return new Promise((resolve, reject) => {
 			this.centrifuge.once("connected", () => resolve());
+			this.centrifuge.once("error", (ctx) => reject(new Error(ctx.error.message)));
 			this.centrifuge.connect();
 		});
 	}
 
 	public async disconnect(): Promise<void> {
-		if (!this.isConnected) {
+		if (this.state === "disconnected") {
 			return;
 		}
 		this.centrifuge.disconnect();
+		this.subscriptions.clear();
 	}
 
 	public async subscribe(channel: string): Promise<void> {

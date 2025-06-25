@@ -1,14 +1,75 @@
-import { getSessionId } from "@metamask/mobile-wallet-protocol-core";
+import { Buffer } from "node:buffer";
+import { BaseClient, KeyManager, WebSocketTransport, type DecryptedMessage } from "@metamask/mobile-wallet-protocol-core";
 
-export class WalletClient {
-	private sessionId: string;
+type QrCodeData = {
+	sessionId: string;
+	publicKey: string; // base64 encoded
+};
 
-	constructor() {
-		this.sessionId = getSessionId();
-		console.log(`WalletClient initialized with session: ${this.sessionId}`);
+export interface WalletClientOptions {
+	relayUrl: string;
+	websocket?: any; // For Node.js
+}
+
+/**
+ * The Wallet-side client. It connects to a dApp session by parsing
+ * QR code data and responding to complete the handshake.
+ */
+export class WalletClient extends BaseClient {
+	private handshakeCompleted = false;
+
+	constructor(options: WalletClientOptions) {
+		super(
+			new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }),
+			new KeyManager(),
+		);
 	}
 
-	public getSessionId(): string {
-		return this.sessionId;
+	/**
+	 * Connects to a dApp session using data from a QR code.
+	 */
+	public async connect(options: { qrCodeData: string }): Promise<void> {
+		// 1. Parse session details from the QR code.
+		const { sessionId, publicKey: dappPublicKeyB64 } = JSON.parse(options.qrCodeData) as QrCodeData;
+		this.channel = sessionId;
+		this.theirPublicKey = Buffer.from(dappPublicKeyB64, "base64");
+
+		// 2. Generate our own keypair.
+		this.keyPair = this.keyManager.generateKeyPair();
+
+		// 3. Connect to the relay server.
+		await this.transport.connect();
+		await this.transport.subscribe(this.channel);
+
+		// 4. Send our public key to the dApp to complete the handshake.
+		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
+		await this.sendMessage({
+			type: "wallet-handshake",
+			payload: { publicKey: publicKeyB64 },
+		});
+
+		// 5. The handshake is now complete from the wallet's perspective.
+		this.handshakeCompleted = true;
+		this.emit("connected");
+	}
+
+	/**
+	 * Handles all incoming messages from the dApp.
+	 */
+	protected handleMessage(message: DecryptedMessage): void {
+		// The wallet only processes messages after its handshake is complete.
+		if (this.handshakeCompleted) {
+			this.emit("message", message.payload);
+		}
+	}
+
+	/**
+	 * Sends a response to the connected dApp.
+	 */
+	public async sendResponse(payload: unknown): Promise<void> {
+		if (!this.handshakeCompleted) {
+			throw new Error("Cannot send response: handshake not complete.");
+		}
+		await this.sendMessage({ type: "wallet-response", payload });
 	}
 }

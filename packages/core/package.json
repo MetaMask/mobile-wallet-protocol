@@ -12,9 +12,9 @@
 	},
 	"license": "MIT",
 	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"types": "./dist/src/index.d.ts",
 	"scripts": {
-		"build": "tsup src/index.ts --dts"
+		"build": "tsup src/index.ts --format cjs"
 	},
 	"publishConfig": {
 		"access": "public",

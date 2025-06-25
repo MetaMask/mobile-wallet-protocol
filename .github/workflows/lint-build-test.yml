@@ -82,7 +82,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: yarn
       - run: yarn --immutable
+      - name: Start backend services
+        run: docker compose -f backend/docker-compose.yml up -d
       - run: yarn test:ci
+      - name: Stop backend services
+        if: always()
+        run: docker compose -f backend/docker-compose.yml down
       - name: Require clean working directory
         shell: bash
         run: |

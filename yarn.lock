@@ -431,7 +431,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/mobile-wallet-protocol-core@*, @metamask/mobile-wallet-protocol-core@workspace:packages/core":
+"@metamask/mobile-wallet-protocol-core@workspace:*, @metamask/mobile-wallet-protocol-core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@metamask/mobile-wallet-protocol-core@workspace:packages/core"
   dependencies:
@@ -451,7 +451,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/mobile-wallet-protocol-dapp-client@workspace:packages/dapp-client"
   dependencies:
-    "@metamask/mobile-wallet-protocol-core": "*"
+    "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/uuid": ^10.0.0
+    uuid: ^11.1.0
   languageName: unknown
   linkType: soft
 
@@ -459,7 +461,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/mobile-wallet-protocol-wallet-client@workspace:packages/wallet-client"
   dependencies:
-    "@metamask/mobile-wallet-protocol-core": "*"
+    "@metamask/mobile-wallet-protocol-core": "workspace:*"
   languageName: unknown
   linkType: soft
 

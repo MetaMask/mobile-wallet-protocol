@@ -1,0 +1,4 @@
+{
+	"files": [],
+	"references": [{ "path": "packages/core" }, { "path": "packages/dapp-client" }, { "path": "packages/wallet-client" }]
+}

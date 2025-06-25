@@ -6,7 +6,8 @@
 		"apps/*"
 	],
 	"scripts": {
-		"build": "yarn workspaces foreach run build",
+		"prebuild": "tsc --build --emitDeclarationOnly",
+		"build": "yarn prebuild && yarn workspaces foreach run build",
 		"test": "vitest run",
 		"test:watch": "vitest watch",
 		"test:ci": "vitest run --coverage --coverage.reporter=text --silent",
