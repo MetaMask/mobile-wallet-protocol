@@ -1,12 +1,12 @@
+import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
+import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
 import WebSocket from "ws";
-import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
-import { DappClient } from "./index";
 
 // This is the relay server URL defined in your docker-compose setup
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
 
-t.describe("DappClient <-> WalletClient Integration", () => {
+t.describe("DappClient & WalletClient Integration", () => {
 	let dappClient: DappClient;
 	let walletClient: WalletClient;
 
@@ -31,14 +31,10 @@ t.describe("DappClient <-> WalletClient Integration", () => {
 		walletClient = new WalletClient({ relayUrl: RELAY_URL, websocket: WebSocket });
 
 		// Add error event listeners to prevent unhandled errors
-		dappClient.on("error", (error) => {
-			console.warn("DappClient error:", error.message);
-		});
-		walletClient.on("error", (error) => {
-			console.warn("WalletClient error:", error.message);
-		});
+		dappClient.on("error", (error) => { console.warn("DappClient error:", error.message); });
+		walletClient.on("error", (error) => { console.warn("WalletClient error:", error.message); });
 
-		// 2. Set up promises to wait for key events. This makes the async test robust.
+		// 2. Set up promises to wait for key events.
 		const dappConnectedPromise = new Promise<void>((resolve) => dappClient.once("connected", resolve));
 		const walletConnectedPromise = new Promise<void>((resolve) => walletClient.once("connected", resolve));
 		const qrCodeDataPromise = new Promise<string>((resolve) => dappClient.once("display-qr-code", resolve));

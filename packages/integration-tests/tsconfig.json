@@ -1,0 +1,8 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"references": [{ "path": "../core" }, { "path": "../dapp-client" }, { "path": "../wallet-client" }],
+	"include": ["src/**/*.ts"],
+	"compilerOptions": {
+		"noEmit": true
+	}
+}

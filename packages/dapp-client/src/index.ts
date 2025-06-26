@@ -33,10 +33,7 @@ export class DappClient extends BaseClient {
 		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
 
 		// 2. Create the QR code payload.
-		const qrCodeData = JSON.stringify({
-			sessionId: this.channel,
-			publicKey: publicKeyB64,
-		});
+		const qrCodeData = JSON.stringify({ sessionId: this.channel, publicKey: publicKeyB64 });
 
 		// 3. Signal the UI to display the QR code.
 		this.emit("display-qr-code", qrCodeData);
