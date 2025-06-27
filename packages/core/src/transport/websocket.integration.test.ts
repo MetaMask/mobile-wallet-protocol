@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import type { EventEmitter } from "node:events";
+import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { WebSocketTransport } from "./websocket";
@@ -93,7 +94,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.beforeEach(async () => {
 			// Generate a unique channel for each test
-			channel = `session:${crypto.randomUUID()}`;
+			channel = `session:${uuid()}`;
 
 			transport = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
 			await transport.connect();
@@ -141,7 +142,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.beforeEach(async () => {
 			// Generate a unique channel for each test
-			channel = `session:${crypto.randomUUID()}`;
+			channel = `session:${uuid()}`;
 
 			publisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
 			subscriber = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
@@ -246,7 +247,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.beforeEach(async () => {
 			// Generate a unique channel for each test
-			channel = `session:${crypto.randomUUID()}`;
+			channel = `session:${uuid()}`;
 
 			subscriber = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
 			rawPublisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
@@ -349,7 +350,7 @@ t.describe("WebSocketTransport", () => {
 		});
 
 		t.test("should receive historical messages upon subscribing in FIFO order", async () => {
-			const channel = `session:${crypto.randomUUID()}`;
+			const channel = `session:${uuid()}`;
 			const historicalPublisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(historicalPublisher);
 			await historicalPublisher.connect();
@@ -385,7 +386,7 @@ t.describe("WebSocketTransport", () => {
 		});
 
 		t.test("should reject publish promise if publishing fails after all retries", async () => {
-			const channel = `session:${crypto.randomUUID()}`;
+			const channel = `session:${uuid()}`;
 			const publisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(publisher);
 			await publisher.connect();
