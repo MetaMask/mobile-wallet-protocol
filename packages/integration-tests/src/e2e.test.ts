@@ -31,8 +31,8 @@ t.describe("DappClient & WalletClient Integration", () => {
 		walletClient = new WalletClient({ relayUrl: RELAY_URL, websocket: WebSocket });
 
 		// Add error event listeners to prevent unhandled errors
-		dappClient.on("error", (error) => { console.warn("DappClient error:", error.message); });
-		walletClient.on("error", (error) => { console.warn("WalletClient error:", error.message); });
+		dappClient.on("error", (error) => { throw new Error(`DappClient error: ${error.message}`) });
+		walletClient.on("error", (error) => { throw new Error(`WalletClient error: ${error.message}`) });
 
 		// 2. Set up promises to wait for key events.
 		const dappConnectedPromise = new Promise<void>((resolve) => dappClient.once("connected", resolve));
