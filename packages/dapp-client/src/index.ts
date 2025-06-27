@@ -1,9 +1,10 @@
 import { BaseClient, type DecryptedMessage, KeyManager, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { v4 as uuid } from "uuid";
+import type { WebSocket } from "ws";
 
 export interface DappClientOptions {
 	relayUrl: string;
-	websocket?: any; // For Node.js
+	websocket?: typeof WebSocket; // For Node.js
 }
 
 /**
@@ -14,10 +15,7 @@ export class DappClient extends BaseClient {
 	private handshakeCompleted = false;
 
 	constructor(options: DappClientOptions) {
-		super(
-			new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }),
-			new KeyManager(),
-		);
+		super(new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }), new KeyManager());
 	}
 
 	/**

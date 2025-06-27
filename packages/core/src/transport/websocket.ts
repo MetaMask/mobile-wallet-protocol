@@ -160,11 +160,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	private _handleIncomingMessage(channel: string, rawData: string): void {
 		try {
 			const message = JSON.parse(rawData) as TransportMessage;
-			if (
-				typeof message.clientId !== "string" ||
-				typeof message.nonce !== "number" ||
-				typeof message.payload !== "string"
-			) {
+			if (typeof message.clientId !== "string" || typeof message.nonce !== "number" || typeof message.payload !== "string") {
 				throw new Error("Invalid message format");
 			}
 
@@ -227,7 +223,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 				}
 
 				const expbackoff = BASE_RETRY_DELAY * 2 ** attempt;
-				await new Promise(resolve => setTimeout(resolve, expbackoff));
+				await new Promise((resolve) => setTimeout(resolve, expbackoff));
 			}
 		}
 	}

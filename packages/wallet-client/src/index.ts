@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
-import { BaseClient, KeyManager, WebSocketTransport, type DecryptedMessage } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type DecryptedMessage, KeyManager, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import type { WebSocket } from "ws";
 
 type QrCodeData = {
 	sessionId: string;
@@ -8,7 +9,7 @@ type QrCodeData = {
 
 export interface WalletClientOptions {
 	relayUrl: string;
-	websocket?: any; // For Node.js
+	websocket?: typeof WebSocket; // For Node.js
 }
 
 /**
@@ -19,10 +20,7 @@ export class WalletClient extends BaseClient {
 	private handshakeCompleted = false;
 
 	constructor(options: WalletClientOptions) {
-		super(
-			new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }),
-			new KeyManager(),
-		);
+		super(new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }), new KeyManager());
 	}
 
 	/**
