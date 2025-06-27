@@ -3,3 +3,5 @@
 
 - test:unit, test:integration -> integration assumes docker compose is running
 - grok -> websocket-transport implementation added + testing
+- dapp client does not create qr code data or knows anything about qr code. its just creates a `session-request`
+- think about storage holistically

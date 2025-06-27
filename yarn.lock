@@ -453,7 +453,9 @@ __metadata:
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
     "@types/uuid": ^10.0.0
+    "@types/ws": ^8.18.1
     uuid: ^11.1.0
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
@@ -472,6 +474,8 @@ __metadata:
   resolution: "@metamask/mobile-wallet-protocol-wallet-client@workspace:packages/wallet-client"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/ws": ^8.18.1
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
