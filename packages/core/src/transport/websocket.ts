@@ -1,6 +1,5 @@
 import { EventEmitter } from "node:events";
 import { Centrifuge, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
-import { v4 as uuid } from "uuid";
 import type { ITransport } from "../domain/transport";
 
 /**
@@ -26,6 +25,7 @@ interface QueuedMessage {
 }
 
 export interface WebSocketTransportOptions {
+	clientId: string;
 	url: string;
 	websocket?: unknown;
 }
@@ -48,9 +48,9 @@ const BASE_RETRY_DELAY = 100;
  */
 export class WebSocketTransport extends EventEmitter implements ITransport {
 	private readonly centrifuge: Centrifuge;
+	private readonly clientId: string;
 	private readonly subscriptions: Map<string, Subscription> = new Map();
 	private state: TransportState = "disconnected";
-	private readonly clientId = uuid(); // FIXME
 
 	private nonce = 0;
 	private readonly processedNonces: Set<number> = new Set();
@@ -60,6 +60,8 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 	constructor(options: WebSocketTransportOptions) {
 		super();
+
+		this.clientId = options.clientId;
 
 		this.centrifuge = new Centrifuge(options.url, {
 			websocket: options.websocket,

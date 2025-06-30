@@ -14,11 +14,11 @@ const waitFor = (emitter: EventEmitter, event: string): Promise<any> => {
 t.describe("WebSocketTransport", () => {
 	t.describe("Constructor and Initialization", () => {
 		t.test("should create an instance of WebSocketTransport", () => {
-			t.expect(() => new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket })).not.toThrow();
+			t.expect(() => new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket })).not.toThrow();
 		});
 
 		t.test('should have initial state as "disconnected"', () => {
-			const transport = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			const transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			t.expect((transport as any).state).toBe("disconnected");
 		});
 	});
@@ -27,7 +27,7 @@ t.describe("WebSocketTransport", () => {
 		let transport: WebSocketTransport;
 
 		t.beforeEach(() => {
-			transport = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 		});
 
 		t.afterEach(async () => {
@@ -96,7 +96,7 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			transport = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			await transport.connect();
 		});
 
@@ -117,7 +117,7 @@ t.describe("WebSocketTransport", () => {
 			await transport.subscribe(channel);
 
 			// Use a second transport to publish a message
-			const publisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			const publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			await publisher.connect();
 
 			const payload = `message from publisher ${Date.now()}`;
@@ -144,8 +144,8 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			publisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
-			subscriber = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
+			subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 
 			// Subscriber must be connected and subscribed to receive messages
 			await subscriber.connect();
@@ -249,8 +249,8 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			subscriber = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
-			rawPublisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
+			rawPublisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(subscriber, rawPublisher);
 
 			await subscriber.connect();
@@ -351,7 +351,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.test("should receive historical messages upon subscribing in FIFO order", async () => {
 			const channel = `session:${uuid()}`;
-			const historicalPublisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			const historicalPublisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(historicalPublisher);
 			await historicalPublisher.connect();
 
@@ -362,7 +362,7 @@ t.describe("WebSocketTransport", () => {
 			await historicalPublisher.disconnect(); // Disconnect to ensure messages are in history
 
 			// Now, create a new subscriber
-			const subscriber = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			const subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(subscriber);
 
 			const receivedMessages: string[] = [];
@@ -387,7 +387,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.test("should reject publish promise if publishing fails after all retries", async () => {
 			const channel = `session:${uuid()}`;
-			const publisher = new WebSocketTransport({ url: WEBSOCKET_URL, websocket: WebSocket });
+			const publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(publisher);
 			await publisher.connect();
 

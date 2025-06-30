@@ -17,7 +17,7 @@ export type DecryptedMessage = {
  */
 export abstract class BaseClient extends EventEmitter {
 	protected transport: ITransport;
-	protected keyManager: IKeyManager;
+	protected keymanager: IKeyManager;
 
 	protected keyPair: KeyPair | null = null;
 	protected theirPublicKey: Uint8Array | null = null;
@@ -26,10 +26,9 @@ export abstract class BaseClient extends EventEmitter {
 	constructor(transport: ITransport, keyManager: IKeyManager) {
 		super();
 		this.transport = transport;
-		this.keyManager = keyManager;
+		this.keymanager = keyManager;
 
 		this.transport.on("error", (error) => this.emit("error", error));
-		// this.transport.on("connected", () => this.emit("transport:open")); FIXME
 		this.transport.on("disconnected", () => this.disconnect());
 
 		this.transport.on("message", async (payload) => {
@@ -54,7 +53,7 @@ export abstract class BaseClient extends EventEmitter {
 			throw new Error("Cannot send message: session is not initialized.");
 		}
 		const plaintext = JSON.stringify(message);
-		const encrypted = await this.keyManager.encrypt(plaintext, this.theirPublicKey);
+		const encrypted = await this.keymanager.encrypt(plaintext, this.theirPublicKey);
 		await this.transport.publish(this.channel, encrypted);
 	}
 
@@ -63,7 +62,7 @@ export abstract class BaseClient extends EventEmitter {
 			return null; // This check is for type safety
 		}
 		try {
-			const decrypted = await this.keyManager.decrypt(data, this.keyPair.privateKey);
+			const decrypted = await this.keymanager.decrypt(data, this.keyPair.privateKey);
 			return JSON.parse(decrypted);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);

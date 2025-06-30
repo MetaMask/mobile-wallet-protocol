@@ -15,7 +15,7 @@ export class DappClient extends BaseClient {
 	private handshakeCompleted = false;
 
 	constructor(options: DappClientOptions) {
-		super(new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }), new KeyManager());
+		super(new WebSocketTransport({ clientId: "dapp-client", url: options.relayUrl, websocket: options.websocket }), new KeyManager());
 	}
 
 	/**
@@ -27,7 +27,7 @@ export class DappClient extends BaseClient {
 
 		// 1. Generate session details.
 		this.channel = `session:${uuid()}`;
-		this.keyPair = this.keyManager.generateKeyPair();
+		this.keyPair = this.keymanager.generateKeyPair();
 		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
 
 		// 2. Create the QR code payload.

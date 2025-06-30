@@ -20,7 +20,7 @@ export class WalletClient extends BaseClient {
 	private handshakeCompleted = false;
 
 	constructor(options: WalletClientOptions) {
-		super(new WebSocketTransport({ url: options.relayUrl, websocket: options.websocket }), new KeyManager());
+		super(new WebSocketTransport({ clientId: "wallet-client", url: options.relayUrl, websocket: options.websocket }), new KeyManager());
 	}
 
 	/**
@@ -33,7 +33,7 @@ export class WalletClient extends BaseClient {
 		this.theirPublicKey = Buffer.from(dappPublicKeyB64, "base64");
 
 		// 2. Generate our own keypair.
-		this.keyPair = this.keyManager.generateKeyPair();
+		this.keyPair = this.keymanager.generateKeyPair();
 
 		// 3. Connect to the relay server.
 		await this.transport.connect();

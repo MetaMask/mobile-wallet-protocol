@@ -6,10 +6,10 @@
  * It is designed around a simple, channel-based publish/subscribe model.
  */
 export interface ITransport {
-	/** Establishes a connection to the transport server. */
+	/** Establishes a connection. */
 	connect(): Promise<void>;
 
-	/** Disconnects from the transport server. */
+	/** Disconnects. */
 	disconnect(): Promise<void>;
 
 	/**
