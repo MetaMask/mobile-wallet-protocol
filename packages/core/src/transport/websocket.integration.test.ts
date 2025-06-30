@@ -3,7 +3,6 @@ import type { EventEmitter } from "node:events";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
-import { InMemoryKVStore } from "../kv-store/in-memory";
 import { WebSocketTransport } from "./websocket";
 
 const WEBSOCKET_URL = "ws://localhost:8000/connection/websocket";
@@ -14,14 +13,12 @@ const waitFor = (emitter: EventEmitter, event: string): Promise<any> => {
 
 t.describe("WebSocketTransport", () => {
 	t.describe("Constructor and Initialization", () => {
-		t.test("should create an instance of WebSocketTransport", async () => {
-			const kvstore = new InMemoryKVStore();
-			await t.expect(WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket })).resolves.toBeDefined();
+		t.test("should create an instance of WebSocketTransport", () => {
+			t.expect(() => new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket })).not.toThrow();
 		});
 
-		t.test('should have initial state as "disconnected"', async () => {
-			const kvstore = new InMemoryKVStore();
-			const transport = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+		t.test('should have initial state as "disconnected"', () => {
+			const transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			t.expect((transport as any).state).toBe("disconnected");
 		});
 	});
@@ -29,9 +26,8 @@ t.describe("WebSocketTransport", () => {
 	t.describe("Connection Management", () => {
 		let transport: WebSocketTransport;
 
-		t.beforeEach(async () => {
-			const kvstore = new InMemoryKVStore();
-			transport = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+		t.beforeEach(() => {
+			transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 		});
 
 		t.afterEach(async () => {
@@ -100,8 +96,7 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			const kvstore = new InMemoryKVStore();
-			transport = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+			transport = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			await transport.connect();
 		});
 
@@ -122,8 +117,7 @@ t.describe("WebSocketTransport", () => {
 			await transport.subscribe(channel);
 
 			// Use a second transport to publish a message
-			const kvstore = new InMemoryKVStore();
-			const publisher = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+			const publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			await publisher.connect();
 
 			const payload = `message from publisher ${Date.now()}`;
@@ -150,10 +144,8 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			const kvstore1 = new InMemoryKVStore();
-			const kvstore2 = new InMemoryKVStore();
-			publisher = await WebSocketTransport.create(kvstore1, { url: WEBSOCKET_URL, websocket: WebSocket });
-			subscriber = await WebSocketTransport.create(kvstore2, { url: WEBSOCKET_URL, websocket: WebSocket });
+			publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
+			subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 
 			// Subscriber must be connected and subscribed to receive messages
 			await subscriber.connect();
@@ -224,7 +216,7 @@ t.describe("WebSocketTransport", () => {
 			await messagesReceivedPromise; // Wait for all messages to be received
 
 			t.expect(receivedMessages).toEqual(payloads);
-		}, 15000);
+		});
 
 		t.test("should send a message immediately when connected", async () => {
 			await publisher.connect();
@@ -239,9 +231,6 @@ t.describe("WebSocketTransport", () => {
 
 		t.test("should reject queued messages on disconnect", async () => {
 			const publishPromise = publisher.publish(channel, "this will be rejected");
-
-			// Add a small delay to give the async publish() method time to queue the message.
-			await new Promise((resolve) => setTimeout(resolve, 1));
 
 			// Disconnecting while a message is in the queue should cause its promise to reject.
 			await publisher.disconnect();
@@ -260,10 +249,8 @@ t.describe("WebSocketTransport", () => {
 			// Generate a unique channel for each test
 			channel = `session:${uuid()}`;
 
-			const kvstore1 = new InMemoryKVStore();
-			const kvstore2 = new InMemoryKVStore();
-			subscriber = await WebSocketTransport.create(kvstore1, { url: WEBSOCKET_URL, websocket: WebSocket });
-			rawPublisher = await WebSocketTransport.create(kvstore2, { url: WEBSOCKET_URL, websocket: WebSocket });
+			subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
+			rawPublisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(subscriber, rawPublisher);
 
 			await subscriber.connect();
@@ -364,8 +351,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.test("should receive historical messages upon subscribing in FIFO order", async () => {
 			const channel = `session:${uuid()}`;
-			const kvstore = new InMemoryKVStore();
-			const historicalPublisher = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+			const historicalPublisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(historicalPublisher);
 			await historicalPublisher.connect();
 
@@ -376,8 +362,7 @@ t.describe("WebSocketTransport", () => {
 			await historicalPublisher.disconnect(); // Disconnect to ensure messages are in history
 
 			// Now, create a new subscriber
-			const kvstore2 = new InMemoryKVStore();
-			const subscriber = await WebSocketTransport.create(kvstore2, { url: WEBSOCKET_URL, websocket: WebSocket });
+			const subscriber = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(subscriber);
 
 			const receivedMessages: string[] = [];
@@ -402,8 +387,7 @@ t.describe("WebSocketTransport", () => {
 
 		t.test("should reject publish promise if publishing fails after all retries", async () => {
 			const channel = `session:${uuid()}`;
-			const kvstore = new InMemoryKVStore();
-			const publisher = await WebSocketTransport.create(kvstore, { url: WEBSOCKET_URL, websocket: WebSocket });
+			const publisher = new WebSocketTransport({ clientId: uuid(), url: WEBSOCKET_URL, websocket: WebSocket });
 			transports.push(publisher);
 			await publisher.connect();
 

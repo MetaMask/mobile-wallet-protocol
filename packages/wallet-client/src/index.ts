@@ -1,10 +1,9 @@
 import { Buffer } from "node:buffer";
-import { BaseClient, type DecryptedMessage, type IKVStore, InMemoryKVStore, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type DecryptedMessage, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import type { WebSocket } from "ws";
 
 export interface WalletClientOptions {
 	relayUrl: string;
-	kvstore?: IKVStore;
 	websocket?: typeof WebSocket; // For Node.js
 }
 
@@ -15,14 +14,8 @@ export interface WalletClientOptions {
 export class WalletClient extends BaseClient {
 	private handshakeCompleted = false;
 
-	private constructor(transport: WebSocketTransport, keymanager: KeyManager) {
-		super(transport, keymanager);
-	}
-
-	public static async create(options: WalletClientOptions): Promise<WalletClient> {
-		const kvstore = options.kvstore ?? new InMemoryKVStore();
-		const transport = await WebSocketTransport.create(kvstore, { url: options.relayUrl, websocket: options.websocket });
-		return new WalletClient(transport, new KeyManager());
+	constructor(options: WalletClientOptions) {
+		super(new WebSocketTransport({ clientId: "wallet-client", url: options.relayUrl, websocket: options.websocket }), new KeyManager());
 	}
 
 	/**

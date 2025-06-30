@@ -1,5 +1,4 @@
 import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
-import { InMemoryKVStore } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
@@ -31,16 +30,8 @@ t.describe("DappClient & WalletClient Integration", () => {
 		async () => {
 			// 1. Initialize both clients
 			// We pass the 'ws' package constructor for the Node.js test environment
-			dappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
-				websocket: WebSocket,
-				kvstore: new InMemoryKVStore(),
-			});
-			walletClient = await WalletClient.create({
-				relayUrl: RELAY_URL,
-				websocket: WebSocket,
-				kvstore: new InMemoryKVStore(),
-			});
+			dappClient = new DappClient({ relayUrl: RELAY_URL, websocket: WebSocket });
+			walletClient = new WalletClient({ relayUrl: RELAY_URL, websocket: WebSocket });
 
 			// Add error event listeners to prevent unhandled errors
 			dappClient.on("error", (error) => {

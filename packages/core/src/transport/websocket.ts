@@ -1,7 +1,5 @@
 import { EventEmitter } from "node:events";
 import { Centrifuge, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
-import { v4 as uuidv4 } from "uuid";
-import type { IKVStore } from "../domain/kv-store";
 import type { ITransport } from "../domain/transport";
 
 /**
@@ -26,12 +24,13 @@ interface QueuedMessage {
 	reject: (reason?: Error) => void;
 }
 
-type TransportState = "disconnected" | "connecting" | "connected";
-
 export interface WebSocketTransportOptions {
+	clientId: string;
 	url: string;
 	websocket?: unknown;
 }
+
+type TransportState = "disconnected" | "connecting" | "connected";
 
 /** The sliding window size for processed nonces, used for message deduplication. */
 const MAX_PROCESSED_NONCES = 200;
@@ -43,68 +42,6 @@ const MAX_RETRY_ATTEMPTS = 5;
 const BASE_RETRY_DELAY = 100;
 
 /**
- * Storage layer for WebSocket transport, handling client identification and nonce management.
- * Provides persistent storage for client ID and nonce tracking for message deduplication.
- */
-export class WebSocketTransportStorage {
-	private readonly kvstore: IKVStore;
-	private readonly clientId: string;
-
-	constructor(kvstore: IKVStore, clientId: string) {
-		this.kvstore = kvstore;
-		this.clientId = clientId;
-	}
-
-	/**
-	 * Creates a new WebSocketTransportStorage instance, generating or retrieving a persistent client ID.
-	 */
-	static async create(kvstore: IKVStore): Promise<WebSocketTransportStorage> {
-		const CLIENT_ID_KEY = "websocket-transport-client-id";
-		let clientId = await kvstore.get(CLIENT_ID_KEY);
-
-		if (!clientId) {
-			clientId = uuidv4();
-			await kvstore.set(CLIENT_ID_KEY, clientId);
-		}
-
-		return new WebSocketTransportStorage(kvstore, clientId);
-	}
-
-	/** Gets the client ID for this transport instance. */
-	getClientId(): string {
-		return this.clientId;
-	}
-
-	/** Increments and returns the next nonce value. */
-	async incrementAndGetNonce(): Promise<number> {
-		const key = `nonce_${this.clientId}`;
-		const currentValue = await this.kvstore.get(key);
-		const currentNonce = currentValue ? parseInt(currentValue, 10) : 0;
-		const nextNonce = currentNonce + 1;
-		await this.kvstore.set(key, nextNonce.toString());
-		return nextNonce;
-	}
-
-	/** Retrieves the latest processed nonces for a channel. */
-	async getLatestNonces(channel: string): Promise<Map<string, number>> {
-		const key = `latestNonces_${this.clientId}_${channel}`;
-		const value = await this.kvstore.get(key);
-		if (value) {
-			const obj = JSON.parse(value) as Record<string, number>;
-			return new Map(Object.entries(obj));
-		}
-		return new Map();
-	}
-
-	/** Sets the latest processed nonces for a channel. */
-	async setLatestNonces(channel: string, latestNonces: Map<string, number>): Promise<void> {
-		const key = `latestNonces_${this.clientId}_${channel}`;
-		const obj = Object.fromEntries(latestNonces);
-		await this.kvstore.set(key, JSON.stringify(obj));
-	}
-}
-
-/**
  * An ITransport implementation using `centrifuge-js`.
  * It provides a resilient WebSocket connection with message queuing, delivery
  * guarantees, and deduplication.
@@ -112,21 +49,19 @@ export class WebSocketTransportStorage {
 export class WebSocketTransport extends EventEmitter implements ITransport {
 	private readonly centrifuge: Centrifuge;
 	private readonly clientId: string;
-	private readonly storage: WebSocketTransportStorage;
 	private readonly subscriptions: Map<string, Subscription> = new Map();
 	private state: TransportState = "disconnected";
+
+	private nonce = 0;
+	private readonly processedNonces: Set<number> = new Set();
 
 	private isProcessingQueue = false;
 	private readonly queue: QueuedMessage[] = [];
 
-	/**
-	 * Private constructor. Use WebSocketTransport.create() instead.
-	 */
-	private constructor(options: WebSocketTransportOptions, storage: WebSocketTransportStorage) {
+	constructor(options: WebSocketTransportOptions) {
 		super();
 
-		this.storage = storage;
-		this.clientId = storage.getClientId();
+		this.clientId = options.clientId;
 
 		this.centrifuge = new Centrifuge(options.url, {
 			websocket: options.websocket,
@@ -143,20 +78,12 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		this.centrifuge.on("error", (ctx) => this.emit("error", new Error(ctx.error.message)));
 	}
 
-	/**
-	 * Creates a new WebSocketTransport instance with async initialization.
-	 * Generates or retrieves a persistent client ID automatically.
-	 */
-	static async create(kvstore: IKVStore, options: WebSocketTransportOptions): Promise<WebSocketTransport> {
-		const storage = await WebSocketTransportStorage.create(kvstore);
-		return new WebSocketTransport(options, storage);
+	private setState(newState: TransportState) {
+		if (this.state === newState) return;
+		this.state = newState;
+		this.emit(newState);
 	}
 
-	/**
-	 * Connects to the transport.
-	 *
-	 * @returns A promise that resolves when the transport is connected.
-	 */
 	public connect(): Promise<void> {
 		if (this.state === "connected" || this.state === "connecting") {
 			return Promise.resolve();
@@ -168,11 +95,6 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		});
 	}
 
-	/**
-	 * Disconnects from the transport.
-	 *
-	 * @returns A promise that resolves when the transport is disconnected.
-	 */
 	public disconnect(): Promise<void> {
 		this.queue.forEach((msg) => msg.reject(new Error("Transport disconnected by client.")));
 		this.queue.length = 0;
@@ -187,12 +109,6 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		});
 	}
 
-	/**
-	 * Subscribes to a channel.
-	 *
-	 * @param channel - The channel to subscribe to.
-	 * @returns A promise that resolves when the subscription is established.
-	 */
 	public subscribe(channel: string): Promise<void> {
 		if (this.subscriptions.has(channel)) {
 			return Promise.resolve();
@@ -221,33 +137,29 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		});
 	}
 
-	/**
-	 * Publishes a message to the given channel.
-	 *
-	 * @param channel - The channel to publish the message to.
-	 * @param payload - The message payload to publish.
-	 * @returns A promise that resolves when the message is published.
-	 */
-	public async publish(channel: string, payload: string): Promise<void> {
-		const nonce = await this.storage.incrementAndGetNonce();
-		const message: TransportMessage = { clientId: this.clientId, nonce, payload };
-		const promise = new Promise<void>((resolve, reject) => {
-			this.queue.push({ channel, message, resolve, reject });
-		});
+	public publish(channel: string, payload: string): Promise<void> {
+		const promise = this._enqueue(channel, payload);
 		this._processQueue();
 		return promise;
 	}
 
-	private setState(newState: TransportState) {
-		if (this.state === newState) return;
-		this.state = newState;
-		this.emit(newState);
+	/**
+	 * Creates a message envelope, adds it to the outgoing queue, and returns a promise.
+	 */
+	private _enqueue(channel: string, payload: string): Promise<void> {
+		this.nonce += 1;
+
+		const message: TransportMessage = { clientId: this.clientId, nonce: this.nonce, payload };
+
+		return new Promise((resolve, reject) => {
+			this.queue.push({ channel, message, resolve, reject });
+		});
 	}
 
 	/**
 	 * Parses an incoming raw message, checks for duplicates, and emits it.
 	 */
-	private async _handleIncomingMessage(channel: string, rawData: string): Promise<void> {
+	private _handleIncomingMessage(channel: string, rawData: string): void {
 		try {
 			const message = JSON.parse(rawData) as TransportMessage;
 			if (typeof message.clientId !== "string" || typeof message.nonce !== "number" || typeof message.payload !== "string") {
@@ -259,13 +171,19 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 				return;
 			}
 
-			const latestNonces = await this.storage.getLatestNonces(channel);
-			const latestNonce = latestNonces.get(message.clientId) || 0;
-			if (message.nonce > latestNonce) {
-				latestNonces.set(message.clientId, message.nonce);
-				await this.storage.setLatestNonces(channel, latestNonces);
-				this.emit("message", { channel, data: message.payload });
+			// Deduplication using our own transport-level nonce.
+			if (this.processedNonces.has(message.nonce)) {
+				return;
 			}
+			this.processedNonces.add(message.nonce);
+
+			// Keep the sliding window of nonces from growing indefinitely.
+			if (this.processedNonces.size > MAX_PROCESSED_NONCES) {
+				const oldestNonce = Math.min(...this.processedNonces);
+				this.processedNonces.delete(oldestNonce);
+			}
+
+			this.emit("message", { channel, data: message.payload });
 		} catch (error) {
 			this.emit("error", new Error(`Failed to parse incoming message: ${JSON.stringify(error)}`));
 		}
@@ -278,7 +196,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		try {
 			const history = await sub.history({ limit: HISTORY_FETCH_LIMIT });
 			for (const pub of history.publications) {
-				await this._handleIncomingMessage(channel, pub.data as string);
+				this._handleIncomingMessage(channel, pub.data as string);
 			}
 		} catch (error) {
 			// Centrifuge may throw an error (code 11) if the connection closes
