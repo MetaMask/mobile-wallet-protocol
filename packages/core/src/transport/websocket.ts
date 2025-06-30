@@ -33,6 +33,8 @@ export interface WebSocketTransportOptions {
 	websocket?: unknown;
 }
 
+/** The sliding window size for processed nonces, used for message deduplication. */
+const MAX_PROCESSED_NONCES = 200;
 /** The maximum number of messages to fetch from history upon a new subscription. */
 const HISTORY_FETCH_LIMIT = 50;
 /** The maximum number of retry attempts for publishing a message. */
@@ -47,7 +49,6 @@ const BASE_RETRY_DELAY = 100;
 export class WebSocketTransportStorage {
 	private readonly kvstore: IKVStore;
 	private readonly clientId: string;
-	private currentNonce: number = 0;
 
 	constructor(kvstore: IKVStore, clientId: string) {
 		this.kvstore = kvstore;
@@ -66,14 +67,7 @@ export class WebSocketTransportStorage {
 			await kvstore.set(CLIENT_ID_KEY, clientId);
 		}
 
-		const storage = new WebSocketTransportStorage(kvstore, clientId);
-
-		// Initialize the current nonce from storage
-		const key = `nonce_${clientId}`;
-		const currentValue = await kvstore.get(key);
-		storage.currentNonce = currentValue ? parseInt(currentValue, 10) : 0;
-
-		return storage;
+		return new WebSocketTransportStorage(kvstore, clientId);
 	}
 
 	/** Gets the client ID for this transport instance. */
@@ -82,14 +76,13 @@ export class WebSocketTransportStorage {
 	}
 
 	/** Increments and returns the next nonce value. */
-	getNextNonce(): number {
-		this.currentNonce++;
-		// Async update storage in background, don't await it
+	async incrementAndGetNonce(): Promise<number> {
 		const key = `nonce_${this.clientId}`;
-		this.kvstore.set(key, this.currentNonce.toString()).catch(() => {
-			// Ignore storage errors for nonce persistence - the in-memory counter is the source of truth
-		});
-		return this.currentNonce;
+		const currentValue = await this.kvstore.get(key);
+		const currentNonce = currentValue ? parseInt(currentValue, 10) : 0;
+		const nextNonce = currentNonce + 1;
+		await this.kvstore.set(key, nextNonce.toString());
+		return nextNonce;
 	}
 
 	/** Retrieves the latest processed nonces for a channel. */
@@ -236,7 +229,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 * @returns A promise that resolves when the message is published.
 	 */
 	public async publish(channel: string, payload: string): Promise<void> {
-		const nonce = this.storage.getNextNonce();
+		const nonce = await this.storage.incrementAndGetNonce();
 		const message: TransportMessage = { clientId: this.clientId, nonce, payload };
 		const promise = new Promise<void>((resolve, reject) => {
 			this.queue.push({ channel, message, resolve, reject });
