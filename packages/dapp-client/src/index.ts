@@ -1,4 +1,4 @@
-import { BaseClient, type DecryptedMessage, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type DecryptedMessage, type IKVStore, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 export type { SessionRequest };
 
 import { v4 as uuid } from "uuid";
@@ -6,6 +6,7 @@ import type { WebSocket } from "ws";
 
 export interface DappClientOptions {
 	relayUrl: string;
+	kvstore: IKVStore;
 	websocket?: typeof WebSocket; // For Node.js
 }
 
@@ -16,8 +17,17 @@ export interface DappClientOptions {
 export class DappClient extends BaseClient {
 	private handshakeCompleted = false;
 
-	constructor(options: DappClientOptions) {
-		super(new WebSocketTransport({ clientId: "dapp-client", url: options.relayUrl, websocket: options.websocket }), new KeyManager());
+	static async create(options: DappClientOptions): Promise<DappClient> {
+		const transport = await WebSocketTransport.create({
+			kvstore: options.kvstore,
+			url: options.relayUrl,
+			websocket: options.websocket,
+		});
+		return new DappClient(transport);
+	}
+
+	private constructor(transport: WebSocketTransport) {
+		super(transport, new KeyManager());
 	}
 
 	/**

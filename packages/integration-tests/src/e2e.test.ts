@@ -1,4 +1,4 @@
-import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import type { IKVStore, SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
@@ -6,6 +6,25 @@ import WebSocket from "ws";
 
 // This is the relay server URL defined in your docker-compose setup
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
+
+/**
+ * Simple in-memory KV store implementation for testing.
+ */
+class InMemoryKVStore implements IKVStore {
+	private store = new Map<string, string>();
+
+	async get(key: string): Promise<string | null> {
+		return this.store.get(key) || null;
+	}
+
+	async set(key: string, value: string): Promise<void> {
+		this.store.set(key, value);
+	}
+
+	async remove(key: string): Promise<void> {
+		this.store.delete(key);
+	}
+}
 
 t.describe("DappClient & WalletClient Integration", () => {
 	let dappClient: DappClient;
@@ -30,8 +49,11 @@ t.describe("DappClient & WalletClient Integration", () => {
 		async () => {
 			// 1. Initialize both clients
 			// We pass the 'ws' package constructor for the Node.js test environment
-			dappClient = new DappClient({ relayUrl: RELAY_URL, websocket: WebSocket });
-			walletClient = new WalletClient({ relayUrl: RELAY_URL, websocket: WebSocket });
+			const dappKVStore = new InMemoryKVStore();
+			const walletKVStore = new InMemoryKVStore();
+
+			dappClient = await DappClient.create({ relayUrl: RELAY_URL, kvstore: dappKVStore, websocket: WebSocket });
+			walletClient = await WalletClient.create({ relayUrl: RELAY_URL, kvstore: walletKVStore, websocket: WebSocket });
 
 			// Add error event listeners to prevent unhandled errors
 			dappClient.on("error", (error) => {

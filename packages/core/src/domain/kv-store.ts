@@ -3,7 +3,7 @@
  * This must be implemented by the consuming client (dApp or wallet)
  * to handle session persistence securely.
  */
-export interface IStorage {
+export interface IKVStore {
 	get(key: string): Promise<string | null>;
 	set(key: string, value: string): Promise<void>;
 	remove(key: string): Promise<void>;
