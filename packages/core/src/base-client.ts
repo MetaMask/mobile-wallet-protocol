@@ -3,11 +3,10 @@ import type { IKeyManager } from "./domain/key-manager";
 import type { KeyPair } from "./domain/key-pair";
 import type { ITransport } from "./domain/transport";
 
-// A clear, simple type for all decrypted messages.
+// FIXME
 export type DecryptedMessage = {
 	type: string;
 	payload: unknown;
-	// We could add id, timestamp etc. here later.
 };
 
 /**

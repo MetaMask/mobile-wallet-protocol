@@ -1,4 +1,6 @@
-import { BaseClient, type DecryptedMessage, KeyManager, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type DecryptedMessage, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+export type { SessionRequest };
+
 import { v4 as uuid } from "uuid";
 import type { WebSocket } from "ws";
 
@@ -8,7 +10,7 @@ export interface DappClientOptions {
 }
 
 /**
- * The dApp-side client. It initiates a connection by generating a QR code,
+ * The dApp-side client. It initiates a connection by generating a session request,
  * then waits for the wallet to respond to complete the handshake.
  */
 export class DappClient extends BaseClient {
@@ -20,7 +22,7 @@ export class DappClient extends BaseClient {
 
 	/**
 	 * Starts a new session. This generates a keypair and a session ID,
-	 * then emits the connection data for a QR code to be displayed.
+	 * then emits the session request (which can be used for a QR code to be displayed).
 	 */
 	public async connect(): Promise<void> {
 		if (this.keyPair) return; // Already connecting or connected.
@@ -30,11 +32,11 @@ export class DappClient extends BaseClient {
 		this.keyPair = this.keymanager.generateKeyPair();
 		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
 
-		// 2. Create the QR code payload.
-		const qrCodeData = JSON.stringify({ sessionId: this.channel, publicKey: publicKeyB64 });
+		// 2. Create the session request.
+		const sessionRequest: SessionRequest = { id: this.channel, publicKeyB64: publicKeyB64 };
 
-		// 3. Signal the UI to display the QR code.
-		this.emit("display-qr-code", qrCodeData);
+		// 3. Signal to consumer the session request.
+		this.emit("session-request", sessionRequest);
 
 		// 4. Connect to the relay and wait for the wallet.
 		await this.transport.connect();

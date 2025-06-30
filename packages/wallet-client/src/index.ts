@@ -1,11 +1,6 @@
 import { Buffer } from "node:buffer";
-import { BaseClient, type DecryptedMessage, KeyManager, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type DecryptedMessage, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import type { WebSocket } from "ws";
-
-type QrCodeData = {
-	sessionId: string;
-	publicKey: string; // base64 encoded
-};
 
 export interface WalletClientOptions {
 	relayUrl: string;
@@ -14,7 +9,7 @@ export interface WalletClientOptions {
 
 /**
  * The Wallet-side client. It connects to a dApp session by parsing
- * QR code data and responding to complete the handshake.
+ * a session request and responding to complete the handshake.
  */
 export class WalletClient extends BaseClient {
 	private handshakeCompleted = false;
@@ -24,11 +19,11 @@ export class WalletClient extends BaseClient {
 	}
 
 	/**
-	 * Connects to a dApp session using data from a QR code.
+	 * Connects to a dApp session using a session request object.
 	 */
-	public async connect(options: { qrCodeData: string }): Promise<void> {
-		// 1. Parse session details from the QR code.
-		const { sessionId, publicKey: dappPublicKeyB64 } = JSON.parse(options.qrCodeData) as QrCodeData;
+	public async connect(options: { sessionRequest: SessionRequest }): Promise<void> {
+		// 1. Parse session details from the session request.
+		const { id: sessionId, publicKeyB64: dappPublicKeyB64 } = options.sessionRequest;
 		this.channel = sessionId;
 		this.theirPublicKey = Buffer.from(dappPublicKeyB64, "base64");
 

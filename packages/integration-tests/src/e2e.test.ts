@@ -1,3 +1,4 @@
+import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
@@ -43,18 +44,19 @@ t.describe("DappClient & WalletClient Integration", () => {
 			// 2. Set up promises to wait for key events.
 			const dappConnectedPromise = new Promise<void>((resolve) => dappClient.once("connected", resolve));
 			const walletConnectedPromise = new Promise<void>((resolve) => walletClient.once("connected", resolve));
-			const qrCodeDataPromise = new Promise<string>((resolve) => dappClient.once("display-qr-code", resolve));
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => dappClient.once("session-request", resolve));
 
 			// 3. Start the dapp client's connection process
 			await dappClient.connect();
 
-			// 4. SIMULATE QR CODE SCAN: Wait for the DappClient to emit the QR code data...
-			const qrCodeData = await qrCodeDataPromise;
-			t.expect(qrCodeData).toBeDefined();
-			t.expect(typeof qrCodeData).toBe("string");
+			// 4. SIMULATE SESSION REQUEST TRANSFER: Wait for the DappClient to emit the session request...
+			const sessionRequest = await sessionRequestPromise;
+			t.expect(sessionRequest).toBeDefined();
+			t.expect(typeof sessionRequest.id).toBe("string");
+			t.expect(typeof sessionRequest.publicKeyB64).toBe("string");
 
 			// ...and immediately use it to connect the WalletClient.
-			await walletClient.connect({ qrCodeData });
+			await walletClient.connect({ sessionRequest });
 
 			// 5. Wait for both clients to emit their "connected" event, confirming the handshake is complete.
 			await Promise.all([dappConnectedPromise, walletConnectedPromise]);
