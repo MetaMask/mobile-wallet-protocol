@@ -224,7 +224,7 @@ t.describe("WebSocketTransport", () => {
 			await messagesReceivedPromise; // Wait for all messages to be received
 
 			t.expect(receivedMessages).toEqual(payloads);
-		}, 15000);
+		});
 
 		t.test("should send a message immediately when connected", async () => {
 			await publisher.connect();
