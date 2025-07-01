@@ -7,7 +7,7 @@
 	],
 	"scripts": {
 		"prebuild": "tsc --build --emitDeclarationOnly",
-		"build": "yarn prebuild && yarn workspaces foreach --exclude 'apps/*' run build",
+		"build": "yarn prebuild && yarn workspaces foreach run build",
 		"test": "vitest run",
 		"test:unit": "vitest run --exclude '**/integration-tests/**' --exclude '**/*.integration.test.ts'",
 		"test:integration": "vitest run packages/integration-tests **/*.integration.test.ts",
