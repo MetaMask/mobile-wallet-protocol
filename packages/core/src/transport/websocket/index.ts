@@ -1,4 +1,4 @@
-import { Centrifuge, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
+import { Centrifuge, type Options, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
 import EventEmitter from "eventemitter3";
 import type { IKVStore } from "../../domain/kv-store";
 import type { ITransport } from "../../domain/transport";
@@ -76,11 +76,16 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 		this.storage = storage;
 
-		this.centrifuge = new Centrifuge(options.url, {
-			websocket: options.websocket,
+		const opts: Partial<Options> = {
 			minReconnectDelay: 100,
 			maxReconnectDelay: 30000,
-		});
+		};
+
+		if (options.websocket !== undefined) {
+			opts.websocket = options.websocket;
+		}
+
+		this.centrifuge = new Centrifuge(options.url, opts);
 
 		this.centrifuge.on("connecting", () => this.setState("connecting"));
 		this.centrifuge.on("connected", () => {
