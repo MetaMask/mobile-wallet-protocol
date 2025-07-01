@@ -12,9 +12,17 @@
 	},
 	"license": "MIT",
 	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
 	"types": "./dist/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
 	"scripts": {
-		"build": "tsup src/index.ts --format cjs"
+		"build": "tsup src/index.ts --format cjs,esm"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -22,6 +30,7 @@
 	},
 	"dependencies": {
 		"@metamask/mobile-wallet-protocol-core": "workspace:*",
+		"js-base64": "^3.7.7",
 		"uuid": "^11.1.0"
 	},
 	"devDependencies": {

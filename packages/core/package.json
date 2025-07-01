@@ -12,9 +12,17 @@
 	},
 	"license": "MIT",
 	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
 	"types": "./dist/src/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
 	"scripts": {
-		"build": "tsup src/index.ts --format cjs"
+		"build": "tsup src/index.ts --format cjs,esm"
 	},
 	"publishConfig": {
 		"access": "public",
@@ -25,6 +33,7 @@
 		"@noble/hashes": "^1.8.0",
 		"centrifuge": "^5.3.5",
 		"eciesjs": "^0.4.15",
+		"eventemitter3": "^5.0.1",
 		"uuid": "^11.1.0"
 	},
 	"devDependencies": {

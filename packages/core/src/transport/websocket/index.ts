@@ -1,5 +1,5 @@
-import { EventEmitter } from "node:events";
 import { Centrifuge, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
+import EventEmitter from "eventemitter3";
 import type { IKVStore } from "../../domain/kv-store";
 import type { ITransport } from "../../domain/transport";
 import { retry } from "../../utils/retry";

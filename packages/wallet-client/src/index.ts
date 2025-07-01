@@ -1,5 +1,5 @@
-import { Buffer } from "node:buffer";
 import { BaseClient, type IKVStore, KeyManager, type ProtocolMessage, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { fromUint8Array, toUint8Array } from "js-base64";
 import type { WebSocket } from "ws";
 
 export interface WalletClientOptions {
@@ -35,7 +35,7 @@ export class WalletClient extends BaseClient {
 		// 1. Parse session details from the session request.
 		const { id: sessionId, publicKeyB64: dappPublicKeyB64 } = options.sessionRequest;
 		this.channel = sessionId;
-		this.theirPublicKey = Buffer.from(dappPublicKeyB64, "base64");
+		this.theirPublicKey = toUint8Array(dappPublicKeyB64);
 
 		// 2. Generate our own keypair.
 		this.keyPair = this.keymanager.generateKeyPair();
@@ -45,7 +45,7 @@ export class WalletClient extends BaseClient {
 		await this.transport.subscribe(this.channel);
 
 		// 4. Send our public key to the dApp to complete the handshake.
-		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
+		const publicKeyB64 = fromUint8Array(this.keyPair.publicKey);
 		await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64: publicKeyB64 } });
 
 		// 5. The handshake is now complete from the wallet's perspective.

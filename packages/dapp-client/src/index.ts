@@ -1,6 +1,7 @@
 import { BaseClient, type IKVStore, KeyManager, type ProtocolMessage, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 export type { SessionRequest };
 
+import { fromUint8Array, toUint8Array } from "js-base64";
 import { v4 as uuid } from "uuid";
 import type { WebSocket } from "ws";
 
@@ -40,7 +41,7 @@ export class DappClient extends BaseClient {
 		// 1. Generate session details.
 		this.channel = `session:${uuid()}`;
 		this.keyPair = this.keymanager.generateKeyPair();
-		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
+		const publicKeyB64 = fromUint8Array(this.keyPair.publicKey);
 
 		// 2. Create the session request.
 		const sessionRequest: SessionRequest = { id: this.channel, publicKeyB64: publicKeyB64 };
@@ -59,7 +60,7 @@ export class DappClient extends BaseClient {
 	protected handleMessage(message: ProtocolMessage): void {
 		// During the handshake, we only care about the wallet's response.
 		if (!this.handshakeCompleted && message.type === "wallet-handshake") {
-			this.theirPublicKey = Buffer.from(message.payload.publicKeyB64, "base64");
+			this.theirPublicKey = toUint8Array(message.payload.publicKeyB64);
 			this.handshakeCompleted = true;
 
 			// The connection is now fully established.

@@ -1,4 +1,4 @@
-import { setTimeout } from "node:timers/promises";
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface RetryOptions {
 	/** The number of attempts to make. */
@@ -23,7 +23,7 @@ export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Pro
 				throw error; // Re-throw last error
 			}
 			const backoff = options.delay * 2 ** attempt;
-			await setTimeout(backoff);
+			await delay(backoff);
 		}
 	}
 	// This line is unreachable but satisfies TypeScript

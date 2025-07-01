@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import type { EventEmitter } from "node:events";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -32,7 +31,11 @@ class InMemoryKVStore implements IKVStore {
 	}
 }
 
-const waitFor = (emitter: EventEmitter, event: string): Promise<any> => {
+interface Emitter {
+	once(event: string | symbol, listener: (...args: any[]) => void): this;
+}
+
+const waitFor = (emitter: Emitter, event: string): Promise<any> => {
 	return new Promise((resolve) => emitter.once(event, resolve));
 };
 

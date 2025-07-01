@@ -1,4 +1,4 @@
-import { EventEmitter } from "node:events";
+import EventEmitter from "eventemitter3";
 import type { IKeyManager } from "./domain/key-manager";
 import type { KeyPair } from "./domain/key-pair";
 import type { ProtocolMessage } from "./domain/protocol-message";
