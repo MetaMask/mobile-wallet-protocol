@@ -454,14 +454,15 @@ export default function ProtocolDemo() {
 										{messages.map((msg) => (
 											<div
 												key={msg.id}
-												className={`p-3 rounded-lg ${msg.type === "sent"
-													? "bg-blue-100 dark:bg-blue-900"
-													: msg.type === "received"
-														? "bg-green-100 dark:bg-green-900"
-														: msg.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-100 dark:bg-gray-800"
-													}`}
+												className={`p-3 rounded-lg ${
+													msg.type === "sent"
+														? "bg-blue-100 dark:bg-blue-900"
+														: msg.type === "received"
+															? "bg-green-100 dark:bg-green-900"
+															: msg.type === "notification"
+																? "bg-yellow-100 dark:bg-yellow-900"
+																: "bg-gray-100 dark:bg-gray-800"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">{msg.type}</span>
@@ -571,8 +572,9 @@ export default function ProtocolDemo() {
 										{walletMessages.map((msg) => (
 											<div
 												key={msg.id}
-												className={`p-3 rounded-lg ${msg.type === "request" ? "bg-purple-100 dark:bg-purple-900" : msg.type === "response" ? "bg-green-100 dark:bg-green-900" : "bg-gray-100 dark:bg-gray-800"
-													}`}
+												className={`p-3 rounded-lg ${
+													msg.type === "request" ? "bg-purple-100 dark:bg-purple-900" : msg.type === "response" ? "bg-green-100 dark:bg-green-900" : "bg-gray-100 dark:bg-gray-800"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="text-xs font-semibold uppercase text-gray-600 dark:text-gray-400">{msg.type}</span>
