@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { BaseClient, type DecryptedMessage, type IKVStore, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type IKVStore, KeyManager, type ProtocolMessage, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import type { WebSocket } from "ws";
 
 export interface WalletClientOptions {
@@ -56,9 +56,9 @@ export class WalletClient extends BaseClient {
 	/**
 	 * Handles all incoming messages from the dApp.
 	 */
-	protected handleMessage(message: DecryptedMessage): void {
+	protected handleMessage(message: ProtocolMessage): void {
 		// The wallet only processes messages after its handshake is complete.
-		if (this.handshakeCompleted) {
+		if (this.handshakeCompleted && message.type === "dapp-request") {
 			this.emit("message", message.payload);
 		}
 	}

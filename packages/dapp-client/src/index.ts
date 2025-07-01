@@ -1,4 +1,4 @@
-import { BaseClient, type DecryptedMessage, type IKVStore, KeyManager, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type IKVStore, KeyManager, type ProtocolMessage, type SessionRequest, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 export type { SessionRequest };
 
 import { v4 as uuid } from "uuid";
@@ -56,11 +56,10 @@ export class DappClient extends BaseClient {
 	/**
 	 * Handles all incoming messages from the wallet.
 	 */
-	protected handleMessage(message: DecryptedMessage): void {
+	protected handleMessage(message: ProtocolMessage): void {
 		// During the handshake, we only care about the wallet's response.
 		if (!this.handshakeCompleted && message.type === "wallet-handshake") {
-			const { payload } = message as { payload: { publicKey: string } };
-			this.theirPublicKey = Buffer.from(payload.publicKey, "base64");
+			this.theirPublicKey = Buffer.from(message.payload.publicKeyB64, "base64");
 			this.handshakeCompleted = true;
 
 			// The connection is now fully established.
@@ -69,7 +68,7 @@ export class DappClient extends BaseClient {
 		}
 
 		// After the handshake, forward all other messages to the app.
-		if (this.handshakeCompleted) {
+		if (this.handshakeCompleted && message.type === "wallet-response") {
 			this.emit("message", message.payload);
 		}
 	}

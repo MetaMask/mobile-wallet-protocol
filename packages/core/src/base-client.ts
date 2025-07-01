@@ -1,13 +1,8 @@
 import { EventEmitter } from "node:events";
 import type { IKeyManager } from "./domain/key-manager";
 import type { KeyPair } from "./domain/key-pair";
+import type { ProtocolMessage } from "./domain/protocol-message";
 import type { ITransport } from "./domain/transport";
-
-// FIXME
-export type DecryptedMessage = {
-	type: string;
-	payload: unknown;
-};
 
 /**
  * Provides the foundational tools for communication: a transport, a key manager,
@@ -45,7 +40,7 @@ export abstract class BaseClient extends EventEmitter {
 		this.emit("disconnected");
 	}
 
-	protected abstract handleMessage(message: DecryptedMessage): void;
+	protected abstract handleMessage(message: ProtocolMessage): void;
 
 	protected async sendMessage(message: unknown): Promise<void> {
 		if (!this.channel || !this.theirPublicKey) {
@@ -56,7 +51,7 @@ export abstract class BaseClient extends EventEmitter {
 		await this.transport.publish(this.channel, encrypted);
 	}
 
-	private async decryptMessage(data: string): Promise<DecryptedMessage | null> {
+	private async decryptMessage(data: string): Promise<ProtocolMessage | null> {
 		if (!this.keyPair?.privateKey) {
 			return null; // This check is for type safety
 		}
