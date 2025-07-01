@@ -46,7 +46,7 @@ export class WalletClient extends BaseClient {
 
 		// 4. Send our public key to the dApp to complete the handshake.
 		const publicKeyB64 = Buffer.from(this.keyPair.publicKey).toString("base64");
-		await this.sendMessage({ type: "wallet-handshake", payload: { publicKey: publicKeyB64 } });
+		await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64: publicKeyB64 } });
 
 		// 5. The handshake is now complete from the wallet's perspective.
 		this.handshakeCompleted = true;

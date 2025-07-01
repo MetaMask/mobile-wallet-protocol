@@ -42,7 +42,7 @@ export abstract class BaseClient extends EventEmitter {
 
 	protected abstract handleMessage(message: ProtocolMessage): void;
 
-	protected async sendMessage(message: unknown): Promise<void> {
+	protected async sendMessage(message: ProtocolMessage): Promise<void> {
 		if (!this.channel || !this.theirPublicKey) {
 			throw new Error("Cannot send message: session is not initialized.");
 		}

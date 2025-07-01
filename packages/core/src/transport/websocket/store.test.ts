@@ -134,11 +134,9 @@ t.describe("WebSocketTransportStorage", () => {
 
 	t.describe("Latest Nonces Management", () => {
 		let storage: WebSocketTransportStorage;
-		let clientId: string;
 
 		t.beforeEach(async () => {
 			storage = await WebSocketTransportStorage.create(kvstore);
-			clientId = storage.getClientId();
 		});
 
 		t.test("should return empty map for channels with no latest nonces", async () => {
