@@ -1,6 +1,8 @@
 import { v4 as uuid } from "uuid";
 import type { IKVStore } from "../../domain/kv-store";
 
+const CLIENT_ID_KEY = "websocket-transport-client-id";
+
 /**
  * Manages persistent storage for WebSocket transport, including client ID and nonce management.
  * Supports per-channel nonce tracking and message deduplication across restarts.
@@ -14,7 +16,6 @@ export class WebSocketTransportStorage {
 	 * If no client ID exists in storage, generates and persists a new one.
 	 */
 	static async create(kvstore: IKVStore): Promise<WebSocketTransportStorage> {
-		const CLIENT_ID_KEY = "websocket-transport-client-id";
 		let clientId = await kvstore.get(CLIENT_ID_KEY);
 		if (!clientId) {
 			clientId = uuid();
