@@ -8,6 +8,8 @@
 	"scripts": {
 		"build": "yarn workspaces foreach run build",
 		"test": "vitest run",
+		"test:unit": "vitest run --exclude '**/integration-tests/**' --exclude '**/*.integration.test.ts'",
+		"test:integration": "vitest run packages/integration-tests **/*.integration.test.ts",
 		"test:watch": "vitest watch",
 		"test:ci": "vitest run --coverage --coverage.reporter=text --silent",
 		"lint": "yarn biome lint ./apps ./packages",

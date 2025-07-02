@@ -37,3 +37,4 @@ packages/*/*.tsbuildinfo
 
 # LLM
 .llm.txt
+.todo.md
