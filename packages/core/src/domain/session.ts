@@ -5,9 +5,9 @@ import type { KeyPair } from "./key-pair";
  * It contains the key pair for the local party, the public key of the remote party,
  * and the expiration time of the session.
  */
-export interface Session {
+export type Session = {
 	id: string;
 	keyPair: KeyPair;
 	theirPublicKey: Uint8Array;
 	expiresAt: number;
-}
+};

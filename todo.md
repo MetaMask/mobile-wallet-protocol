@@ -3,3 +3,5 @@
 - storage -> unbounded growth
 - if one client disconnects, let the other know though
 - implement multiple stores
+- methods to redirect
+- ask devops now
