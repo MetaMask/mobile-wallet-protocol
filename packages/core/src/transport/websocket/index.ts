@@ -214,7 +214,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			}
 			// If message.nonce <= latestNonce, it's a duplicate and we ignore it.
 		} catch (error) {
-			this.emit("error", new Error(`Failed to parse incoming message: ${JSON.stringify(error)}`));
+			this.emit("error", new Error(`Failed to parse incoming message: ${error instanceof Error ? error.message : "Unknown error"}`));
 		}
 	}
 
