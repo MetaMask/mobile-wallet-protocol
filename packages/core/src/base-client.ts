@@ -23,7 +23,6 @@ export abstract class BaseClient extends EventEmitter {
 		this.sessionstore = sessionstore;
 
 		this.transport.on("error", (error) => this.emit("error", error));
-		this.transport.on("disconnected", () => this.disconnect());
 
 		this.transport.on("message", async (payload) => {
 			if (!this.session?.keyPair.privateKey) return;
