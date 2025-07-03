@@ -7,6 +7,7 @@ import type { KeyPair } from "./key-pair";
  */
 export type Session = {
 	id: string;
+	channel: string;
 	keyPair: KeyPair;
 	theirPublicKey: Uint8Array;
 	expiresAt: number;
