@@ -159,7 +159,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	}
 
 	/**
-	 * Publishes a message to a channel in a fault-tolerant manner.
+	 * Publishes a message to a channel. Returns a promise that resolves when the message is published.
 	 */
 	public publish(channel: string, payload: string): Promise<void> {
 		const promise = new Promise<void>((resolve, reject) => {
