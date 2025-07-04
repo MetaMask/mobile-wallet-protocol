@@ -138,9 +138,8 @@ export class SessionStore implements ISessionStore {
 	 */
 	private async garbageCollect(): Promise<void> {
 		const list = await this.getMasterList();
-		const sessions = await Promise.all(list.map(async (id) => this.get(id)));
-		const expired = sessions.filter((session) => session && session.expiresAt < Date.now());
-		await Promise.all(expired.map(async (session) => session && this.delete(session.id)));
+		// Calling `get` for each session will delete it if it's expired.
+		await Promise.all(list.map(async (id) => this.get(id)));
 		setTimeout(this.garbageCollect.bind(this), GARBAGE_COLLECT_INTERVAL);
 	}
 
