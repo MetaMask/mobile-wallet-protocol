@@ -1,14 +1,5 @@
-import { getSessionId } from "@metamask/mobile-wallet-protocol-core";
+import { BaseClient, type ProtocolMessage } from "@metamask/mobile-wallet-protocol-core";
 
-export class DappClient {
-	private sessionId: string;
-
-	constructor() {
-		this.sessionId = getSessionId();
-		console.log(`DappClient initialized with session: ${this.sessionId}`);
-	}
-
-	public getSessionId(): string {
-		return this.sessionId;
-	}
+export class DappClient extends BaseClient {
+	protected handleMessage(_: ProtocolMessage): void {}
 }
