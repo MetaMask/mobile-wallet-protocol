@@ -55,7 +55,7 @@ export class WalletClient extends BaseClient {
 		if (Date.now() > request.expiresAt) throw new Error("Session request expired");
 
 		this.state = "CONNECTING";
-		this.session = this.createSession(request);
+		this.session = this.deriveSession(request);
 		await this.sessionstore.set(this.session);
 		await this.transport.connect();
 		await this.transport.subscribe(this.session.channel);
@@ -104,7 +104,12 @@ export class WalletClient extends BaseClient {
 		}
 	}
 
-	private createSession(request: SessionRequest): Session {
+	/**
+	 * Derives a session from a session request.
+	 * @param request - The session request from the dApp
+	 * @returns The session
+	 */
+	private deriveSession(request: SessionRequest): Session {
 		const { id, channel, publicKeyB64: dappPublicKeyB64 } = request;
 		const theirPublicKey = toUint8Array(dappPublicKeyB64);
 		const keyPair = this.keymanager.generateKeyPair();

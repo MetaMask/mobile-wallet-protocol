@@ -74,6 +74,9 @@ export class DappClient extends BaseClient {
 		}
 	}
 
+	/**
+	 * Disconnects.
+	 */
 	public async disconnect(): Promise<void> {
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);

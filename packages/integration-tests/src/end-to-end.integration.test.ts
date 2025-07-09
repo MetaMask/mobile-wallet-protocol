@@ -148,9 +148,7 @@ t.describe("Integration Test", () => {
 			// Advance time by 61 seconds
 			await t.vi.advanceTimersByTimeAsync(61 * 1000);
 
-			await t.expect(walletClient.connect({ sessionRequest })).rejects.toThrow(
-				"Session request expired",
-			);
+			await t.expect(walletClient.connect({ sessionRequest })).rejects.toThrow("Session request expired");
 		},
 		20000,
 	);
@@ -174,15 +172,13 @@ t.describe("Integration Test", () => {
 			(dappClient as any).timeoutMs = 100;
 
 			// We expect the connect method to throw a timeout error because we are not simulating a wallet connecting.
-			await t.expect(dappClient.connect()).rejects.toThrow(
-				"Session request timed out",
-			);
+			await t.expect(dappClient.connect()).rejects.toThrow("Session request timed out");
 		},
 		5000,
 	);
 
 	t.test(
-		'should resume a session and exchange messages',
+		"should resume a session and exchange messages",
 		async () => {
 			// 1. Setup: Create instances of the DappClient and WalletClient with in-memory stores.
 			const dappKvStore = new InMemoryKVStore();
