@@ -114,7 +114,7 @@ t.describe("Integration Test", () => {
 	);
 
 	t.test(
-		"should throw ExpiredSessionRequestError on the wallet if session request is expired",
+		"should throw error on the wallet if session request is expired",
 		async () => {
 			const dappKvStore = new InMemoryKVStore();
 			const walletKvStore = new InMemoryKVStore();
@@ -156,8 +156,10 @@ t.describe("Integration Test", () => {
 	);
 
 	t.test(
-		'should emit session-request-timeout on the dApp if wallet does not connect in time',
+		"should throw error on the dApp if wallet does not connect in time",
 		async () => {
+			t.vi.useRealTimers();
+
 			const dappKvStore = new InMemoryKVStore();
 			const dappSessionStore = new SessionStore(dappKvStore);
 
@@ -168,22 +170,15 @@ t.describe("Integration Test", () => {
 				websocket: WebSocket,
 			});
 
-			const onSessionTimeout = new Promise<void>((resolve) => {
-				dappClient.on("session-request-timeout", () => {
-					resolve();
-				});
-			});
+			// Make timeout faster for testing
+			(dappClient as any).timeoutMs = 100;
 
-			dappClient.connect();
-
-			// Advance time by 61 seconds
-			await t.vi.advanceTimersByTimeAsync(61 * 1000);
-
-			await onSessionTimeout;
-
-			t.expect((dappClient as any).session).toBeNull();
+			// We expect the connect method to throw a timeout error because we are not simulating a wallet connecting.
+			await t.expect(dappClient.connect()).rejects.toThrow(
+				"Session request timed out",
+			);
 		},
-		20000,
+		5000,
 	);
 
 	t.test(

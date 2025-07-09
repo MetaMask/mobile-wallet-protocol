@@ -5,6 +5,7 @@ import {
 	type IKVStore,
 	KeyManager,
 	type ProtocolMessage,
+	type Session,
 	type SessionRequest,
 	type SessionStore,
 	WebSocketTransport,
@@ -50,30 +51,17 @@ export class WalletClient extends BaseClient {
 	public async connect(options: { sessionRequest: SessionRequest }): Promise<void> {
 		if (this.state !== "IDLE") throw new Error(`Cannot connect when state is ${this.state}`);
 
-		const { id, channel, publicKeyB64: dappPublicKeyB64, expiresAt } = options.sessionRequest;
-		if (Date.now() > expiresAt) throw new Error("Session request expired");
+		const request = options.sessionRequest;
+		if (Date.now() > request.expiresAt) throw new Error("Session request expired");
 
 		this.state = "CONNECTING";
-
-		const theirPublicKey = toUint8Array(dappPublicKeyB64);
-		const keyPair = this.keymanager.generateKeyPair();
-
-		this.session = {
-			id: id,
-			channel: channel,
-			keyPair: keyPair,
-			theirPublicKey: theirPublicKey,
-			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
-		};
-
+		this.session = this.createSession(request);
 		await this.sessionstore.set(this.session);
 		await this.transport.connect();
 		await this.transport.subscribe(this.session.channel);
-
 		// Send the wallet's public key to the dApp to complete the handshake
 		const publicKeyB64 = fromUint8Array(this.session.keyPair.publicKey);
 		await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64 } });
-
 		this.state = "CONNECTED";
 		this.emit("connected");
 	}
@@ -114,5 +102,19 @@ export class WalletClient extends BaseClient {
 		if (this.state === "CONNECTED" && message.type === "dapp-request") {
 			this.emit("message", message.payload);
 		}
+	}
+
+	private createSession(request: SessionRequest): Session {
+		const { id, channel, publicKeyB64: dappPublicKeyB64 } = request;
+		const theirPublicKey = toUint8Array(dappPublicKeyB64);
+		const keyPair = this.keymanager.generateKeyPair();
+
+		return {
+			id,
+			channel,
+			keyPair,
+			theirPublicKey,
+			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
+		};
 	}
 }
