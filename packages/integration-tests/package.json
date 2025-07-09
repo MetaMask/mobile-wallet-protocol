@@ -6,5 +6,11 @@
 		"@metamask/mobile-wallet-protocol-core": "workspace:*",
 		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:*",
 		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:*"
+	},
+	"dependencies": {
+		"@types/ws": "^8.18.1",
+		"centrifuge": "^5.3.5",
+		"vitest": "^3.2.4",
+		"ws": "^8.18.3"
 	}
 }

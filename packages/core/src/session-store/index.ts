@@ -22,6 +22,11 @@ type SerializableSession = {
 const GARBAGE_COLLECT_INTERVAL = 1000 * 60 * 60 * 24; // 24 hours
 
 /**
+ * The time-to-live for a session.
+ */
+export const DEFAULT_SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+/**
  * Manages persistent storage of Session objects.
  * Handles serialization/deserialization and maintains a master list of session IDs.
  */

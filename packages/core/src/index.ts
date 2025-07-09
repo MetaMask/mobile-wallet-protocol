@@ -1,4 +1,5 @@
 export { BaseClient } from "./base-client";
+export type { ClientState } from "./domain/client-state";
 export type { IKeyManager } from "./domain/key-manager";
 export type { KeyPair } from "./domain/key-pair";
 export type { IKVStore } from "./domain/kv-store";
@@ -8,5 +9,5 @@ export type { SessionRequest } from "./domain/session-request";
 export type { ISessionStore } from "./domain/session-store";
 export type { ITransport } from "./domain/transport";
 export { KeyManager } from "./key-manager";
-export { SessionStore } from "./session-store";
+export { DEFAULT_SESSION_TTL, SessionStore } from "./session-store";
 export { WebSocketTransport, type WebSocketTransportOptions } from "./transport/websocket/index";

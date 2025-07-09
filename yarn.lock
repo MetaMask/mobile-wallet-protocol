@@ -439,6 +439,7 @@ __metadata:
     centrifuge: ^5.3.5
     eciesjs: ^0.4.15
     eventemitter3: ^5.0.1
+    tsup: ^8.5.0
     uuid: ^11.1.0
     ws: ^8.18.2
   languageName: unknown
@@ -449,6 +450,12 @@ __metadata:
   resolution: "@metamask/mobile-wallet-protocol-dapp-client@workspace:packages/dapp-client"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/uuid": ^10.0.0
+    "@types/ws": ^8.18.1
+    js-base64: ^3.7.7
+    tsup: ^8.5.0
+    uuid: ^11.1.0
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
@@ -459,6 +466,10 @@ __metadata:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
     "@metamask/mobile-wallet-protocol-dapp-client": "workspace:*"
     "@metamask/mobile-wallet-protocol-wallet-client": "workspace:*"
+    "@types/ws": ^8.18.1
+    centrifuge: ^5.3.5
+    vitest: ^3.2.4
+    ws: ^8.18.3
   languageName: unknown
   linkType: soft
 
@@ -467,6 +478,12 @@ __metadata:
   resolution: "@metamask/mobile-wallet-protocol-wallet-client@workspace:packages/wallet-client"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/uuid": ^10.0.0
+    "@types/ws": ^8.18.1
+    js-base64: ^3.7.7
+    tsup: ^8.5.0
+    uuid: ^11.1.0
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
@@ -1798,6 +1815,13 @@ __metadata:
   version: 3.1.1
   resolution: "joycon@npm:3.1.1"
   checksum: 8003c9c3fc79c5c7602b1c7e9f7a2df2e9916f046b0dbad862aa589be78c15734d11beb9fe846f5e06138df22cb2ad29961b6a986ba81c4920ce2b15a7f11067
+  languageName: node
+  linkType: hard
+
+"js-base64@npm:^3.7.7":
+  version: 3.7.7
+  resolution: "js-base64@npm:3.7.7"
+  checksum: d1b02971db9dc0fd35baecfaf6ba499731fb44fe3373e7e1d6681fbd3ba665f29e8d9d17910254ef8104e2cb8b44117fe4202d3dc54c7cafe9ba300fe5433358
   languageName: node
   linkType: hard
 
@@ -3321,7 +3345,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.18.2":
+"ws@npm:^8.18.2, ws@npm:^8.18.3":
   version: 8.18.3
   resolution: "ws@npm:8.18.3"
   peerDependencies:
