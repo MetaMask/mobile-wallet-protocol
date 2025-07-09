@@ -56,14 +56,20 @@ export class WalletClient extends BaseClient {
 
 		this.state = "CONNECTING";
 		this.session = this.deriveSession(request);
-		await this.sessionstore.set(this.session);
-		await this.transport.connect();
-		await this.transport.subscribe(this.session.channel);
-		// Send the wallet's public key to the dApp to complete the handshake
-		const publicKeyB64 = fromUint8Array(this.session.keyPair.publicKey);
-		await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64 } });
-		this.state = "CONNECTED";
-		this.emit("connected");
+
+		try {
+			await this.transport.connect();
+			await this.transport.subscribe(this.session.channel);
+			// Send the wallet's public key to the dApp to complete the handshake
+			const publicKeyB64 = fromUint8Array(this.session.keyPair.publicKey);
+			await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64 } });
+			await this.sessionstore.set(this.session);
+			this.state = "CONNECTED";
+			this.emit("connected");
+		} catch (error) {
+			await this.disconnect();
+			throw error;
+		}
 	}
 
 	/**
@@ -84,6 +90,13 @@ export class WalletClient extends BaseClient {
 		await this.transport.subscribe(session.channel);
 		this.state = "CONNECTED";
 		this.emit("connected");
+	}
+
+	/**
+	 * Disconnects.
+	 */
+	public async disconnect(): Promise<void> {
+		await super.disconnect();
 	}
 
 	/**
