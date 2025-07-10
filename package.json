@@ -1,6 +1,7 @@
 {
 	"name": "mobile-wallet-protocol",
 	"private": true,
+	"type": "module",
 	"workspaces": [
 		"packages/*",
 		"apps/*"

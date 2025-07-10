@@ -1,5 +1,12 @@
-import crypto from "node:crypto";
-
-export function getSessionId(): string {
-	return `session-${crypto.randomUUID()}`;
-}
+export { BaseClient } from "./base-client";
+export type { IKeyManager } from "./domain/key-manager";
+export type { KeyPair } from "./domain/key-pair";
+export type { IKVStore } from "./domain/kv-store";
+export type { DappRequest, ProtocolMessage, WalletHandshake, WalletResponse } from "./domain/protocol-message";
+export type { Session } from "./domain/session";
+export type { SessionRequest } from "./domain/session-request";
+export type { ISessionStore } from "./domain/session-store";
+export type { ITransport } from "./domain/transport";
+export { KeyManager } from "./key-manager";
+export { SessionStore } from "./session-store";
+export { WebSocketTransport, type WebSocketTransportOptions } from "./transport/websocket/index";
