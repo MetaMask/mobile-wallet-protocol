@@ -1,0 +1,6 @@
+---
+description: Verify your work after changes
+globs:
+alwaysApply: false
+---
+Verify your work by running yarn test and yarn build to confirm things still work as expected after changes
