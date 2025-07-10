@@ -31,7 +31,7 @@ export class WalletClient extends BaseClient {
 	 * @param options - Options containing the session request from the dApp
 	 */
 	public async connect(options: { sessionRequest: SessionRequest }): Promise<void> {
-		if (this.state !== ClientState.IDLE) throw new Error(`Cannot connect when state is ${this.state}`);
+		if (this.state !== ClientState.DISCONNECTED) throw new Error(`Cannot connect when state is ${this.state}`);
 
 		const request = options.sessionRequest;
 		if (Date.now() > request.expiresAt) throw new Error("Session request expired");
