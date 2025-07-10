@@ -17,11 +17,6 @@ type SerializableSession = {
 };
 
 /**
- * The interval at which to garbage collect expired sessions.
- */
-const GARBAGE_COLLECT_INTERVAL = 1000 * 60 * 60 * 24; // 24 hours
-
-/**
  * The time-to-live for a session.
  */
 export const DEFAULT_SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -38,7 +33,7 @@ export class SessionStore implements ISessionStore {
 
 	constructor(kvstore: IKVStore) {
 		this.kvstore = kvstore;
-		this.garbageCollect();
+		this.garbageCollect(); // Run garbage collection once on startup
 	}
 
 	/**
@@ -139,13 +134,11 @@ export class SessionStore implements ISessionStore {
 
 	/**
 	 * Garbage collects expired sessions.
-	 * Runs on an interval to ensure sessions are cleaned up.
 	 */
 	private async garbageCollect(): Promise<void> {
 		const list = await this.getMasterList();
 		// Calling `get` for each session will delete it if it's expired.
 		await Promise.all(list.map(async (id) => this.get(id)));
-		setTimeout(this.garbageCollect.bind(this), GARBAGE_COLLECT_INTERVAL);
 	}
 
 	/**

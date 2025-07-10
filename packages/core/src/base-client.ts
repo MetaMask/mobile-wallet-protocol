@@ -44,7 +44,7 @@ export abstract class BaseClient extends EventEmitter {
 		this.state = ClientState.CONNECTING;
 
 		const session = await this.sessionstore.get(sessionId);
-		if (!session) throw new Error("Session not found");
+		if (!session) throw new Error("Session not found or expired");
 
 		this.session = session;
 		await this.transport.connect();
@@ -67,9 +67,20 @@ export abstract class BaseClient extends EventEmitter {
 
 	protected async sendMessage(message: ProtocolMessage): Promise<void> {
 		if (!this.session) throw new Error("Cannot send message: session is not initialized.");
+
+		await this.checkSessionExpiry();
 		const plaintext = JSON.stringify(message);
 		const encrypted = await this.keymanager.encrypt(plaintext, this.session.theirPublicKey);
 		await this.transport.publish(this.session.channel, encrypted);
+	}
+
+	private async checkSessionExpiry(): Promise<void> {
+		if (!this.session) return;
+
+		if (this.session.expiresAt < Date.now()) {
+			await this.disconnect();
+			throw new Error("Session expired");
+		}
 	}
 
 	private async decryptMessage(encrypted: string): Promise<ProtocolMessage | null> {
