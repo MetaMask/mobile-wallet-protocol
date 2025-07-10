@@ -1,1 +1,6 @@
-export type ClientState = "IDLE" | "CONNECTING" | "CONNECTED" | "DISCONNECTED";
+export enum ClientState {
+	IDLE = "IDLE",
+	CONNECTING = "CONNECTING",
+	CONNECTED = "CONNECTED",
+	DISCONNECTED = "DISCONNECTED",
+}

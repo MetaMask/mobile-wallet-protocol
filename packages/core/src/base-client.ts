@@ -1,4 +1,5 @@
 import EventEmitter from "eventemitter3";
+import { ClientState } from "./domain/client-state";
 import type { IKeyManager } from "./domain/key-manager";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
@@ -15,6 +16,7 @@ export abstract class BaseClient extends EventEmitter {
 	protected keymanager: IKeyManager;
 	protected sessionstore: ISessionStore;
 	protected session: Session | null = null;
+	protected state: ClientState = ClientState.IDLE;
 
 	constructor(transport: ITransport, keymanager: IKeyManager, sessionstore: ISessionStore) {
 		super();
@@ -31,12 +33,33 @@ export abstract class BaseClient extends EventEmitter {
 		});
 	}
 
+	/**
+	 * Resumes an existing session using the provided session ID,
+	 * reconnecting to the transport and channel.
+	 * @param sessionId - The ID of the session to resume
+	 * @throws Error if the session is not found or has expired
+	 */
+	public async resume(sessionId: string): Promise<void> {
+		if (this.state !== ClientState.IDLE) throw new Error(`Cannot resume when state is ${this.state}`);
+		this.state = ClientState.CONNECTING;
+
+		const session = await this.sessionstore.get(sessionId);
+		if (!session) throw new Error("Session not found");
+
+		this.session = session;
+		await this.transport.connect();
+		await this.transport.subscribe(session.channel);
+		this.state = ClientState.CONNECTED;
+		this.emit("connected");
+	}
+
 	public async disconnect(): Promise<void> {
 		if (!this.session) return;
 		await this.transport.disconnect();
 		await this.transport.clear(this.session.channel);
 		await this.sessionstore.delete(this.session.id);
 		this.session = null;
+		this.state = ClientState.DISCONNECTED;
 		this.emit("disconnected");
 	}
 

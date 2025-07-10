@@ -1,5 +1,5 @@
 export { BaseClient } from "./base-client";
-export type { ClientState } from "./domain/client-state";
+export { ClientState } from "./domain/client-state";
 export type { IKeyManager } from "./domain/key-manager";
 export type { KeyPair } from "./domain/key-pair";
 export type { IKVStore } from "./domain/kv-store";

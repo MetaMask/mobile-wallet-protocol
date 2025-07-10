@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import type { IKVStore } from "@metamask/mobile-wallet-protocol-core";
-import { SessionStore } from "@metamask/mobile-wallet-protocol-core";
+import { SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient, type SessionRequest } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
@@ -48,18 +48,26 @@ t.describe("Integration Test", () => {
 			const dappSessionStore = new SessionStore(dappKvStore);
 			const walletSessionStore = new SessionStore(walletKvStore);
 
-			dappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: dappKvStore,
-				sessionstore: dappSessionStore,
 				websocket: WebSocket,
 			});
 
-			walletClient = await WalletClient.create({
-				relayUrl: RELAY_URL,
+			const walletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: walletKvStore,
-				sessionstore: walletSessionStore,
 				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
+			});
+
+			walletClient = new WalletClient({
+				transport: walletTransport,
+				sessionstore: walletSessionStore,
 			});
 
 			// 2. Handshake Init: Set up promises to resolve when key events are fired.
@@ -121,18 +129,26 @@ t.describe("Integration Test", () => {
 			const dappSessionStore = new SessionStore(dappKvStore);
 			const walletSessionStore = new SessionStore(walletKvStore);
 
-			dappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: dappKvStore,
-				sessionstore: dappSessionStore,
 				websocket: WebSocket,
 			});
 
-			walletClient = await WalletClient.create({
-				relayUrl: RELAY_URL,
+			const walletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: walletKvStore,
-				sessionstore: walletSessionStore,
 				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
+			});
+
+			walletClient = new WalletClient({
+				transport: walletTransport,
+				sessionstore: walletSessionStore,
 			});
 
 			const onSessionRequest = new Promise<SessionRequest>((resolve) => {
@@ -161,11 +177,15 @@ t.describe("Integration Test", () => {
 			const dappKvStore = new InMemoryKVStore();
 			const dappSessionStore = new SessionStore(dappKvStore);
 
-			dappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: dappKvStore,
-				sessionstore: dappSessionStore,
 				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
 			});
 
 			// Make timeout faster for testing
@@ -186,18 +206,26 @@ t.describe("Integration Test", () => {
 			const dappSessionStore = new SessionStore(dappKvStore);
 			const walletSessionStore = new SessionStore(walletKvStore);
 
-			dappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: dappKvStore,
-				sessionstore: dappSessionStore,
 				websocket: WebSocket,
 			});
 
-			walletClient = await WalletClient.create({
-				relayUrl: RELAY_URL,
+			const walletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: walletKvStore,
-				sessionstore: walletSessionStore,
 				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
+			});
+
+			walletClient = new WalletClient({
+				transport: walletTransport,
+				sessionstore: walletSessionStore,
 			});
 
 			// 2. Handshake Init
@@ -228,19 +256,27 @@ t.describe("Integration Test", () => {
 			await (walletClient as any).transport.disconnect();
 
 			// 4. Setup new clients with the same stores to test resumption
-			const resumedDappClient = await DappClient.create({
-				relayUrl: RELAY_URL,
+			const resumedDappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
 				kvstore: dappKvStore,
-				sessionstore: dappSessionStore,
 				websocket: WebSocket,
+			});
+
+			const resumedWalletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: walletKvStore,
+				websocket: WebSocket,
+			});
+
+			const resumedDappClient = new DappClient({
+				transport: resumedDappTransport,
+				sessionstore: dappSessionStore,
 			});
 			dappClient = resumedDappClient; // reassign for afterEach cleanup
 
-			const resumedWalletClient = await WalletClient.create({
-				relayUrl: RELAY_URL,
-				kvstore: walletKvStore,
+			const resumedWalletClient = new WalletClient({
+				transport: resumedWalletTransport,
 				sessionstore: walletSessionStore,
-				websocket: WebSocket,
 			});
 			walletClient = resumedWalletClient; // reassign for afterEach cleanup
 

@@ -1,26 +1,22 @@
 import {
 	BaseClient,
-	type ClientState,
+	ClientState,
 	DEFAULT_SESSION_TTL,
-	type IKVStore,
+	type ISessionStore,
+	type ITransport,
 	KeyManager,
 	type ProtocolMessage,
 	type Session,
 	type SessionRequest,
-	type SessionStore,
-	WebSocketTransport,
 } from "@metamask/mobile-wallet-protocol-core";
 import { fromUint8Array, toUint8Array } from "js-base64";
 import { v4 as uuid } from "uuid";
-import type { WebSocket } from "ws";
 
 const SESSION_REQUEST_TTL = 60 * 1000; // 60 seconds
 
 export interface DappClientOptions {
-	relayUrl: string;
-	kvstore: IKVStore;
-	sessionstore: SessionStore;
-	websocket?: typeof WebSocket;
+	transport: ITransport;
+	sessionstore: ISessionStore;
 }
 
 /**
@@ -28,24 +24,11 @@ export interface DappClientOptions {
  * secure communication, and session management.
  */
 export class DappClient extends BaseClient {
-	private state: ClientState = "IDLE";
 	private timeoutId: NodeJS.Timeout | null = null;
 	private timeoutMs = SESSION_REQUEST_TTL;
 
-	static async create(options: DappClientOptions): Promise<DappClient> {
-		const transport = await WebSocketTransport.create({
-			url: options.relayUrl,
-			kvstore: options.kvstore,
-			websocket: options.websocket,
-		});
-		return new DappClient(transport, new KeyManager(), options.sessionstore);
-	}
-
-	private constructor(transport: WebSocketTransport, keymanager: KeyManager, sessionstore: SessionStore) {
-		super(transport, keymanager, sessionstore);
-		this.on("disconnected", () => {
-			this.state = "DISCONNECTED";
-		});
+	constructor(options: DappClientOptions) {
+		super(options.transport, new KeyManager(), options.sessionstore);
 	}
 
 	/**
@@ -53,8 +36,8 @@ export class DappClient extends BaseClient {
 	 * emitting a 'session-request' event for the wallet to connect.
 	 */
 	public async connect(): Promise<void> {
-		if (this.state !== "IDLE") throw new Error(`Cannot connect when state is ${this.state}`);
-		this.state = "CONNECTING";
+		if (this.state !== ClientState.IDLE) throw new Error(`Cannot connect when state is ${this.state}`);
+		this.state = ClientState.CONNECTING;
 
 		const { session, request } = this.createPendingSessionAndRequest();
 		this.session = session;
@@ -66,7 +49,7 @@ export class DappClient extends BaseClient {
 			const theirPublicKey = await this.waitForWalletPublicKey();
 			session.theirPublicKey = theirPublicKey;
 			await this.sessionstore.set(session);
-			this.state = "CONNECTED";
+			this.state = ClientState.CONNECTED;
 			this.emit("connected");
 		} catch (error) {
 			await this.disconnect();
@@ -86,31 +69,11 @@ export class DappClient extends BaseClient {
 	}
 
 	/**
-	 * Resumes an existing session using the provided session ID,
-	 * reconnecting to the transport and channel.
-	 * @param sessionId - The ID of the session to resume
-	 * @throws Error if the session is not found or has expired
-	 */
-	public async resume(sessionId: string): Promise<void> {
-		if (this.state !== "IDLE") throw new Error(`Cannot resume when state is ${this.state}`);
-		this.state = "CONNECTING";
-
-		const session = await this.sessionstore.get(sessionId);
-		if (!session) throw new Error("Session not found");
-
-		this.session = session;
-		await this.transport.connect();
-		await this.transport.subscribe(session.channel);
-		this.state = "CONNECTED";
-		this.emit("connected");
-	}
-
-	/**
 	 * Sends a request to the wallet, ensuring the handshake is complete.
 	 * @param payload - The request payload to send
 	 */
 	public async sendRequest(payload: unknown): Promise<void> {
-		if (this.state !== "CONNECTED") throw new Error("Cannot send request: not connected.");
+		if (this.state !== ClientState.CONNECTED) throw new Error("Cannot send request: not connected.");
 		await this.sendMessage({ type: "dapp-request", payload });
 	}
 
@@ -118,11 +81,11 @@ export class DappClient extends BaseClient {
 	 * Processes incoming messages, handling handshake and application-level responses.
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
-		if (this.state === "CONNECTING" && message.type === "wallet-handshake") {
+		if (this.state === ClientState.CONNECTING && message.type === "wallet-handshake") {
 			this.emit("wallet-public-key", message.payload.publicKeyB64);
 		}
 
-		if (this.state === "CONNECTED" && message.type === "wallet-response") {
+		if (this.state === ClientState.CONNECTED && message.type === "wallet-response") {
 			this.emit("message", message.payload);
 		}
 	}

@@ -1,23 +1,19 @@
 import {
 	BaseClient,
-	type ClientState,
+	ClientState,
 	DEFAULT_SESSION_TTL,
-	type IKVStore,
+	type ISessionStore,
+	type ITransport,
 	KeyManager,
 	type ProtocolMessage,
 	type Session,
 	type SessionRequest,
-	type SessionStore,
-	WebSocketTransport,
 } from "@metamask/mobile-wallet-protocol-core";
 import { fromUint8Array, toUint8Array } from "js-base64";
-import type { WebSocket } from "ws";
 
 export interface WalletClientOptions {
-	relayUrl: string;
-	kvstore: IKVStore;
-	sessionstore: SessionStore;
-	websocket?: typeof WebSocket;
+	transport: ITransport;
+	sessionstore: ISessionStore;
 }
 
 /**
@@ -25,22 +21,8 @@ export interface WalletClientOptions {
  * and handling secure communication.
  */
 export class WalletClient extends BaseClient {
-	private state: ClientState = "IDLE";
-
-	static async create(options: WalletClientOptions): Promise<WalletClient> {
-		const transport = await WebSocketTransport.create({
-			kvstore: options.kvstore,
-			url: options.relayUrl,
-			websocket: options.websocket,
-		});
-		return new WalletClient(transport, new KeyManager(), options.sessionstore);
-	}
-
-	private constructor(transport: WebSocketTransport, keymanager: KeyManager, sessionstore: SessionStore) {
-		super(transport, keymanager, sessionstore);
-		this.on("disconnected", () => {
-			this.state = "DISCONNECTED";
-		});
+	constructor(options: WalletClientOptions) {
+		super(options.transport, new KeyManager(), options.sessionstore);
 	}
 
 	/**
@@ -49,12 +31,12 @@ export class WalletClient extends BaseClient {
 	 * @param options - Options containing the session request from the dApp
 	 */
 	public async connect(options: { sessionRequest: SessionRequest }): Promise<void> {
-		if (this.state !== "IDLE") throw new Error(`Cannot connect when state is ${this.state}`);
+		if (this.state !== ClientState.IDLE) throw new Error(`Cannot connect when state is ${this.state}`);
 
 		const request = options.sessionRequest;
 		if (Date.now() > request.expiresAt) throw new Error("Session request expired");
 
-		this.state = "CONNECTING";
+		this.state = ClientState.CONNECTING;
 		this.session = this.deriveSession(request);
 
 		try {
@@ -64,7 +46,7 @@ export class WalletClient extends BaseClient {
 			const publicKeyB64 = fromUint8Array(this.session.keyPair.publicKey);
 			await this.sendMessage({ type: "wallet-handshake", payload: { publicKeyB64 } });
 			await this.sessionstore.set(this.session);
-			this.state = "CONNECTED";
+			this.state = ClientState.CONNECTED;
 			this.emit("connected");
 		} catch (error) {
 			await this.disconnect();
@@ -73,38 +55,11 @@ export class WalletClient extends BaseClient {
 	}
 
 	/**
-	 * Resumes an existing session using the provided session ID,
-	 * reconnecting to the transport and channel.
-	 * @param sessionId - The ID of the session to resume
-	 * @throws Error if the session is not found or has expired
-	 */
-	public async resume(sessionId: string): Promise<void> {
-		if (this.state !== "IDLE") throw new Error(`Cannot resume when state is ${this.state}`);
-		this.state = "CONNECTING";
-
-		const session = await this.sessionstore.get(sessionId);
-		if (!session) throw new Error("Session not found");
-
-		this.session = session;
-		await this.transport.connect();
-		await this.transport.subscribe(session.channel);
-		this.state = "CONNECTED";
-		this.emit("connected");
-	}
-
-	/**
-	 * Disconnects.
-	 */
-	public async disconnect(): Promise<void> {
-		await super.disconnect();
-	}
-
-	/**
 	 * Sends a response to the dApp, ensuring the handshake is complete.
 	 * @param payload - The response payload to send
 	 */
 	public async sendResponse(payload: unknown): Promise<void> {
-		if (this.state !== "CONNECTED") throw new Error("Cannot send response: not connected.");
+		if (this.state !== ClientState.CONNECTED) throw new Error("Cannot send response: not connected.");
 		await this.sendMessage({ type: "wallet-response", payload });
 	}
 
@@ -112,7 +67,7 @@ export class WalletClient extends BaseClient {
 	 * Processes incoming messages, handling application-level requests from the dApp.
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
-		if (this.state === "CONNECTED" && message.type === "dapp-request") {
+		if (this.state === ClientState.CONNECTED && message.type === "dapp-request") {
 			this.emit("message", message.payload);
 		}
 	}
