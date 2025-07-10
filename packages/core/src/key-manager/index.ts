@@ -3,7 +3,8 @@ import type { IKeyManager } from "../domain/key-manager";
 import type { KeyPair } from "../domain/key-pair";
 
 /**
- * A key manager is responsible for generating key pairs, encrypting and decrypting messages.
+ * KeyManager is a class that implements the IKeyManager interface.
+ * It is used to generate key pairs, encrypt and decrypt messages using ECIES.
  */
 export class KeyManager implements IKeyManager {
 	generateKeyPair(): KeyPair {

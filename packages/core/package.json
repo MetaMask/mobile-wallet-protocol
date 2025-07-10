@@ -21,6 +21,14 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"dependencies": {
-		"eciesjs": "^0.4.15"
+		"centrifuge": "^5.3.5",
+		"eciesjs": "^0.4.15",
+		"eventemitter3": "^5.0.1",
+		"uuid": "^11.1.0"
+	},
+	"devDependencies": {
+		"@types/uuid": "^10.0.0",
+		"@types/ws": "^8.18.1",
+		"ws": "^8.18.2"
 	}
 }

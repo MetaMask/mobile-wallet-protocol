@@ -41,4 +41,10 @@ export interface ITransport {
 	on(event: "message", handler: (payload: { channel: string; data: string }) => void): void;
 	on(event: "connected" | "disconnected", handler: () => void): void;
 	on(event: "error", handler: (error: Error) => void): void;
+
+	/**
+	 * Clears the transport for a given channel.
+	 * @param channel The channel to clear.
+	 */
+	clear(channel: string): Promise<void>;
 }
