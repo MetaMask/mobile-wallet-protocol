@@ -3,5 +3,7 @@
  */
 export type SessionRequest = {
 	id: string;
+	channel: string;
 	publicKeyB64: string;
+	expiresAt: number;
 };

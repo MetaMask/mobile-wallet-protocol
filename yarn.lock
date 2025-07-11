@@ -439,6 +439,7 @@ __metadata:
     centrifuge: ^5.3.5
     eciesjs: ^0.4.15
     eventemitter3: ^5.0.1
+    tsup: ^8.5.0
     uuid: ^11.1.0
     ws: ^8.18.2
   languageName: unknown
@@ -449,6 +450,12 @@ __metadata:
   resolution: "@metamask/mobile-wallet-protocol-dapp-client@workspace:packages/dapp-client"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/uuid": ^10.0.0
+    "@types/ws": ^8.18.1
+    js-base64: ^3.7.7
+    tsup: ^8.5.0
+    uuid: ^11.1.0
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
@@ -459,6 +466,10 @@ __metadata:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
     "@metamask/mobile-wallet-protocol-dapp-client": "workspace:*"
     "@metamask/mobile-wallet-protocol-wallet-client": "workspace:*"
+    "@types/ws": ^8.18.1
+    centrifuge: ^5.3.5
+    vitest: ^3.2.4
+    ws: ^8.18.3
   languageName: unknown
   linkType: soft
 
@@ -467,6 +478,12 @@ __metadata:
   resolution: "@metamask/mobile-wallet-protocol-wallet-client@workspace:packages/wallet-client"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@types/uuid": ^10.0.0
+    "@types/ws": ^8.18.1
+    js-base64: ^3.7.7
+    tsup: ^8.5.0
+    uuid: ^11.1.0
+    ws: ^8.18.2
   languageName: unknown
   linkType: soft
 
@@ -843,11 +860,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*, @types/node@npm:>=13.7.0, @types/node@npm:^24.0.3":
-  version: 24.0.12
-  resolution: "@types/node@npm:24.0.12"
+  version: 24.0.10
+  resolution: "@types/node@npm:24.0.10"
   dependencies:
     undici-types: ~7.8.0
-  checksum: fad1d824df644492f85fc1d29ae500672703145a1599ab59b48897a6fb868ed5065eb74c48027ac9ec68b2ad9557fe214a959884abc6e4cd82dbd85a7eb33b68
+  checksum: 04e4d11a711a683d6ed71f8db86b35035771ee9c1f110cb904ca67454d3478f19c71f1f0ccd0ba5350e5ce63bea70d08c569f798f6f5a5d2a1d05c038f1f729f
   languageName: node
   linkType: hard
 
@@ -1169,15 +1186,15 @@ __metadata:
   linkType: hard
 
 "chai@npm:^5.2.0":
-  version: 5.2.1
-  resolution: "chai@npm:5.2.1"
+  version: 5.2.0
+  resolution: "chai@npm:5.2.0"
   dependencies:
     assertion-error: ^2.0.1
     check-error: ^2.1.1
     deep-eql: ^5.0.1
     loupe: ^3.1.0
     pathval: ^2.0.0
-  checksum: 15e2923de73bc4a361fa016b3322c8258c1ec7a33794f6dfa8000b4cd7fb64521363e59fcf08b90b9dd2d787b25ac9e2420535ce31c530501296d4bc03b48576
+  checksum: 15e4ba12d02df3620fd59b4a6e8efe43b47872ce61f1c0ca77ac1205a2a5898f3b6f1f52408fd1a708b8d07fdfb5e65b97af40bad9fd94a69ed8d4264c7a69f1
   languageName: node
   linkType: hard
 
@@ -1798,6 +1815,13 @@ __metadata:
   version: 3.1.1
   resolution: "joycon@npm:3.1.1"
   checksum: 8003c9c3fc79c5c7602b1c7e9f7a2df2e9916f046b0dbad862aa589be78c15734d11beb9fe846f5e06138df22cb2ad29961b6a986ba81c4920ce2b15a7f11067
+  languageName: node
+  linkType: hard
+
+"js-base64@npm:^3.7.7":
+  version: 3.7.7
+  resolution: "js-base64@npm:3.7.7"
+  checksum: d1b02971db9dc0fd35baecfaf6ba499731fb44fe3373e7e1d6681fbd3ba665f29e8d9d17910254ef8104e2cb8b44117fe4202d3dc54c7cafe9ba300fe5433358
   languageName: node
   linkType: hard
 
@@ -3116,8 +3140,8 @@ __metadata:
   linkType: hard
 
 "vite@npm:^5.0.0 || ^6.0.0 || ^7.0.0-0":
-  version: 7.0.4
-  resolution: "vite@npm:7.0.4"
+  version: 7.0.3
+  resolution: "vite@npm:7.0.3"
   dependencies:
     esbuild: ^0.25.0
     fdir: ^6.4.6
@@ -3166,7 +3190,7 @@ __metadata:
       optional: true
   bin:
     vite: bin/vite.js
-  checksum: 2594edb5b0cc04ea202613d76606f4fd39fd1dee281ee2074fabb06319a7645225c40167f7957c4de9b2b436b36a1d7a43cd5dca242b699d5a1f0ab514be3e78
+  checksum: d4a493d34af13d13becdb0ca0af4bf0db62bb64e0319bac1bddf1df322f2fa53e7681f9dabf02be7925bcb56472d39c1e48280d4b43c85259df7a126c16d9985
   languageName: node
   linkType: hard
 
@@ -3321,7 +3345,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.18.2":
+"ws@npm:^8.18.2, ws@npm:^8.18.3":
   version: 8.18.3
   resolution: "ws@npm:8.18.3"
   peerDependencies:

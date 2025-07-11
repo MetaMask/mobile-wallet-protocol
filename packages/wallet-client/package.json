@@ -21,6 +21,14 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"dependencies": {
-		"@metamask/mobile-wallet-protocol-core": "workspace:*"
+		"@metamask/mobile-wallet-protocol-core": "workspace:*",
+		"js-base64": "^3.7.7",
+		"uuid": "^11.1.0"
+	},
+	"devDependencies": {
+		"@types/uuid": "^10.0.0",
+		"@types/ws": "^8.18.1",
+		"tsup": "^8.5.0",
+		"ws": "^8.18.2"
 	}
 }
