@@ -1,5 +1,6 @@
 import { Centrifuge, type Options, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
 import EventEmitter from "eventemitter3";
+import { ErrorCode, TransportError } from "../../domain/errors";
 import type { IKVStore } from "../../domain/kv-store";
 import type { ITransport } from "../../domain/transport";
 import { retry } from "../../utils/retry";
@@ -91,7 +92,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			this._processQueue();
 		});
 		this.centrifuge.on("disconnected", () => this.setState("disconnected"));
-		this.centrifuge.on("error", (ctx) => this.emit("error", new Error(ctx.error.message)));
+		this.centrifuge.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.UNKNOWN, ctx.error.message)));
 	}
 
 	/**
@@ -112,7 +113,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 * Disconnects from the relay server.
 	 */
 	public disconnect(): Promise<void> {
-		this.queue.forEach((msg) => msg.reject(new Error("Transport disconnected by client.")));
+		this.queue.forEach((msg) => msg.reject(new TransportError(ErrorCode.TRANSPORT_DISCONNECTED, "Transport disconnected by client.")));
 		this.queue.length = 0;
 
 		if (this.state === "disconnected") {
@@ -150,7 +151,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			this._handleIncomingMessage(channel, ctx.data as string);
 		});
 
-		sub.on("error", (ctx) => this.emit("error", new Error(`Subscription error: ${ctx.error.message}`)));
+		sub.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.TRANSPORT_SUBSCRIBE_FAILED, `Subscription error: ${ctx.error.message}`)));
 
 		return new Promise((resolve) => {
 			sub.once("subscribed", () => resolve());
@@ -194,7 +195,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		try {
 			const message = JSON.parse(rawData) as TransportMessage;
 			if (typeof message.clientId !== "string" || typeof message.nonce !== "number" || typeof message.payload !== "string") {
-				throw new Error("Invalid message format");
+				throw new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, "Invalid message format");
 			}
 
 			// Ignore our own messages reflected from the server.
@@ -214,7 +215,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			}
 			// If message.nonce <= latestNonce, it's a duplicate and we ignore it.
 		} catch (error) {
-			this.emit("error", new Error(`Failed to parse incoming message: ${error instanceof Error ? error.message : "Unknown error"}`));
+			this.emit("error", new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, `Failed to parse incoming message: ${error instanceof Error ? error.message : "Unknown error"}`));
 		}
 	}
 
@@ -231,7 +232,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			// Centrifuge may throw an error (code 11) if the connection closes
 			// during a history fetch. This is expected on disconnect and can be ignored.
 			if ((error as { code?: number })?.code === 11) return;
-			this.emit("error", new Error(`Failed to fetch history for channel ${channel}: ${JSON.stringify(error)}`));
+			this.emit("error", new TransportError(ErrorCode.TRANSPORT_HISTORY_FAILED, `Failed to fetch history for channel ${channel}: ${JSON.stringify(error)}`));
 		}
 	}
 
@@ -271,7 +272,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 				} catch (error) {
 					// Remove the failed item from queue and reject its promise.
 					this.queue.shift();
-					item.reject(error instanceof Error ? error : new Error("Failed to publish message after all retries"));
+					item.reject(error instanceof Error ? error : new TransportError(ErrorCode.TRANSPORT_PUBLISH_FAILED, "Failed to publish message after all retries"));
 				}
 			}
 		} finally {

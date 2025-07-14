@@ -1,5 +1,6 @@
 import EventEmitter from "eventemitter3";
 import { ClientState } from "./domain/client-state";
+import { CryptoError, ErrorCode, SessionError } from "./domain/errors";
 import type { IKeyManager } from "./domain/key-manager";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
@@ -40,12 +41,12 @@ export abstract class BaseClient extends EventEmitter {
 	 * @throws Error if the session is not found or has expired
 	 */
 	public async resume(sessionId: string): Promise<void> {
-		if (this.state !== ClientState.DISCONNECTED) throw new Error(`Cannot resume when state is ${this.state}`);
+		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot resume when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
 		try {
 			const session = await this.sessionstore.get(sessionId);
-			if (!session) throw new Error("Session not found or expired");
+			if (!session) throw new SessionError(ErrorCode.SESSION_NOT_FOUND, "Session not found or expired");
 
 			this.session = session;
 			await this.transport.connect();
@@ -72,7 +73,7 @@ export abstract class BaseClient extends EventEmitter {
 	protected abstract handleMessage(message: ProtocolMessage): void;
 
 	protected async sendMessage(message: ProtocolMessage): Promise<void> {
-		if (!this.session) throw new Error("Cannot send message: session is not initialized.");
+		if (!this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send message: session is not initialized.");
 
 		await this.checkSessionExpiry();
 		const plaintext = JSON.stringify(message);
@@ -85,7 +86,7 @@ export abstract class BaseClient extends EventEmitter {
 
 		if (this.session.expiresAt < Date.now()) {
 			await this.disconnect();
-			throw new Error("Session expired");
+			throw new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired");
 		}
 	}
 
@@ -96,7 +97,7 @@ export abstract class BaseClient extends EventEmitter {
 			return JSON.parse(decrypted);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
-			this.emit("error", new Error(`Decryption failed: ${msg}`));
+			this.emit("error", new CryptoError(ErrorCode.DECRYPTION_FAILED, `Decryption failed: ${msg}`));
 			return null;
 		}
 	}

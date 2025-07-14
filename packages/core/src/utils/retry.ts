@@ -1,3 +1,5 @@
+import { ErrorCode, ProtocolError } from "../domain/errors";
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type RetryOptions = {
@@ -27,5 +29,5 @@ export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Pro
 		}
 	}
 	// This line is unreachable but satisfies TypeScript
-	throw new Error("Retry logic failed unexpectedly.");
+	throw new ProtocolError(ErrorCode.UNKNOWN, "Retry logic failed unexpectedly.");
 }

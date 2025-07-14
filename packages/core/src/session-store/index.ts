@@ -1,3 +1,4 @@
+import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
 import type { ISessionStore } from "../domain/session-store";
@@ -43,7 +44,7 @@ export class SessionStore implements ISessionStore {
 	async set(session: Session): Promise<void> {
 		// Check if session is expired
 		if (session.expiresAt < Date.now()) {
-			throw new Error("Cannot save expired session");
+			throw new SessionError(ErrorCode.SESSION_SAVE_FAILED, "Cannot save expired session");
 		}
 
 		// Serialize the session
