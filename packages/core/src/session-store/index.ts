@@ -1,3 +1,4 @@
+import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
 import type { ISessionStore } from "../domain/session-store";
@@ -17,11 +18,6 @@ type SerializableSession = {
 };
 
 /**
- * The interval at which to garbage collect expired sessions.
- */
-const GARBAGE_COLLECT_INTERVAL = 1000 * 60 * 60 * 24; // 24 hours
-
-/**
  * The time-to-live for a session.
  */
 export const DEFAULT_SESSION_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -38,7 +34,7 @@ export class SessionStore implements ISessionStore {
 
 	constructor(kvstore: IKVStore) {
 		this.kvstore = kvstore;
-		this.garbageCollect();
+		this.garbageCollect(); // Run garbage collection once on startup
 	}
 
 	/**
@@ -48,7 +44,7 @@ export class SessionStore implements ISessionStore {
 	async set(session: Session): Promise<void> {
 		// Check if session is expired
 		if (session.expiresAt < Date.now()) {
-			throw new Error("Cannot save expired session");
+			throw new SessionError(ErrorCode.SESSION_SAVE_FAILED, "Cannot save expired session");
 		}
 
 		// Serialize the session
@@ -139,13 +135,11 @@ export class SessionStore implements ISessionStore {
 
 	/**
 	 * Garbage collects expired sessions.
-	 * Runs on an interval to ensure sessions are cleaned up.
 	 */
 	private async garbageCollect(): Promise<void> {
 		const list = await this.getMasterList();
 		// Calling `get` for each session will delete it if it's expired.
 		await Promise.all(list.map(async (id) => this.get(id)));
-		setTimeout(this.garbageCollect.bind(this), GARBAGE_COLLECT_INTERVAL);
 	}
 
 	/**

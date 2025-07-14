@@ -2,11 +2,13 @@ import {
 	BaseClient,
 	ClientState,
 	DEFAULT_SESSION_TTL,
+	ErrorCode,
 	type ISessionStore,
 	type ITransport,
 	KeyManager,
 	type ProtocolMessage,
 	type Session,
+	SessionError,
 	type SessionRequest,
 } from "@metamask/mobile-wallet-protocol-core";
 import { fromUint8Array, toUint8Array } from "js-base64";
@@ -36,7 +38,7 @@ export class DappClient extends BaseClient {
 	 * emitting a 'session-request' event for the wallet to connect.
 	 */
 	public async connect(): Promise<void> {
-		if (this.state !== ClientState.DISCONNECTED) throw new Error(`Cannot connect when state is ${this.state}`);
+		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
 		const { session, request } = this.createPendingSessionAndRequest();
@@ -73,7 +75,7 @@ export class DappClient extends BaseClient {
 	 * @param payload - The request payload to send
 	 */
 	public async sendRequest(payload: unknown): Promise<void> {
-		if (this.state !== ClientState.CONNECTED) throw new Error("Cannot send request: not connected.");
+		if (this.state !== ClientState.CONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send request: not connected.");
 		await this.sendMessage({ type: "dapp-request", payload });
 	}
 

@@ -168,4 +168,56 @@ t.describe("BaseClient", () => {
 		await t.expect(disconnectedEventPromise).resolves.toBeUndefined(); // a resolved promise means the event fired
 		t.expect(await sessionStoreA.list()).toHaveLength(0);
 	});
+
+	t.test("should throw error when session is expired", async () => {
+		// 1. Create an expired session
+		const expiredSession: Session = {
+			id: "expired-session",
+			channel,
+			keyPair: new KeyManager().generateKeyPair(),
+			theirPublicKey: new Uint8Array(33),
+			expiresAt: Date.now() - 1000, // Expired 1 second ago
+		};
+
+		clientA.setSession(expiredSession);
+
+		// 2. Try to send a message with expired session
+		const messageToSend: ProtocolMessage = { type: "dapp-request", payload: { method: "test" } };
+
+		// 3. Expect it to throw "Session expired" error
+		await t.expect(clientA.sendMessage(messageToSend)).rejects.toThrow("Session expired");
+
+		// 4. Verify that the session was cleaned up (client disconnected)
+		t.expect(clientA.getSession()).toBeNull();
+	});
+
+	t.test("should throw error when resuming expired session", async () => {
+		// 1. Create and store a valid session first
+		const validSession: Session = {
+			id: "expired-resume-session",
+			channel,
+			keyPair: new KeyManager().generateKeyPair(),
+			theirPublicKey: new Uint8Array(33),
+			expiresAt: Date.now() + 60000, // Valid session
+		};
+
+		await sessionStoreA.set(validSession);
+
+		// 2. Manually expire the session by directly modifying the stored data
+		const sessionKey = "session:expired-resume-session";
+		const storedData = await sessionStoreA["kvstore"].get(sessionKey);
+		if (storedData) {
+			const sessionData = JSON.parse(storedData);
+			sessionData.expiresAt = Date.now() - 1000; // Expire it
+			await sessionStoreA["kvstore"].set(sessionKey, JSON.stringify(sessionData));
+		}
+
+		// 3. Try to resume the expired session
+		// Note: SessionStore.get() will detect the expired session, clean it up, and return null
+		// So resume() will throw "Session not found or expired"
+		await t.expect(clientA.resume("expired-resume-session")).rejects.toThrow("Session not found or expired");
+
+		// 4. Verify that the expired session was deleted from storage
+		t.expect(await sessionStoreA.get("expired-resume-session")).toBeNull();
+	});
 });
