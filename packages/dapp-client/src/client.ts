@@ -36,7 +36,7 @@ export class DappClient extends BaseClient {
 	 * emitting a 'session-request' event for the wallet to connect.
 	 */
 	public async connect(): Promise<void> {
-		if (this.state !== ClientState.IDLE) throw new Error(`Cannot connect when state is ${this.state}`);
+		if (this.state !== ClientState.DISCONNECTED) throw new Error(`Cannot connect when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
 		const { session, request } = this.createPendingSessionAndRequest();

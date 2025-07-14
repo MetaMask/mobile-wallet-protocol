@@ -16,7 +16,7 @@ export abstract class BaseClient extends EventEmitter {
 	protected keymanager: IKeyManager;
 	protected sessionstore: ISessionStore;
 	protected session: Session | null = null;
-	protected state: ClientState = ClientState.IDLE;
+	protected state: ClientState = ClientState.DISCONNECTED;
 
 	constructor(transport: ITransport, keymanager: IKeyManager, sessionstore: ISessionStore) {
 		super();
@@ -40,17 +40,23 @@ export abstract class BaseClient extends EventEmitter {
 	 * @throws Error if the session is not found or has expired
 	 */
 	public async resume(sessionId: string): Promise<void> {
-		if (this.state !== ClientState.IDLE) throw new Error(`Cannot resume when state is ${this.state}`);
+		if (this.state !== ClientState.DISCONNECTED) throw new Error(`Cannot resume when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
-		const session = await this.sessionstore.get(sessionId);
-		if (!session) throw new Error("Session not found or expired");
+		try {
+			const session = await this.sessionstore.get(sessionId);
+			if (!session) throw new Error("Session not found or expired");
 
-		this.session = session;
-		await this.transport.connect();
-		await this.transport.subscribe(session.channel);
-		this.state = ClientState.CONNECTED;
-		this.emit("connected");
+			this.session = session;
+			await this.transport.connect();
+			await this.transport.subscribe(session.channel);
+			this.state = ClientState.CONNECTED;
+			this.emit("connected");
+		} catch (error) {
+			this.state = ClientState.DISCONNECTED;
+			this.session = null;
+			throw error;
+		}
 	}
 
 	public async disconnect(): Promise<void> {

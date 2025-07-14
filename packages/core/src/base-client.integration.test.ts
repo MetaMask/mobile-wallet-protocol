@@ -214,7 +214,7 @@ t.describe("BaseClient", () => {
 
 		// 3. Try to resume the expired session
 		// Note: SessionStore.get() will detect the expired session, clean it up, and return null
-		// So resume() will throw "Session not found or expired" 
+		// So resume() will throw "Session not found or expired"
 		await t.expect(clientA.resume("expired-resume-session")).rejects.toThrow("Session not found or expired");
 
 		// 4. Verify that the expired session was deleted from storage
