@@ -1,4 +1,4 @@
-import type { IKVStore } from '@metamask/mobile-wallet-protocol-core';
+import type { IKVStore } from "@metamask/mobile-wallet-protocol-core";
 
 /**
  * Browser-compatible localStorage-based implementation of IKVStore
@@ -6,7 +6,7 @@ import type { IKVStore } from '@metamask/mobile-wallet-protocol-core';
 export class LocalStorageKVStore implements IKVStore {
 	private readonly prefix: string;
 
-	constructor(prefix: string = 'mwp-') {
+	constructor(prefix: string = "mwp-") {
 		this.prefix = prefix;
 	}
 
@@ -14,7 +14,7 @@ export class LocalStorageKVStore implements IKVStore {
 		try {
 			return localStorage.getItem(this.getKey(key));
 		} catch (error) {
-			console.warn('Failed to get from localStorage:', error);
+			console.warn("Failed to get from localStorage:", error);
 			return null;
 		}
 	}
@@ -23,7 +23,7 @@ export class LocalStorageKVStore implements IKVStore {
 		try {
 			localStorage.setItem(this.getKey(key), value);
 		} catch (error) {
-			console.warn('Failed to set in localStorage:', error);
+			console.warn("Failed to set in localStorage:", error);
 			throw error;
 		}
 	}
@@ -32,7 +32,7 @@ export class LocalStorageKVStore implements IKVStore {
 		try {
 			localStorage.removeItem(this.getKey(key));
 		} catch (error) {
-			console.warn('Failed to delete from localStorage:', error);
+			console.warn("Failed to delete from localStorage:", error);
 			throw error;
 		}
 	}
@@ -40,4 +40,4 @@ export class LocalStorageKVStore implements IKVStore {
 	private getKey(key: string): string {
 		return `${this.prefix}${key}`;
 	}
-} 
+}

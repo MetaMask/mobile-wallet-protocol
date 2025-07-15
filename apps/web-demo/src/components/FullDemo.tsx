@@ -136,7 +136,7 @@ export default function FullDemo() {
 	const formatTimeLeft = (seconds: number) => {
 		const minutes = Math.floor(seconds / 60);
 		const remainingSeconds = seconds % 60;
-		return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+		return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 	};
 
 	const addWalletLog = (type: WalletLogEntry["type"], content: string) => {
@@ -309,7 +309,6 @@ export default function FullDemo() {
 			addDappLog("sent", JSON.stringify(message, null, 2));
 
 			await dappClient.sendRequest(message);
-
 		} catch (error) {
 			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
@@ -501,7 +500,6 @@ export default function FullDemo() {
 			addWalletLog("response", JSON.stringify(response, null, 2));
 
 			await walletClient.sendResponse(response);
-
 		} catch (error) {
 			addWalletLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
@@ -524,7 +522,7 @@ export default function FullDemo() {
 
 	return (
 		<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-			<div className={`grid gap-6 ${showWalletClient ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 max-w-2xl mx-auto'}`}>
+			<div className={`grid gap-6 ${showWalletClient ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1 max-w-2xl mx-auto"}`}>
 				{/* Left Column - DApp Client */}
 				<div className="space-y-6">
 					<div className="flex items-center justify-between">
@@ -541,7 +539,7 @@ export default function FullDemo() {
 							onClick={() => setShowWalletClient(!showWalletClient)}
 							className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
 						>
-							{showWalletClient ? 'Hide' : 'Show'} Wallet Client
+							{showWalletClient ? "Hide" : "Show"} Wallet Client
 						</button>
 					</div>
 
@@ -574,9 +572,7 @@ export default function FullDemo() {
 										<h5 className="font-medium text-gray-900 dark:text-white">QR Code for Mobile Wallet</h5>
 										{sessionTimeLeft > 0 && (
 											<div className="flex items-center gap-2">
-												<span className="text-sm text-orange-600 dark:text-orange-400 font-medium">
-													Expires in {formatTimeLeft(sessionTimeLeft)}
-												</span>
+												<span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Expires in {formatTimeLeft(sessionTimeLeft)}</span>
 											</div>
 										)}
 									</div>
@@ -584,14 +580,8 @@ export default function FullDemo() {
 										<QRCodeDisplay data={qrCodeData} />
 									</div>
 									<div className="flex items-center justify-between mt-2">
-										<p className="text-xs text-gray-500 dark:text-gray-400">
-											Scan this QR code with your mobile wallet app
-										</p>
-										<button
-											type="button"
-											onClick={handleRetrySession}
-											className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-										>
+										<p className="text-xs text-gray-500 dark:text-gray-400">Scan this QR code with your mobile wallet app</p>
+										<button type="button" onClick={handleRetrySession} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
 											Generate New QR
 										</button>
 									</div>
@@ -643,14 +633,15 @@ export default function FullDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${log.type === "sent"
-												? "bg-blue-100 dark:bg-blue-900"
-												: log.type === "received"
-													? "bg-green-100 dark:bg-green-900"
-													: log.type === "notification"
-														? "bg-yellow-100 dark:bg-yellow-900"
-														: "bg-gray-200 dark:bg-gray-700"
-												}`}
+											className={`p-2 rounded text-xs ${
+												log.type === "sent"
+													? "bg-blue-100 dark:bg-blue-900"
+													: log.type === "received"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+											}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -750,8 +741,6 @@ export default function FullDemo() {
 												<span className="text-xs text-gray-500">{request.timestamp.toLocaleTimeString()}</span>
 											</div>
 
-
-
 											<div className="flex gap-2">
 												<button
 													type="button"
@@ -786,14 +775,15 @@ export default function FullDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${log.type === "request"
-													? "bg-purple-100 dark:bg-purple-900"
-													: log.type === "response"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-													}`}
+												className={`p-2 rounded text-xs ${
+													log.type === "request"
+														? "bg-purple-100 dark:bg-purple-900"
+														: log.type === "response"
+															? "bg-green-100 dark:bg-green-900"
+															: log.type === "notification"
+																? "bg-yellow-100 dark:bg-yellow-900"
+																: "bg-gray-200 dark:bg-gray-700"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>
