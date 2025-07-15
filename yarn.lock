@@ -6982,6 +6982,9 @@ __metadata:
   resolution: "web-demo@workspace:apps/web-demo"
   dependencies:
     "@eslint/eslintrc": ^3
+    "@metamask/mobile-wallet-protocol-core": "workspace:*"
+    "@metamask/mobile-wallet-protocol-dapp-client": "workspace:*"
+    "@metamask/mobile-wallet-protocol-wallet-client": "workspace:*"
     "@tailwindcss/postcss": ^4
     "@types/node": ^20
     "@types/qrcode": ^1.5.5
