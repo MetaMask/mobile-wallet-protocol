@@ -1,7 +1,7 @@
-import WalletProtocolDemo from "@/components/WalletProtocolDemo";
+import BasicDemo from "@/components/BasicDemo";
 
 export default function Home() {
   return (
-    <WalletProtocolDemo />
+    <BasicDemo />
   );
 }

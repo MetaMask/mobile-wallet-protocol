@@ -8,7 +8,7 @@ import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
 
-export default function WalletProtocolDemo() {
+export default function BasicDemo() {
 	const [status, setStatus] = useState<string>("Initializing...");
 	const [dappClient, setDappClient] = useState<DappClient | null>(null);
 	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
@@ -256,100 +256,94 @@ export default function WalletProtocolDemo() {
 	};
 
 	return (
-		<div className="min-h-screen bg-white dark:bg-gray-900 p-8">
-			<div className="max-w-2xl mx-auto space-y-6">
-				<h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-					Mobile Wallet Protocol Demo
-				</h1>
+		<div className="max-w-2xl mx-auto space-y-6">
+			<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+				<h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Status:</h3>
+				<p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-3 rounded font-mono">
+					{status}
+				</p>
+			</div>
 
-				<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
-					<h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Status:</h3>
-					<p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 p-3 rounded font-mono">
-						{status}
-					</p>
-				</div>
-
-				<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
-					<h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Client Status:</h3>
-					<div className="space-y-3">
-						<div className="flex items-center gap-3">
-							<span className={`w-3 h-3 rounded-full ${dappClient ? "bg-green-500" : "bg-gray-400"}`}></span>
-							<span className="text-gray-700 dark:text-gray-300">
-								Dapp Client: <span className="font-medium">{dappClient ? "Initialized" : "Not ready"}</span>
-							</span>
-						</div>
-						<div className="flex items-center gap-3">
-							<span className={`w-3 h-3 rounded-full ${walletClient ? "bg-green-500" : "bg-gray-400"}`}></span>
-							<span className="text-gray-700 dark:text-gray-300">
-								Wallet Client: <span className="font-medium">{walletClient ? "Initialized" : "Not ready"}</span>
-							</span>
-						</div>
-						<div className="flex items-center gap-3">
-							<span className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" :
-								sessionRequest ? "bg-yellow-500" : "bg-gray-400"
-								}`}></span>
-							<span className="text-gray-700 dark:text-gray-300">
-								Session: <span className="font-medium">{
-									isConnected ? "Accepted/Resumed" :
-										sessionRequest ? "Requested" : "None"
-								}</span>
-							</span>
-						</div>
-						<div className="flex items-center gap-3">
-							<span className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-400"}`}></span>
-							<span className="text-gray-700 dark:text-gray-300">
-								Connected: <span className="font-medium">{isConnected ? "Yes" : "No"}</span>
-							</span>
-						</div>
+			<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+				<h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Client Status:</h3>
+				<div className="space-y-3">
+					<div className="flex items-center gap-3">
+						<span className={`w-3 h-3 rounded-full ${dappClient ? "bg-green-500" : "bg-gray-400"}`}></span>
+						<span className="text-gray-700 dark:text-gray-300">
+							Dapp Client: <span className="font-medium">{dappClient ? "Initialized" : "Not ready"}</span>
+						</span>
+					</div>
+					<div className="flex items-center gap-3">
+						<span className={`w-3 h-3 rounded-full ${walletClient ? "bg-green-500" : "bg-gray-400"}`}></span>
+						<span className="text-gray-700 dark:text-gray-300">
+							Wallet Client: <span className="font-medium">{walletClient ? "Initialized" : "Not ready"}</span>
+						</span>
+					</div>
+					<div className="flex items-center gap-3">
+						<span className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" :
+							sessionRequest ? "bg-yellow-500" : "bg-gray-400"
+							}`}></span>
+						<span className="text-gray-700 dark:text-gray-300">
+							Session: <span className="font-medium">{
+								isConnected ? "Accepted/Resumed" :
+									sessionRequest ? "Requested" : "None"
+							}</span>
+						</span>
+					</div>
+					<div className="flex items-center gap-3">
+						<span className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-gray-400"}`}></span>
+						<span className="text-gray-700 dark:text-gray-300">
+							Connected: <span className="font-medium">{isConnected ? "Yes" : "No"}</span>
+						</span>
 					</div>
 				</div>
+			</div>
 
-				<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
-					<h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Actions:</h3>
-					<div className="space-y-3">
-						<button
-							type="button"
-							onClick={handleConnect}
-							disabled={!dappClient || !walletClient || isConnected}
-							className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-						>
-							1. Start Dapp Connection
-						</button>
+			<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+				<h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Actions:</h3>
+				<div className="space-y-3">
+					<button
+						type="button"
+						onClick={handleConnect}
+						disabled={!dappClient || !walletClient || isConnected}
+						className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+					>
+						1. Start Dapp Connection
+					</button>
 
-						<button
-							type="button"
-							onClick={handleWalletConnect}
-							disabled={!sessionRequest || isConnected}
-							className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-						>
-							2. Connect Wallet
-						</button>
+					<button
+						type="button"
+						onClick={handleWalletConnect}
+						disabled={!sessionRequest || isConnected}
+						className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+					>
+						2. Connect Wallet
+					</button>
 
-						<button
-							type="button"
-							onClick={handleSendTestMessage}
-							disabled={!isConnected}
-							className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-						>
-							3. Send Test Message
-						</button>
+					<button
+						type="button"
+						onClick={handleSendTestMessage}
+						disabled={!isConnected}
+						className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+					>
+						3. Send Test Message
+					</button>
 
-						<button
-							type="button"
-							onClick={handleDisconnect}
-							disabled={!dappClient && !walletClient}
-							className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-						>
-							Disconnect
-						</button>
-					</div>
+					<button
+						type="button"
+						onClick={handleDisconnect}
+						disabled={!dappClient && !walletClient}
+						className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+					>
+						Disconnect
+					</button>
 				</div>
+			</div>
 
-				<div className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-					<p>Note: This demo requires a WebSocket relay server running on localhost:8000</p>
-					<p>Run `docker compose -f backend/docker-compose.yml up -d` to start the backend</p>
-				</div>
+			<div className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+				<p>Note: This demo requires a WebSocket relay server running on localhost:8000</p>
+				<p>Run `docker compose -f backend/docker-compose.yml up -d` to start the backend</p>
 			</div>
 		</div>
 	);
-}
+} 
