@@ -7,7 +7,7 @@
 		"apps/*"
 	],
 	"scripts": {
-		"build": "yarn workspaces foreach run build",
+		"build": "yarn workspaces foreach --topological run build",
 		"test": "vitest run",
 		"test:unit": "vitest run --exclude '**/integration-tests/**' --exclude '**/*.integration.test.ts'",
 		"test:integration": "vitest run packages/integration-tests **/*.integration.test.ts",
