@@ -30,7 +30,7 @@ export default function RootLayout({
       >
         <div className="min-h-screen bg-white dark:bg-gray-900">
           <Navigation />
-          <main className="p-8">
+          <main className="py-8">
             {children}
           </main>
         </div>
