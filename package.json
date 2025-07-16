@@ -7,14 +7,14 @@
 		"apps/*"
 	],
 	"scripts": {
-		"build": "yarn workspaces foreach run build",
+		"build": "yarn workspaces foreach --topological run build",
 		"test": "vitest run",
 		"test:unit": "vitest run --exclude '**/integration-tests/**' --exclude '**/*.integration.test.ts'",
 		"test:integration": "vitest run packages/integration-tests **/*.integration.test.ts",
 		"test:watch": "vitest watch",
 		"test:ci": "vitest run --coverage --coverage.reporter=text --silent",
-		"lint": "yarn biome lint ./apps ./packages",
-		"lint:ci": "yarn biome ci ./apps ./packages",
+		"lint": "yarn biome lint ./packages",
+		"lint:ci": "yarn biome ci ./packages",
 		"lint:fix": "yarn biome format --write ./apps ./packages",
 		"llm": "npx repomix -o .llm.txt"
 	},
