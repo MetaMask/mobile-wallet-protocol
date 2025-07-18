@@ -1,75 +1,165 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Button, FlatList, StyleSheet, View } from "react-native";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { type PendingRequest, walletService } from "@/services/WalletService";
 
 export default function HomeScreen() {
+  const [status, setStatus] = useState(walletService.status);
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    const onStatusChange = (newStatus: string) => {
+      setStatus(newStatus);
+      if (newStatus !== "Connected") {
+        setPendingRequests([]);
+      }
+    };
+
+    const onRequest = (request: PendingRequest) => {
+      setPendingRequests((prev) => [...prev, request]);
+    };
+
+    const tryResume = () => {
+      setTimeout(() => {
+        if (walletService.status === "Disconnected") {
+          walletService.resumeLastSession();
+        }
+      }, 500);
+    };
+
+    walletService.on("statusChange", onStatusChange);
+    walletService.on("request", onRequest);
+    if (walletService.walletClient) {
+      tryResume();
+    } else {
+      walletService.once("initialized", tryResume);
+    }
+
+    return () => {
+      walletService.off("statusChange", onStatusChange);
+      walletService.off("request", onRequest);
+      walletService.off("initialized", tryResume);
+    };
+  }, []);
+
+  const handleScanPress = () => router.push("/scanner" as any);
+  const handleDisconnectPress = () => walletService.disconnect();
+
+  const handleApprove = (request: PendingRequest) => {
+    const response = {
+      id: request.id,
+      result: `Approved by RN Wallet at ${new Date().toLocaleTimeString()}`,
+    };
+    walletService.sendResponse(response);
+    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+  };
+
+  const handleReject = (request: PendingRequest) => {
+    const response = {
+      id: request.id,
+      error: { code: 4001, message: "User rejected the request." },
+    };
+    walletService.sendResponse(response);
+    setPendingRequests((prev) => prev.filter((r) => r.id !== request.id));
+  };
+
+  const isConnected = status === "Connected";
+  const isConnecting = status.includes("Connecting") || status.includes("Resuming");
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ThemedView style={styles.container}>
+      <ThemedView style={styles.header}>
+        <ThemedText type="title">Wallet Client</ThemedText>
+        <ThemedView style={styles.statusContainer}>
+          <ThemedText type="subtitle">Status:</ThemedText>
+          <ThemedText style={styles.statusText}>{status}</ThemedText>
+        </ThemedView>
+        <ThemedView style={styles.buttonContainer}>
+          {isConnected ? (
+            <Button title="Disconnect" onPress={handleDisconnectPress} color="red" />
+          ) : (
+            <Button title="Scan QR Code" onPress={handleScanPress} disabled={isConnecting} />
+          )}
+        </ThemedView>
+      </ThemedView>
+
+      <View style={styles.requestsContainer}>
+        <ThemedText type="subtitle">Incoming Requests</ThemedText>
+        <FlatList
+          data={pendingRequests}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.requestItem}>
+              <ThemedText style={styles.requestMethod}>{item.method}</ThemedText>
+              <ThemedText style={styles.requestParams}>{JSON.stringify(item.params, null, 2)}</ThemedText>
+              <View style={styles.requestActions}>
+                <Button title="Approve" onPress={() => handleApprove(item)} />
+                <Button title="Reject" onPress={() => handleReject(item)} color="orange" />
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={<ThemedText style={{ textAlign: "center", marginTop: 20 }}>No pending requests</ThemedText>}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Hello World!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  header: {
+    padding: 20,
+    paddingTop: 50,
+    alignItems: "center",
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  statusContainer: {
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+  },
+  statusText: {
+    marginTop: 8,
+    fontFamily: "SpaceMono",
+  },
+  buttonContainer: {
+    minHeight: 40,
+  },
+  requestsContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  requestItem: {
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
+  requestMethod: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  requestParams: {
+    fontFamily: "SpaceMono",
+    fontSize: 12,
+    marginTop: 8,
+    backgroundColor: "#f8f8f8",
+    padding: 5,
+  },
+  requestActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 15,
   },
 });
