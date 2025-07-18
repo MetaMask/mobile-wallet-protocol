@@ -194,12 +194,8 @@ export default function FullDemo() {
 				addDappLog("system", `Session request generated: ${request.id}`);
 				setSessionRequest(request);
 
-				// Generate QR code data for the session request
-				const qrData = JSON.stringify({
-					sessionId: request.id,
-					// Add other necessary data for mobile wallet
-					relayUrl: RELAY_URL,
-				});
+				// Generate QR code data with the full session request for external wallets
+				const qrData = JSON.stringify(request);
 				setQrCodeData(qrData);
 				addDappLog("system", "QR code generated. Ready for wallet to scan.");
 
@@ -633,15 +629,14 @@ export default function FullDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${
-												log.type === "sent"
+											className={`p-2 rounded text-xs ${log.type === "sent"
 													? "bg-blue-100 dark:bg-blue-900"
 													: log.type === "received"
 														? "bg-green-100 dark:bg-green-900"
 														: log.type === "notification"
 															? "bg-yellow-100 dark:bg-yellow-900"
 															: "bg-gray-200 dark:bg-gray-700"
-											}`}
+												}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -775,15 +770,14 @@ export default function FullDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${
-													log.type === "request"
+												className={`p-2 rounded text-xs ${log.type === "request"
 														? "bg-purple-100 dark:bg-purple-900"
 														: log.type === "response"
 															? "bg-green-100 dark:bg-green-900"
 															: log.type === "notification"
 																? "bg-yellow-100 dark:bg-yellow-900"
 																: "bg-gray-200 dark:bg-gray-700"
-												}`}
+													}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

@@ -1,13 +1,12 @@
-import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-
-import { Button, StyleSheet, Text, View } from "react-native";
-
-import { walletService } from "@/services/WalletService";
+import { useState } from "react";
+import { Button, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export default function ScannerScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
+	const [scannedData, setScannedData] = useState<string | null>(null);
+	const [isScanning, setIsScanning] = useState(true);
 	const router = useRouter();
 
 	if (!permission) {
@@ -26,22 +25,37 @@ export default function ScannerScreen() {
 	}
 
 	const handleBarCodeScanned = ({ data }: { data: string }) => {
-		try {
-			console.log("Scanned QR Data:", data);
-			const sessionRequest: SessionRequest = JSON.parse(data);
+		if (!isScanning) return; // Prevent multiple scans
 
-			// A simple validation for the parsed data
-			if (sessionRequest.id && sessionRequest.channel && sessionRequest.publicKeyB64) {
-				walletService.connect(sessionRequest);
-				router.back();
-			} else {
-				alert("Invalid QR Code. Please scan a valid Mobile Wallet Protocol QR code.");
-			}
-		} catch (e) {
-			console.error("Failed to parse QR code", e);
-			alert("Failed to parse QR code. Is it a valid JSON?");
-		}
+		console.log("Scanned QR Data:", data);
+		setScannedData(data);
+		setIsScanning(false);
 	};
+
+	const resetScanner = () => {
+		setScannedData(null);
+		setIsScanning(true);
+	};
+
+	const goBack = () => {
+		router.back();
+	};
+
+	if (scannedData) {
+		// Show scanned data
+		return (
+			<View style={styles.container}>
+				<Text style={styles.title}>QR Code Scanned!</Text>
+				<ScrollView style={styles.dataContainer}>
+					<Text style={styles.dataText}>{scannedData}</Text>
+				</ScrollView>
+				<View style={styles.buttonContainer}>
+					<Button title="Scan Another" onPress={resetScanner} />
+					<Button title="Go Back" onPress={goBack} />
+				</View>
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -52,6 +66,10 @@ export default function ScannerScreen() {
 				}}
 				style={StyleSheet.absoluteFillObject}
 			/>
+			<View style={styles.overlay}>
+				<Text style={styles.instructionText}>Point camera at QR code</Text>
+				<Button title="Cancel" onPress={goBack} />
+			</View>
 		</View>
 	);
 }
@@ -60,5 +78,44 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		justifyContent: "center",
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: "bold",
+		textAlign: "center",
+		marginBottom: 20,
+		paddingTop: 50,
+	},
+	dataContainer: {
+		flex: 1,
+		backgroundColor: "#f0f0f0",
+		margin: 20,
+		padding: 15,
+		borderRadius: 8,
+	},
+	dataText: {
+		fontSize: 14,
+		fontFamily: "monospace",
+	},
+	buttonContainer: {
+		flexDirection: "row",
+		justifyContent: "space-around",
+		padding: 20,
+		paddingBottom: 50,
+	},
+	overlay: {
+		position: "absolute",
+		top: 100,
+		left: 0,
+		right: 0,
+		alignItems: "center",
+		gap: 20,
+	},
+	instructionText: {
+		color: "white",
+		fontSize: 18,
+		backgroundColor: "rgba(0,0,0,0.6)",
+		padding: 10,
+		borderRadius: 5,
 	},
 });
