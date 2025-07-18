@@ -1,5 +1,5 @@
-import type { IKVStore } from '@metamask/mobile-wallet-protocol-core';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { IKVStore } from "@metamask/mobile-wallet-protocol-core";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * React Native-compatible AsyncStorage-based implementation of IKVStore
@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export class AsyncStorageKVStore implements IKVStore {
 	private readonly prefix: string;
 
-	constructor(prefix = 'mwp-') {
+	constructor(prefix = "mwp-") {
 		this.prefix = prefix;
 	}
 
@@ -15,7 +15,7 @@ export class AsyncStorageKVStore implements IKVStore {
 		try {
 			return await AsyncStorage.getItem(this.getKey(key));
 		} catch (error) {
-			console.warn('Failed to get from AsyncStorage:', error);
+			console.warn("Failed to get from AsyncStorage:", error);
 			return null;
 		}
 	}
@@ -24,7 +24,7 @@ export class AsyncStorageKVStore implements IKVStore {
 		try {
 			await AsyncStorage.setItem(this.getKey(key), value);
 		} catch (error) {
-			console.warn('Failed to set in AsyncStorage:', error);
+			console.warn("Failed to set in AsyncStorage:", error);
 			throw error;
 		}
 	}
@@ -33,7 +33,7 @@ export class AsyncStorageKVStore implements IKVStore {
 		try {
 			await AsyncStorage.removeItem(this.getKey(key));
 		} catch (error) {
-			console.warn('Failed to delete from AsyncStorage:', error);
+			console.warn("Failed to delete from AsyncStorage:", error);
 			throw error;
 		}
 	}
@@ -41,4 +41,4 @@ export class AsyncStorageKVStore implements IKVStore {
 	private getKey(key: string): string {
 		return `${this.prefix}${key}`;
 	}
-} 
+}
