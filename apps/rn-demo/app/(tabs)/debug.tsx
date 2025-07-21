@@ -1,5 +1,5 @@
 // app/(tabs)/debug.tsx
-import 'react-native-get-random-values';
+import "react-native-get-random-values";
 
 import { KeyManager } from "@metamask/mobile-wallet-protocol-core";
 import { Buffer } from "buffer";
@@ -33,9 +33,7 @@ export default function DebugScreen() {
 			console.log("Private Key (hex):", privateKeyHex);
 			console.log("Public Key (hex):", publicKeyHex);
 
-			setResult(
-				`Success! Key pair generated.\nPrivate key length: ${keyPair.privateKey.length}\nPublic key length: ${keyPair.publicKey.length}`,
-			);
+			setResult(`Success! Key pair generated.\nPrivate key length: ${keyPair.privateKey.length}\nPublic key length: ${keyPair.publicKey.length}`);
 		} catch (err) {
 			console.error("Test failed:", err);
 			setError(err instanceof Error ? err.message : "Unknown error");

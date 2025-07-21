@@ -1,64 +1,29 @@
 import "react-native-get-random-values";
 
-import { KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
+import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Button, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
 
-import { AsyncStorageKVStore } from "../lib/AsyncStorageKVStore";
-
-const RELAY_URL = "wss://relay.mobile.dev.metamask-institutional.io/";
+import { useWallet } from "@/context/WalletContext";
 
 export default function ScannerScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
-	const [scannedData, setScannedData] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState(true);
-	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
-	const [isConnected, setIsConnected] = useState(false);
+	const [scanError, setScanError] = useState<string | null>(null);
+	const [isConnecting, setIsConnecting] = useState(false);
 	const hasScanned = useRef(false);
 	const router = useRouter();
-
-	useEffect(() => {
-		let client: WalletClient | null = null;
-		const initializeClient = async () => {
-			console.log("Initializing WalletClient...");
-
-			const kvstore = new AsyncStorageKVStore();
-			const sessionstore = new SessionStore(kvstore);
-			const transport = await WebSocketTransport.create({ url: RELAY_URL, kvstore });
-			client = new WalletClient({ sessionstore, transport });
-
-			client.on("connected", () => {
-				console.log("Client connected");
-				setIsConnected(true);
-			});
-
-			client.on("disconnected", () => {
-				console.log("Client disconnected");
-				setIsConnected(false);
-			});
-
-			setWalletClient(client);
-			console.log("WalletClient initialized.");
-		};
-
-		initializeClient();
-
-		return () => {
-			console.log("Scanner screen unmounting, disconnecting client...");
-			client?.disconnect();
-		};
-	}, []);
+	const { client } = useWallet();
 
 	if (!permission) {
-		// Camera permissions are still loading.
+		console.log("ScannerScreen: camera permission is loading.");
 		return <View />;
 	}
 
 	if (!permission.granted) {
-		// Camera permissions are not granted yet.
+		console.log("ScannerScreen: camera permission not granted.");
 		return (
 			<View style={styles.container}>
 				<Text style={{ textAlign: "center" }}>We need your permission to show the camera</Text>
@@ -68,69 +33,70 @@ export default function ScannerScreen() {
 	}
 
 	const handleBarCodeScanned = async ({ data }: { data: string }) => {
-		if (hasScanned.current || !walletClient) return; // Use ref instead
+		if (hasScanned.current || !client || isConnecting) {
+			console.log("ScannerScreen: scan ignored (already scanned, no client, or connecting).");
+			return;
+		}
 
-		console.log("Scanned QR Data:", data);
-		hasScanned.current = true; // Update ref synchronously
-		setScannedData(data);
+		console.log("ScannerScreen: QR code scanned.", data);
+		hasScanned.current = true;
 		setIsScanning(false);
+		setIsConnecting(true);
+		setScanError(null);
 
 		try {
-			console.log("Parsing session request...");
-			const sessionRequest = JSON.parse(data) as SessionRequest;
-			console.log("Session request parsed:", sessionRequest);
-
-			console.log("Connecting to session...");
-			await walletClient.connect({ sessionRequest });
-			console.log("Session established.");
+			console.log("ScannerScreen: parsing session request...");
+			const sessionRequest: SessionRequest = JSON.parse(data);
+			console.log("ScannerScreen: connecting client with session request...", sessionRequest);
+			await client.connect({ sessionRequest });
+			console.log("ScannerScreen: client connected successfully, navigating back.");
+			router.back();
 		} catch (error) {
-			console.error("Failed to connect session:", error);
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			console.error("ScannerScreen: failed to connect.", errorMessage);
+			setScanError(errorMessage);
+			hasScanned.current = false; // Allow rescan on error
+		} finally {
+			console.log("ScannerScreen: finished connection attempt.");
+			setIsConnecting(false);
 		}
 	};
 
 	const resetScanner = () => {
-		setScannedData(null);
+		console.log("ScannerScreen: resetting scanner.");
+		setScanError(null);
 		hasScanned.current = false;
 		setIsScanning(true);
 	};
 
 	const goBack = () => {
-		walletClient?.disconnect();
+		console.log("ScannerScreen: navigating back.");
 		router.back();
 	};
 
-	if (scannedData) {
-		// Show scanned data
-		return (
-			<View style={styles.container}>
-				<Text style={styles.title}>QR Code Scanned!</Text>
-				<ScrollView style={styles.dataContainer}>
-					<Text style={styles.dataText}>{scannedData}</Text>
-				</ScrollView>
-
-				{isConnected && <Text style={styles.successText}>Session Connected!</Text>}
-
-				<View style={styles.buttonContainer}>
-					<Button title="Scan Another" onPress={resetScanner} />
-					<Button title="Go Back" onPress={goBack} />
-				</View>
-			</View>
-		);
-	}
-
+	console.log("ScannerScreen: rendering.");
 	return (
 		<View style={styles.container}>
-			<CameraView
-				onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
-				barcodeScannerSettings={{
-					barcodeTypes: ["qr"],
-				}}
-				style={StyleSheet.absoluteFillObject}
-			/>
+			<CameraView onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} style={StyleSheet.absoluteFillObject} />
 			<View style={styles.overlay}>
 				<Text style={styles.instructionText}>Point camera at QR code</Text>
 				<Button title="Cancel" onPress={goBack} />
 			</View>
+
+			{isConnecting && (
+				<View style={styles.loadingOverlay}>
+					<ActivityIndicator size="large" color="white" />
+					<Text style={styles.loadingText}>Connecting...</Text>
+				</View>
+			)}
+
+			{scanError && (
+				<View style={styles.errorOverlay}>
+					<Text style={styles.errorText}>Error: {scanError}</Text>
+					<Button title="Retry" onPress={resetScanner} />
+					<Button title="Cancel" onPress={goBack} />
+				</View>
+			)}
 		</View>
 	);
 }
@@ -139,30 +105,6 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		justifyContent: "center",
-	},
-	title: {
-		fontSize: 24,
-		fontWeight: "bold",
-		textAlign: "center",
-		marginBottom: 20,
-		paddingTop: 50,
-	},
-	dataContainer: {
-		flex: 1,
-		backgroundColor: "#f0f0f0",
-		margin: 20,
-		padding: 15,
-		borderRadius: 8,
-	},
-	dataText: {
-		fontSize: 14,
-		fontFamily: "monospace",
-	},
-	buttonContainer: {
-		flexDirection: "row",
-		justifyContent: "space-around",
-		padding: 20,
-		paddingBottom: 50,
 	},
 	overlay: {
 		position: "absolute",
@@ -179,10 +121,31 @@ const styles = StyleSheet.create({
 		padding: 10,
 		borderRadius: 5,
 	},
-	successText: {
-		color: "green",
-		fontSize: 18,
+	loadingOverlay: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: "rgba(0,0,0,0.7)",
+		justifyContent: "center",
+		alignItems: "center",
+	},
+	loadingText: {
+		color: "white",
+		marginTop: 10,
+		fontSize: 16,
+	},
+	errorOverlay: {
+		position: "absolute",
+		bottom: 100,
+		left: 20,
+		right: 20,
+		backgroundColor: "rgba(255,0,0,0.9)",
+		padding: 20,
+		borderRadius: 10,
+		alignItems: "center",
+		gap: 10,
+	},
+	errorText: {
+		color: "white",
+		fontSize: 16,
 		textAlign: "center",
-		marginVertical: 10,
 	},
 });
