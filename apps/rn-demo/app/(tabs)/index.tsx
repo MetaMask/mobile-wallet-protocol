@@ -91,6 +91,7 @@ export default function HomeScreen() {
 		if (!client) return;
 		console.log("HomeScreen: sending response:", responseText);
 		try {
+			// biome-ignore lint/suspicious/noImplicitAnyLet: demo code
 			let payload;
 			try {
 				payload = JSON.parse(responseText);
