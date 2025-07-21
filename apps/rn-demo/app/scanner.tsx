@@ -1,13 +1,56 @@
+import "react-native-get-random-values";
+
+import { KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, ScrollView, StyleSheet, Text, View } from "react-native";
+
+import { AsyncStorageKVStore } from "../lib/AsyncStorageKVStore";
+
+const RELAY_URL = "wss://relay.mobile.dev.metamask-institutional.io/";
 
 export default function ScannerScreen() {
 	const [permission, requestPermission] = useCameraPermissions();
 	const [scannedData, setScannedData] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState(true);
+	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
+	const [isConnected, setIsConnected] = useState(false);
+	const hasScanned = useRef(false);
 	const router = useRouter();
+
+	useEffect(() => {
+		let client: WalletClient | null = null;
+		const initializeClient = async () => {
+			console.log("Initializing WalletClient...");
+
+			const kvstore = new AsyncStorageKVStore();
+			const sessionstore = new SessionStore(kvstore);
+			const transport = await WebSocketTransport.create({ url: RELAY_URL, kvstore });
+			client = new WalletClient({ sessionstore, transport });
+
+			client.on("connected", () => {
+				console.log("Client connected");
+				setIsConnected(true);
+			});
+
+			client.on("disconnected", () => {
+				console.log("Client disconnected");
+				setIsConnected(false);
+			});
+
+			setWalletClient(client);
+			console.log("WalletClient initialized.");
+		};
+
+		initializeClient();
+
+		return () => {
+			console.log("Scanner screen unmounting, disconnecting client...");
+			client?.disconnect();
+		};
+	}, []);
 
 	if (!permission) {
 		// Camera permissions are still loading.
@@ -24,20 +67,35 @@ export default function ScannerScreen() {
 		);
 	}
 
-	const handleBarCodeScanned = ({ data }: { data: string }) => {
-		if (!isScanning) return; // Prevent multiple scans
+	const handleBarCodeScanned = async ({ data }: { data: string }) => {
+		if (hasScanned.current || !walletClient) return; // Use ref instead
 
 		console.log("Scanned QR Data:", data);
+		hasScanned.current = true; // Update ref synchronously
 		setScannedData(data);
 		setIsScanning(false);
+
+		try {
+			console.log("Parsing session request...");
+			const sessionRequest = JSON.parse(data) as SessionRequest;
+			console.log("Session request parsed:", sessionRequest);
+
+			console.log("Connecting to session...");
+			await walletClient.connect({ sessionRequest });
+			console.log("Session established.");
+		} catch (error) {
+			console.error("Failed to connect session:", error);
+		}
 	};
 
 	const resetScanner = () => {
 		setScannedData(null);
+		hasScanned.current = false;
 		setIsScanning(true);
 	};
 
 	const goBack = () => {
+		walletClient?.disconnect();
 		router.back();
 	};
 
@@ -49,6 +107,9 @@ export default function ScannerScreen() {
 				<ScrollView style={styles.dataContainer}>
 					<Text style={styles.dataText}>{scannedData}</Text>
 				</ScrollView>
+
+				{isConnected && <Text style={styles.successText}>Session Connected!</Text>}
+
 				<View style={styles.buttonContainer}>
 					<Button title="Scan Another" onPress={resetScanner} />
 					<Button title="Go Back" onPress={goBack} />
@@ -60,7 +121,7 @@ export default function ScannerScreen() {
 	return (
 		<View style={styles.container}>
 			<CameraView
-				onBarcodeScanned={handleBarCodeScanned}
+				onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
 				barcodeScannerSettings={{
 					barcodeTypes: ["qr"],
 				}}
@@ -117,5 +178,11 @@ const styles = StyleSheet.create({
 		backgroundColor: "rgba(0,0,0,0.6)",
 		padding: 10,
 		borderRadius: 5,
+	},
+	successText: {
+		color: "green",
+		fontSize: 18,
+		textAlign: "center",
+		marginVertical: 10,
 	},
 });

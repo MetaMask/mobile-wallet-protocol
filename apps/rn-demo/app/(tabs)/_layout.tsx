@@ -22,6 +22,13 @@ export default function TabLayout() {
 					tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 24 }}>📱</Text>,
 				}}
 			/>
+			<Tabs.Screen
+				name="debug"
+				options={{
+					title: "Debug",
+					tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 24 }}>🐞</Text>,
+				}}
+			/>
 		</Tabs>
 	);
 }
