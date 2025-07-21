@@ -1,13 +1,15 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Button, StyleSheet } from "react-native";
+import { ActivityIndicator, Button, StyleSheet } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { useWallet } from "@/context/WalletContext";
 
 export default function HomeScreen() {
 	const [scannedData, setScannedData] = useState<string | null>(null);
 	const router = useRouter();
+	const { client, isInitializing, error } = useWallet();
 
 	const handleScanPress = () => {
 		router.push("/scanner" as any);
@@ -21,9 +23,21 @@ export default function HomeScreen() {
 		<ThemedView style={styles.container}>
 			<ThemedText type="title">Wallet Demo</ThemedText>
 
-			<ThemedText type="subtitle">Simple QR Code Scanner</ThemedText>
+			{/* Wallet Client Status */}
+			<ThemedView style={styles.statusContainer}>
+				<ThemedText type="subtitle">Client Status</ThemedText>
+				{isInitializing ? (
+					<ActivityIndicator size="small" />
+				) : error ? (
+					<ThemedText style={{ color: "red" }}>Error: {error}</ThemedText>
+				) : client ? (
+					<ThemedText style={{ color: "green" }}>Client Initialized</ThemedText>
+				) : (
+					<ThemedText style={{ color: "orange" }}>Client Not Initialized</ThemedText>
+				)}
+			</ThemedView>
 
-			<Button title="Scan QR Code" onPress={handleScanPress} />
+			<Button title="Scan QR Code" onPress={handleScanPress} disabled={!client} />
 
 			{scannedData && (
 				<ThemedView style={styles.dataContainer}>
@@ -43,6 +57,12 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		gap: 32,
 		padding: 20,
+	},
+	statusContainer: {
+		alignItems: "center",
+		padding: 10,
+		borderRadius: 8,
+		backgroundColor: "#f0f0f0",
 	},
 	dataContainer: {
 		alignItems: "center",
