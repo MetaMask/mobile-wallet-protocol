@@ -1,112 +1,100 @@
+// Path: context/WalletContext.tsx
 import "react-native-get-random-values";
-import { SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
-import Constants from "expo-constants"; // <-- Import expo-constants
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { type Session, SessionStore } from "@metamask/mobile-wallet-protocol-core";
+import Constants from "expo-constants";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { AsyncStorageKVStore } from "@/lib/AsyncStorageKVStore";
+import { type GlobalActivityLogEntry, SessionManager } from "@/lib/SessionManager";
 
-// Dynamically determine the WebSocket URL for the local development server.
-// This allows connecting from both physical devices and emulators.
 const getDevServerUrl = () => {
-	// `hostUri` is set by Expo and includes the IP of the dev machine.
 	const host = Constants.expoConfig?.hostUri?.split(":")[0];
-
 	if (!host) {
-		// Fallback for environments where hostUri is not available.
-		// On Android emulators, 10.0.2.2 is the host machine.
-		// On iOS simulators, localhost is the host machine.
 		return `ws://${Platform.OS === "android" ? "10.0.2.2" : "localhost"}:8000/connection/websocket`;
 	}
-
 	return `ws://${host}:8000/connection/websocket`;
 };
 
 const RELAY_URL = getDevServerUrl();
 
 interface WalletContextType {
-	client: WalletClient | null;
+	sessionManager: SessionManager | null;
+	sessions: Session[];
+	globalActivityLog: GlobalActivityLogEntry[];
 	isInitializing: boolean;
 	error: string | null;
-	connected: boolean;
+	// **NEW**: Expose addLog function
+	addLog: (entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-	const [client, setClient] = useState<WalletClient | null>(null);
+	const [sessionManager, setSessionManager] = useState<SessionManager | null>(null);
+	const [sessions, setSessions] = useState<Session[]>([]);
+	const [globalActivityLog, setGlobalActivityLog] = useState<GlobalActivityLogEntry[]>([]);
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [connected, setConnected] = useState(false);
+
+	// **MODIFIED**: Use useCallback for a stable addLog function
+	const addLog = useCallback((entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => {
+		const newLogEntry = {
+			id: Date.now().toString() + Math.random(),
+			timestamp: new Date().toLocaleTimeString(),
+			...entry,
+		};
+		// **MODIFIED**: Prepend new logs to the start of the array
+		setGlobalActivityLog((prev) => [newLogEntry, ...prev]);
+	}, []);
 
 	useEffect(() => {
 		let isMounted = true;
+		let manager: SessionManager | null = null;
 
-		async function initializeClient() {
+		async function initialize() {
 			try {
-				console.log("WalletProvider: Initializing WalletClient...");
-				console.log(`WalletProvider: Using WebSocket URL: ${RELAY_URL}`);
-				console.log(`WalletProvider: Platform: ${Platform.OS}`);
-				console.log(`WalletProvider: Expo hostUri: ${Constants.expoConfig?.hostUri}`);
+				console.log("WalletProvider: Initializing...");
 				setError(null);
 				setIsInitializing(true);
 
 				const kvstore = new AsyncStorageKVStore("wallet-");
-				console.log("WalletProvider: AsyncStorageKVStore created.");
-
 				const sessionstore = new SessionStore(kvstore);
-				console.log("WalletProvider: SessionStore created.");
 
-				const transport = await WebSocketTransport.create({
-					url: RELAY_URL,
-					kvstore,
-					websocket: WebSocket,
-				});
-				console.log("WalletProvider: WebSocketTransport created.");
+				manager = new SessionManager(sessionstore, RELAY_URL);
+				setSessionManager(manager);
 
-				const walletClient = new WalletClient({
-					transport,
-					sessionstore,
-				});
-				console.log("WalletProvider: WalletClient created.");
-
-				walletClient.on("error", (err) => {
-					console.error("WalletProvider: WalletClient Error:", err);
-					setError(err.message);
+				// Listen to events from the manager
+				manager.on("sessions-changed", async () => {
+					const allSessions = await manager.getAllSessions();
+					setSessions(allSessions.sort((a, b) => b.expiresAt - a.expiresAt));
 				});
 
-				walletClient.on("connected", () => {
-					console.log("WalletProvider: Wallet connected");
-					setConnected(true);
+				manager.on("message-received", ({ sessionId, payload }) => {
+					addLog({
+						sessionId,
+						type: "received",
+						message: JSON.stringify(payload, null, 2),
+					});
 				});
 
-				walletClient.on("disconnected", () => {
-					console.log("WalletProvider: Wallet disconnected");
-					setConnected(false);
+				// **NEW**: Listen for system log events
+				manager.on("system-log", ({ sessionId, message }) => {
+					addLog({
+						sessionId,
+						type: "system",
+						message,
+					});
 				});
+
+				await manager.resumeAllClients();
 
 				if (isMounted) {
-					setClient(walletClient);
-					console.log("WalletProvider: WalletClient initialized successfully.");
-
-					// Attempt to resume the most recent session
-					const sessions = await sessionstore.list();
-					console.log(`WalletProvider: Found ${sessions.length} sessions.`);
-					if (sessions.length > 0) {
-						const latestSession = sessions[0];
-						console.log(`WalletProvider: Attempting to resume session ${latestSession.id}...`);
-						try {
-							await walletClient.resume(latestSession.id);
-							console.log(`WalletProvider: Session ${latestSession.id} resumed successfully.`);
-						} catch (resumeError) {
-							console.error("WalletProvider: Failed to resume session:", resumeError);
-							setError((resumeError as Error).message);
-						}
-					}
+					console.log("WalletProvider: Initialization complete.");
 				}
 			} catch (e) {
 				const errorMessage = e instanceof Error ? e.message : "An unknown error occurred";
-				console.error("WalletProvider: Failed to initialize WalletClient:", errorMessage);
+				console.error("WalletProvider: Failed to initialize:", errorMessage);
+
 				if (isMounted) {
 					setError(errorMessage);
 				}
@@ -117,15 +105,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 			}
 		}
 
-		initializeClient();
+		initialize();
 
 		return () => {
 			isMounted = false;
-			console.log("WalletProvider: unmounting. Client will be cleaned up if necessary.");
+			manager?.deleteAllClients();
 		};
-	}, []);
+	}, [addLog]); // Add addLog as a dependency
 
-	const value = { client, isInitializing, error, connected };
+	const value = { sessionManager, sessions, globalActivityLog, isInitializing, error, addLog };
 
 	return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }

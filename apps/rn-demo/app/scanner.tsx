@@ -1,3 +1,4 @@
+// Path: app/scanner.tsx
 import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -13,7 +14,7 @@ export default function ScannerScreen() {
 	const [isConnecting, setIsConnecting] = useState(false);
 	const hasScanned = useRef(false);
 	const router = useRouter();
-	const { client } = useWallet();
+	const { sessionManager } = useWallet();
 
 	if (!permission) {
 		return <View />;
@@ -29,7 +30,7 @@ export default function ScannerScreen() {
 	}
 
 	const handleBarCodeScanned = async ({ data }: { data: string }) => {
-		if (hasScanned.current || !client || isConnecting) {
+		if (hasScanned.current || !sessionManager || isConnecting) {
 			return;
 		}
 
@@ -40,7 +41,8 @@ export default function ScannerScreen() {
 
 		try {
 			const sessionRequest: SessionRequest = JSON.parse(data);
-			await client.connect({ sessionRequest });
+			// Use the sessionManager to create the new session
+			await sessionManager.createClientForSession(sessionRequest);
 			router.back();
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error";
