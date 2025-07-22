@@ -2,8 +2,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Button, FlatList, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { useWallet } from "@/context/WalletContext";
 
 type LogEntry = {
@@ -31,25 +29,20 @@ export default function HomeScreen() {
 
 	useEffect(() => {
 		if (!client) {
-			console.log("HomeScreen: client is not ready.");
 			return;
 		}
-		console.log("HomeScreen: client is ready, setting up event listeners.");
 
 		const handleMessage = (payload: unknown) => {
-			console.log("HomeScreen: received message", payload);
 			addLog("received", JSON.stringify(payload));
 			if (payload && typeof payload === "object" && "id" in payload && "method" in payload && "jsonrpc" in payload) {
 				const req = payload as { id: string; method: string; params?: unknown };
 				setPendingRequests((prev) => {
-					console.log(`HomeScreen: adding pending request for method ${req.method}`);
 					return [...prev, { id: req.id, method: req.method, params: req.params || [], timestamp: new Date() }];
 				});
 			}
 		};
 
 		const handleError = (err: Error) => {
-			console.error("HomeScreen: received error", err);
 			addLog("error", err.message);
 		};
 
@@ -57,7 +50,6 @@ export default function HomeScreen() {
 		client.on("error", handleError);
 
 		return () => {
-			console.log("HomeScreen: cleaning up event listeners.");
 			client.off("message", handleMessage);
 			client.off("error", handleError);
 		};
@@ -68,28 +60,23 @@ export default function HomeScreen() {
 	}, [logs]);
 
 	const addLog = (type: LogEntry["type"], message: string) => {
-		console.log(`HomeScreen: adding log - type: ${type}, message: ${message.substring(0, 100)}...`);
 		setLogs((prev) => [...prev, { id: Date.now().toString(), type, message, timestamp: new Date().toLocaleTimeString() }]);
 	};
 
 	const handleScanPress = () => {
-		console.log("HomeScreen: navigating to scanner.");
 		router.push("/scanner");
 	};
 
 	const handleDisconnect = async () => {
 		if (client) {
-			console.log("HomeScreen: disconnecting client.");
 			await client.disconnect();
 			setPendingRequests([]);
 			setLogs([]);
-			console.log("HomeScreen: client disconnected and state cleared.");
 		}
 	};
 
 	const handleSendResponse = async () => {
 		if (!client) return;
-		console.log("HomeScreen: sending response:", responseText);
 		try {
 			// biome-ignore lint/suspicious/noImplicitAnyLet: demo code
 			let payload;
@@ -101,117 +88,106 @@ export default function HomeScreen() {
 			await client.sendResponse(payload);
 			addLog("sent", JSON.stringify(payload));
 			setResponseText("");
-			console.log("HomeScreen: response sent successfully.");
 		} catch (e) {
-			console.error("HomeScreen: failed to send response", e);
 			addLog("error", e instanceof Error ? e.message : String(e));
 		}
 	};
 
 	const handleApprove = async (req: PendingRequest) => {
 		if (!client) return;
-		console.log(`HomeScreen: approving request ${req.id} (${req.method})`);
 		try {
 			await client.sendResponse({ jsonrpc: "2.0", id: req.id, result: "approved" });
 			addLog("sent", `Approved ${req.method}`);
 			setPendingRequests((prev) => prev.filter((p) => p.id !== req.id));
-			console.log(`HomeScreen: request ${req.id} approved successfully.`);
 		} catch (e) {
-			console.error(`HomeScreen: failed to approve request ${req.id}`, e);
 			addLog("error", e instanceof Error ? e.message : String(e));
 		}
 	};
 
 	const handleReject = async (req: PendingRequest) => {
 		if (!client) return;
-		console.log(`HomeScreen: rejecting request ${req.id} (${req.method})`);
 		try {
 			await client.sendResponse({ jsonrpc: "2.0", id: req.id, error: { code: 4001, message: "User rejected" } });
 			addLog("sent", `Rejected ${req.method}`);
 			setPendingRequests((prev) => prev.filter((p) => p.id !== req.id));
-			console.log(`HomeScreen: request ${req.id} rejected successfully.`);
 		} catch (e) {
-			console.error(`HomeScreen: failed to reject request ${req.id}`, e);
 			addLog("error", e instanceof Error ? e.message : String(e));
 		}
 	};
 
 	if (isInitializing) {
-		console.log("HomeScreen: rendering - initializing");
 		return (
-			<ThemedView style={styles.container}>
+			<View style={styles.container}>
 				<ActivityIndicator size="large" />
-				<ThemedText>Initializing...</ThemedText>
-			</ThemedView>
+				<Text>Initializing...</Text>
+			</View>
 		);
 	}
 
 	if (error) {
-		console.log(`HomeScreen: rendering - error: ${error}`);
 		return (
-			<ThemedView style={styles.container}>
-				<ThemedText style={{ color: "red" }}>Error: {error}</ThemedText>
-			</ThemedView>
+			<View style={styles.container}>
+				<Text style={{ color: "red" }}>Error: {error}</Text>
+			</View>
 		);
 	}
 
-	console.log(`HomeScreen: rendering - connected: ${connected}`);
 	return (
-		<ThemedView style={styles.container}>
-			<ThemedText type="title">Wallet Demo</ThemedText>
+		<View style={styles.container}>
+			<Text style={styles.title}>Wallet Demo</Text>
 
 			{connected ? (
-				<ThemedView style={styles.connectedContainer}>
-					<ThemedText type="subtitle" style={{ color: "green" }}>
+				<View style={styles.connectedContainer}>
+					<Text style={{ color: "green", ...styles.subtitle }}>
 						Connected
-					</ThemedText>
+					</Text>
 					<Button title="Disconnect" onPress={handleDisconnect} color="red" />
 
 					{/* Pending Requests */}
 					{pendingRequests.length > 0 && (
-						<ThemedView style={styles.section}>
-							<ThemedText type="subtitle">Pending Requests ({pendingRequests.length})</ThemedText>
+						<View style={styles.section}>
+							<Text style={styles.subtitle}>Pending Requests ({pendingRequests.length})</Text>
 							<FlatList
 								data={pendingRequests}
 								keyExtractor={(item) => item.id}
 								renderItem={({ item }) => (
-									<ThemedView style={styles.requestItem}>
-										<ThemedText>{item.method}</ThemedText>
-										<ThemedText style={styles.timestamp}>{item.timestamp.toLocaleTimeString()}</ThemedText>
+									<View style={styles.requestItem}>
+										<Text>{item.method}</Text>
+										<Text style={styles.timestamp}>{item.timestamp.toLocaleTimeString()}</Text>
 										<View style={styles.buttons}>
 											<Button title="Approve" onPress={() => handleApprove(item)} color="green" />
 											<Button title="Reject" onPress={() => handleReject(item)} color="red" />
 										</View>
-									</ThemedView>
+									</View>
 								)}
 								style={styles.list}
 							/>
-						</ThemedView>
+						</View>
 					)}
 
 					{/* Send Response */}
-					<ThemedView style={styles.section}>
-						<ThemedText type="subtitle">Send Response</ThemedText>
+					<View style={styles.section}>
+						<Text style={styles.subtitle}>Send Response</Text>
 						<TextInput style={styles.input} multiline value={responseText} onChangeText={setResponseText} placeholder="Enter JSON or message" />
 						<Button title="Send" onPress={handleSendResponse} disabled={!responseText} />
-					</ThemedView>
+					</View>
 
 					{/* Activity Log */}
-					<ThemedView style={styles.section}>
-						<ThemedText type="subtitle">Activity Log</ThemedText>
+					<View style={styles.section}>
+						<Text style={styles.subtitle}>Activity Log</Text>
 						<ScrollView ref={logsRef} style={styles.logs}>
 							{logs.map((log) => (
-								<ThemedView key={log.id} style={[styles.logItem, log.type === "sent" ? styles.sentLog : log.type === "received" ? styles.receivedLog : styles.errorLog]}>
-									<ThemedText>{`${log.timestamp} [${log.type.toUpperCase()}]: ${log.message}`}</ThemedText>
-								</ThemedView>
+								<View key={log.id} style={[styles.logItem, log.type === "sent" ? styles.sentLog : log.type === "received" ? styles.receivedLog : styles.errorLog]}>
+									<Text>{`${log.timestamp} [${log.type.toUpperCase()}]: ${log.message}`}</Text>
+								</View>
 							))}
 						</ScrollView>
-					</ThemedView>
-				</ThemedView>
+					</View>
+				</View>
 			) : (
 				<Button title="Scan QR Code to Connect" onPress={handleScanPress} disabled={!client} />
 			)}
-		</ThemedView>
+		</View>
 	);
 }
 
@@ -220,6 +196,17 @@ const styles = StyleSheet.create({
 		flex: 1,
 		padding: 20,
 		justifyContent: "center",
+		alignItems: "center",
+	},
+	title: {
+		fontSize: 24,
+		fontWeight: "bold",
+		marginBottom: 16,
+	},
+	subtitle: {
+		fontSize: 18,
+		fontWeight: "bold",
+		marginBottom: 8,
 	},
 	connectedContainer: {
 		flex: 1,

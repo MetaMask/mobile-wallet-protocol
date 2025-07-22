@@ -3555,6 +3555,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react-native-get-random-values@npm:^1.8.2":
+  version: 1.8.2
+  resolution: "@types/react-native-get-random-values@npm:1.8.2"
+  checksum: 08f3f82efbb5b6d9acd8f7f55a2dac9f228886323ac3018a1bab46cd1b45f24809d194fd2a3fe02a9ec4196606325e5cfffde0b0057ae785208b658fdc83c821
+  languageName: node
+  linkType: hard
+
 "@types/react@npm:^19":
   version: 19.1.8
   resolution: "@types/react@npm:19.1.8"
@@ -10594,6 +10601,7 @@ __metadata:
     "@react-navigation/elements": ^2.3.8
     "@react-navigation/native": ^7.1.6
     "@types/react": ~19.0.10
+    "@types/react-native-get-random-values": ^1.8.2
     buffer: ^6.0.3
     eciesjs: ^0.4.15
     eslint: ^9.25.0

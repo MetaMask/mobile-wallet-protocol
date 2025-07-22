@@ -1,5 +1,3 @@
-import "react-native-get-random-values";
-
 import type { SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -18,12 +16,10 @@ export default function ScannerScreen() {
 	const { client } = useWallet();
 
 	if (!permission) {
-		console.log("ScannerScreen: camera permission is loading.");
 		return <View />;
 	}
 
 	if (!permission.granted) {
-		console.log("ScannerScreen: camera permission not granted.");
 		return (
 			<View style={styles.container}>
 				<Text style={{ textAlign: "center" }}>We need your permission to show the camera</Text>
@@ -34,47 +30,37 @@ export default function ScannerScreen() {
 
 	const handleBarCodeScanned = async ({ data }: { data: string }) => {
 		if (hasScanned.current || !client || isConnecting) {
-			console.log("ScannerScreen: scan ignored (already scanned, no client, or connecting).");
 			return;
 		}
 
-		console.log("ScannerScreen: QR code scanned.", data);
 		hasScanned.current = true;
 		setIsScanning(false);
 		setIsConnecting(true);
 		setScanError(null);
 
 		try {
-			console.log("ScannerScreen: parsing session request...");
 			const sessionRequest: SessionRequest = JSON.parse(data);
-			console.log("ScannerScreen: connecting client with session request...", sessionRequest);
 			await client.connect({ sessionRequest });
-			console.log("ScannerScreen: client connected successfully, navigating back.");
 			router.back();
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "Unknown error";
-			console.error("ScannerScreen: failed to connect.", errorMessage);
 			setScanError(errorMessage);
 			hasScanned.current = false; // Allow rescan on error
 		} finally {
-			console.log("ScannerScreen: finished connection attempt.");
 			setIsConnecting(false);
 		}
 	};
 
 	const resetScanner = () => {
-		console.log("ScannerScreen: resetting scanner.");
 		setScanError(null);
 		hasScanned.current = false;
 		setIsScanning(true);
 	};
 
 	const goBack = () => {
-		console.log("ScannerScreen: navigating back.");
 		router.back();
 	};
 
-	console.log("ScannerScreen: rendering.");
 	return (
 		<View style={styles.container}>
 			<CameraView onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} style={StyleSheet.absoluteFillObject} />

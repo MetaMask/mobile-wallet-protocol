@@ -1,3 +1,4 @@
+import "react-native-get-random-values";
 import { SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import Constants from "expo-constants"; // <-- Import expo-constants
