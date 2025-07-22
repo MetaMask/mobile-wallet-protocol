@@ -43,6 +43,7 @@ export default function FullDemo() {
 	const [dappMessage, setDappMessage] = useState("Hello from DApp!");
 	const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
 	const [sessionTimerId, setSessionTimerId] = useState<NodeJS.Timeout | null>(null);
+	const [isSessionExpired, setIsSessionExpired] = useState(false);
 
 	// Wallet State
 	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
@@ -62,30 +63,32 @@ export default function FullDemo() {
 		walletLogsRef.current?.scrollTo(0, walletLogsRef.current.scrollHeight);
 	}, [dappLogs, walletLogs]);
 
-	// Session timeout management
 	const startSessionTimer = (expiresAt: number) => {
 		// Clear any existing timer
 		if (sessionTimerId) {
 			clearInterval(sessionTimerId);
 		}
+		setIsSessionExpired(false);
 
-		const updateTimer = () => {
+		// Set up interval to update every second
+		const timerId = setInterval(() => {
 			const now = Date.now();
 			const timeLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
 			setSessionTimeLeft(timeLeft);
 
 			if (timeLeft === 0) {
-				addDappLog("system", "Session request expired. Generating new session...");
-				handleRetrySession();
+				clearInterval(timerId);
+				setSessionTimerId(null);
+				addDappLog("system", "Session request expired.");
+				setIsSessionExpired(true);
 			}
-		};
+		}, 1000);
 
-		// Update immediately
-		updateTimer();
-
-		// Set up interval to update every second
-		const timerId = setInterval(updateTimer, 1000);
 		setSessionTimerId(timerId);
+
+		const now = Date.now();
+		const timeLeft = Math.max(0, Math.floor((expiresAt - now) / 1000));
+		setSessionTimeLeft(timeLeft);
 	};
 
 	const clearSessionTimer = () => {
@@ -96,28 +99,26 @@ export default function FullDemo() {
 		setSessionTimeLeft(0);
 	};
 
-	const handleRetrySession = async () => {
+	const handleGenerateNewQrCode = async () => {
 		if (!dappClient) return;
 
 		try {
-			// Clear existing timer
+			// Clear existing timer and state
 			clearSessionTimer();
-
-			// Clear existing session data
 			setSessionRequest(null);
 			setQrCodeData("");
 
 			// Disconnect and reconnect to generate new session
 			await dappClient.disconnect();
-			addDappLog("system", "Retrying connection with new session...");
+			addDappLog("system", "Generating new QR code...");
 
-			// Start new connection
+			// Start new connection, which will trigger 'session-request' and start a new timer
 			dappClient.connect().catch((error) => {
-				console.error("Retry connection failed:", error);
-				addDappLog("system", `Retry connection failed: ${error.message}`);
+				console.error("New QR code generation failed:", error);
+				addDappLog("system", `New QR code generation failed: ${error.message}`);
 			});
 		} catch (error) {
-			addDappLog("system", `Retry failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+			addDappLog("system", `Failed to generate new QR code: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
 	};
 
@@ -214,7 +215,9 @@ export default function FullDemo() {
 				addDappLog("system", "DApp disconnected from wallet");
 				setDappConnected(false);
 				setDappStatus("Disconnected");
-				clearSessionTimer(); // Clear timer on disconnect
+				if (!isSessionExpired) {
+					clearSessionTimer();
+				}
 			});
 
 			dapp.on("message", (payload: unknown) => {
@@ -514,6 +517,7 @@ export default function FullDemo() {
 		return () => {
 			clearSessionTimer();
 		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	return (
@@ -549,7 +553,7 @@ export default function FullDemo() {
 									<button
 										type="button"
 										onClick={handleDappConnect}
-										disabled={!dappClient}
+										disabled={!dappClient || (!!qrCodeData && !isSessionExpired)}
 										className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
 									>
 										{dappClient ? "Connect" : "Initialize & Connect"}
@@ -561,25 +565,35 @@ export default function FullDemo() {
 								)}
 							</div>
 
-							{/* QR Code Display */}
+							{/* **MODIFIED**: QR Code Display with expiration logic */}
 							{qrCodeData && !dappConnected && (
 								<div className="mt-4">
 									<div className="flex items-center justify-between mb-2">
 										<h5 className="font-medium text-gray-900 dark:text-white">QR Code for Mobile Wallet</h5>
-										{sessionTimeLeft > 0 && (
-											<div className="flex items-center gap-2">
+										{isSessionExpired ? (
+											<span className="text-sm text-red-600 dark:text-red-400 font-medium">Session expired</span>
+										) : (
+											sessionTimeLeft > 0 && (
 												<span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Expires in {formatTimeLeft(sessionTimeLeft)}</span>
-											</div>
+											)
 										)}
 									</div>
-									<div className="bg-white p-4 rounded-lg inline-block">
+									<div className={`bg-white p-4 rounded-lg inline-block transition-opacity ${isSessionExpired ? "opacity-50" : ""}`}>
 										<QRCodeDisplay data={qrCodeData} />
 									</div>
 									<div className="flex items-center justify-between mt-2">
-										<p className="text-xs text-gray-500 dark:text-gray-400">Scan this QR code with your mobile wallet app</p>
-										<button type="button" onClick={handleRetrySession} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
-											Generate New QR
-										</button>
+										<p className="text-xs text-gray-500 dark:text-gray-400">
+											{isSessionExpired ? "This QR code has expired." : "Scan this QR code with your mobile wallet app"}
+										</p>
+										{isSessionExpired && (
+											<button
+												type="button"
+												onClick={handleGenerateNewQrCode}
+												className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+											>
+												Generate New QR
+											</button>
+										)}
 									</div>
 								</div>
 							)}
@@ -629,15 +643,14 @@ export default function FullDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${
-												log.type === "sent"
-													? "bg-blue-100 dark:bg-blue-900"
-													: log.type === "received"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-											}`}
+											className={`p-2 rounded text-xs ${log.type === "sent"
+												? "bg-blue-100 dark:bg-blue-900"
+												: log.type === "received"
+													? "bg-green-100 dark:bg-green-900"
+													: log.type === "notification"
+														? "bg-yellow-100 dark:bg-yellow-900"
+														: "bg-gray-200 dark:bg-gray-700"
+												}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -771,15 +784,14 @@ export default function FullDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${
-													log.type === "request"
-														? "bg-purple-100 dark:bg-purple-900"
-														: log.type === "response"
-															? "bg-green-100 dark:bg-green-900"
-															: log.type === "notification"
-																? "bg-yellow-100 dark:bg-yellow-900"
-																: "bg-gray-200 dark:bg-gray-700"
-												}`}
+												className={`p-2 rounded text-xs ${log.type === "request"
+													? "bg-purple-100 dark:bg-purple-900"
+													: log.type === "response"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+													}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

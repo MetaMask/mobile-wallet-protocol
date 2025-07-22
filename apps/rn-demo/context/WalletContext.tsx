@@ -23,7 +23,6 @@ interface WalletContextType {
 	globalActivityLog: GlobalActivityLogEntry[];
 	isInitializing: boolean;
 	error: string | null;
-	// **NEW**: Expose addLog function
 	addLog: (entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => void;
 }
 
@@ -36,14 +35,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	// **MODIFIED**: Use useCallback for a stable addLog function
 	const addLog = useCallback((entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => {
 		const newLogEntry = {
 			id: Date.now().toString() + Math.random(),
 			timestamp: new Date().toLocaleTimeString(),
 			...entry,
 		};
-		// **MODIFIED**: Prepend new logs to the start of the array
 		setGlobalActivityLog((prev) => [newLogEntry, ...prev]);
 	}, []);
 
@@ -65,6 +62,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
 				// Listen to events from the manager
 				manager.on("sessions-changed", async () => {
+					if (!manager) return;
 					const allSessions = await manager.getAllSessions();
 					setSessions(allSessions.sort((a, b) => b.expiresAt - a.expiresAt));
 				});
@@ -77,7 +75,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 					});
 				});
 
-				// **NEW**: Listen for system log events
 				manager.on("system-log", ({ sessionId, message }) => {
 					addLog({
 						sessionId,
@@ -111,7 +108,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 			isMounted = false;
 			manager?.deleteAllClients();
 		};
-	}, [addLog]); // Add addLog as a dependency
+	}, [addLog]);
 
 	const value = { sessionManager, sessions, globalActivityLog, isInitializing, error, addLog };
 

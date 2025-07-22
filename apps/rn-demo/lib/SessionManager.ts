@@ -44,7 +44,6 @@ export class SessionManager extends EventEmitter {
 				this.clients.set(session.id, client);
 				this.setupClientListeners(client, session.id);
 				console.log(`SessionManager: Successfully resumed session ${session.id}`);
-				// **NEW**: Emit a system log event
 				this.emit("system-log", { sessionId: session.id, message: "Session resumed" });
 			} catch (e) {
 				console.error(`SessionManager: Failed to resume session ${session.id}`, e);
@@ -67,7 +66,6 @@ export class SessionManager extends EventEmitter {
 		this.clients.set(sessionRequest.id, client);
 		this.setupClientListeners(client, sessionRequest.id);
 		console.log(`SessionManager: New session ${sessionRequest.id} connected.`);
-		// **NEW**: Emit a system log event
 		this.emit("system-log", { sessionId: sessionRequest.id, message: "New session created" });
 		this.emit("sessions-changed");
 		return client;
@@ -80,7 +78,6 @@ export class SessionManager extends EventEmitter {
 			await client.disconnect(); // This also deletes from sessionStore
 			client.removeAllListeners();
 			this.clients.delete(sessionId);
-			// **NEW**: Emit a system log event
 			this.emit("system-log", { sessionId, message: "Session deleted" });
 			this.emit("sessions-changed");
 		}
