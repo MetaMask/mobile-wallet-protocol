@@ -1,12 +1,30 @@
 /**
- * The handshake message sent by the wallet to the dApp.
- * Its payload is part of the protocol itself and should be strongly typed.
+ * The unencrypted payload sent by the wallet during the handshake.
+ * This is encrypted and placed inside the WalletHandshake message.
+ */
+export type WalletHandshakePayload = {
+	publicKeyB64: string;
+	channelId: string;
+	pin: string;
+	expiresAt: number;
+};
+
+/**
+ * The handshake message sent by the wallet to the dApp on the public channel.
+ * Its payload is an encrypted WalletHandshakePayload.
  */
 export type WalletHandshake = {
 	type: "wallet-handshake";
 	payload: {
-		publicKeyB64: string;
+		encrypted: string;
 	};
+};
+
+/**
+ * The confirmation message sent by the dApp to the wallet on the new private channel.
+ */
+export type HandshakeComplete = {
+	type: "handshake-complete";
 };
 
 /**
@@ -30,4 +48,4 @@ export type WalletResponse = {
 /**
  * A union of all possible protocol messages.
  */
-export type ProtocolMessage = WalletHandshake | DappRequest | WalletResponse;
+export type ProtocolMessage = WalletHandshake | HandshakeComplete | DappRequest | WalletResponse;

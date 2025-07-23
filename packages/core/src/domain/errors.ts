@@ -16,6 +16,11 @@ export enum ErrorCode {
 	DECRYPTION_FAILED = "DECRYPTION_FAILED",
 	REQUEST_EXPIRED = "REQUEST_EXPIRED",
 
+	// PIN Flow errors
+	PIN_INCORRECT = "PIN_INCORRECT",
+	MAX_PIN_ATTEMPTS_REACHED = "MAX_PIN_ATTEMPTS_REACHED",
+	PIN_ENTRY_TIMEOUT = "PIN_ENTRY_TIMEOUT",
+
 	// Generic fallback
 	UNKNOWN = "UNKNOWN",
 }
@@ -31,6 +36,6 @@ export class ProtocolError extends Error {
 }
 
 // Subclasses for grouping (optional but helps with type matching)
-export class SessionError extends ProtocolError {}
-export class TransportError extends ProtocolError {}
-export class CryptoError extends ProtocolError {}
+export class SessionError extends ProtocolError { }
+export class TransportError extends ProtocolError { }
+export class CryptoError extends ProtocolError { }

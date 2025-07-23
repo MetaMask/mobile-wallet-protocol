@@ -11,7 +11,7 @@
 	"channel": {
 		"namespaces": [
 			{
-				"name": "session",
+				"name": "handshake",
 				"channel_regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
 				"allow_subscribe_for_client": true,
 				"allow_subscribe_for_anonymous": true,
@@ -20,6 +20,20 @@
 				"allow_history_for_client": true,
 				"allow_history_for_anonymous": true,
 				"history_size": 5,
+				"history_ttl": "300s",
+				"force_positioning": true,
+				"force_recovery": true
+			},
+			{
+				"name": "private",
+				"channel_regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+				"allow_subscribe_for_client": true,
+				"allow_subscribe_for_anonymous": true,
+				"allow_publish_for_client": true,
+				"allow_publish_for_anonymous": true,
+				"allow_history_for_client": true,
+				"allow_history_for_anonymous": true,
+				"history_size": 20,
 				"history_ttl": "300s",
 				"force_positioning": true,
 				"force_recovery": true
