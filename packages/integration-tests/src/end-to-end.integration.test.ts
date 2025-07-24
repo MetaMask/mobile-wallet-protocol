@@ -305,4 +305,273 @@ t.describe("Integration Test", () => {
 		},
 		20000,
 	);
+
+	t.test(
+		"should send messages to offline clients and deliver them when they come back online",
+		async () => {
+			// 1. Setup: Create instances of the DappClient and WalletClient with in-memory stores.
+			const dappKvStore = new InMemoryKVStore();
+			const walletKvStore = new InMemoryKVStore();
+			const dappSessionStore = new SessionStore(dappKvStore);
+			const walletSessionStore = new SessionStore(walletKvStore);
+
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: dappKvStore,
+				websocket: WebSocket,
+			});
+
+			const walletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: walletKvStore,
+				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
+			});
+
+			walletClient = new WalletClient({
+				transport: walletTransport,
+				sessionstore: walletSessionStore,
+			});
+
+			// 2. Initial handshake to establish session
+			const onSessionRequest = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session-request", (sessionRequest) => {
+					resolve(sessionRequest);
+				});
+			});
+
+			const dappConnected = new Promise<void>((resolve) => {
+				dappClient.on("connected", () => resolve());
+			});
+
+			const walletConnected = new Promise<void>((resolve) => {
+				walletClient.on("connected", () => resolve());
+			});
+
+			dappClient.connect();
+			const sessionRequest = await onSessionRequest;
+			await walletClient.connect({ sessionRequest });
+			await Promise.all([dappConnected, walletConnected]);
+
+			const sessionId = (dappClient as any).session?.id;
+			t.expect(sessionId).toBeDefined();
+
+			// 3. Disconnect wallet transport while keeping dapp connected (preserving session)
+			// We disconnect only the transport layer to simulate a network drop or app crash.
+			// This preserves the session data in the kvstore, allowing the client to resume later.
+			// Calling a full `walletClient.disconnect()` would permanently delete the session.
+			await (walletClient as any).transport.disconnect();
+
+			// 4. Dapp sends multiple messages while wallet is offline
+			const offlineMessages = [
+				{ jsonrpc: "2.0", method: "eth_sign", params: ["0xoffline1"], id: 1 },
+				{ jsonrpc: "2.0", method: "eth_signTypedData", params: ["0xoffline2"], id: 2 },
+				{ jsonrpc: "2.0", method: "eth_sendTransaction", params: ["0xoffline3"], id: 3 },
+			];
+
+			// Send messages while wallet is offline - these should be queued by the relay
+			const sendPromises = offlineMessages.map(async (msg) => {
+				await dappClient.sendRequest(msg);
+			});
+			await Promise.all(sendPromises);
+
+			// 5. Create new wallet client with same storage and reconnect.
+			// This simulates a cold start of the app, which reloads its state from disk.
+			const reconnectedWalletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: walletKvStore,
+				websocket: WebSocket,
+			});
+
+			const reconnectedWalletClient = new WalletClient({
+				transport: reconnectedWalletTransport,
+				sessionstore: walletSessionStore,
+			});
+			walletClient = reconnectedWalletClient; // reassign for afterEach cleanup
+
+			// 6. Set up promise to collect all offline messages
+			const receivedMessages: unknown[] = [];
+			const offlineMessagesReceived = new Promise<void>((resolve) => {
+				const handler = (payload: unknown) => {
+					receivedMessages.push(payload);
+					if (receivedMessages.length === offlineMessages.length) {
+						reconnectedWalletClient.off("message", handler);
+						resolve();
+					}
+				};
+				reconnectedWalletClient.on("message", handler);
+			});
+
+			const reconnectedWalletConnected = new Promise<void>((resolve) => {
+				reconnectedWalletClient.on("connected", () => resolve());
+			});
+
+			// 7. Wallet comes back online and should receive all offline messages from history
+			await reconnectedWalletClient.resume(sessionId as string);
+			await reconnectedWalletConnected;
+
+			// Wait for all offline messages to be received
+			await offlineMessagesReceived;
+
+			// 8. Verify all messages were received in the correct order
+			t.expect(receivedMessages).toHaveLength(3);
+			t.expect(receivedMessages).toEqual(offlineMessages);
+
+			// 9. Test that new real-time messages still work after history delivery
+			const realtimeMessage = { jsonrpc: "2.0", method: "eth_accounts", params: [], id: 4 };
+			const onRealtimeMessage = new Promise<unknown>((resolve) => {
+				reconnectedWalletClient.on("message", (payload) => {
+					resolve(payload);
+				});
+			});
+
+			await dappClient.sendRequest(realtimeMessage);
+			const receivedRealtimeMessage = await onRealtimeMessage;
+			t.expect(receivedRealtimeMessage).toEqual(realtimeMessage);
+		},
+		30000,
+	);
+
+	t.test(
+		"should handle bidirectional offline messaging and message ordering",
+		async () => {
+			// 1. Setup: Create instances of the DappClient and WalletClient with in-memory stores.
+			const dappKvStore = new InMemoryKVStore();
+			const walletKvStore = new InMemoryKVStore();
+			const dappSessionStore = new SessionStore(dappKvStore);
+			const walletSessionStore = new SessionStore(walletKvStore);
+
+			const dappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: dappKvStore,
+				websocket: WebSocket,
+			});
+
+			const walletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: walletKvStore,
+				websocket: WebSocket,
+			});
+
+			dappClient = new DappClient({
+				transport: dappTransport,
+				sessionstore: dappSessionStore,
+			});
+
+			walletClient = new WalletClient({
+				transport: walletTransport,
+				sessionstore: walletSessionStore,
+			});
+
+			// 2. Initial handshake to establish session
+			const onSessionRequest = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session-request", (sessionRequest) => {
+					resolve(sessionRequest);
+				});
+			});
+
+			const dappConnected = new Promise<void>((resolve) => {
+				dappClient.on("connected", () => resolve());
+			});
+
+			const walletConnected = new Promise<void>((resolve) => {
+				walletClient.on("connected", () => resolve());
+			});
+
+			dappClient.connect();
+			const sessionRequest = await onSessionRequest;
+			await walletClient.connect({ sessionRequest });
+			await Promise.all([dappConnected, walletConnected]);
+
+			const sessionId = (dappClient as any).session?.id;
+
+			// 3. Scenario: Dapp goes offline, wallet sends responses
+			// We simulate a transport-only disconnect to preserve the session for resumption.
+			await (dappClient as any).transport.disconnect();
+
+			// Wallet sends responses while dapp is offline
+			const offlineResponses = [
+				{ jsonrpc: "2.0", id: 1, result: "0xsignature1" },
+				{ jsonrpc: "2.0", id: 2, result: "0xsignature2" },
+			];
+
+			for (const response of offlineResponses) {
+				await walletClient.sendResponse(response);
+			}
+
+			// 4. Scenario: Both clients offline, then wallet comes back and sends more
+			// We simulate a transport-only disconnect to preserve the session for resumption.
+			await (walletClient as any).transport.disconnect();
+
+			// Create new wallet client and send more messages
+			const reconnectedWalletTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: walletKvStore,
+				websocket: WebSocket,
+			});
+
+			const reconnectedWalletClient = new WalletClient({
+				transport: reconnectedWalletTransport,
+				sessionstore: walletSessionStore,
+			});
+
+			const walletReconnected = new Promise<void>((resolve) => {
+				reconnectedWalletClient.on("connected", () => resolve());
+			});
+
+			await reconnectedWalletClient.resume(sessionId as string);
+			await walletReconnected;
+
+			// Send additional response while dapp is still offline
+			const additionalResponse = { jsonrpc: "2.0", id: 3, result: "0xsignature3" };
+			await reconnectedWalletClient.sendResponse(additionalResponse);
+
+			// 5. Dapp comes back online and should receive all offline messages.
+			// This simulates a cold start of the app, which reloads its state from disk.
+			const reconnectedDappTransport = await WebSocketTransport.create({
+				url: RELAY_URL,
+				kvstore: dappKvStore,
+				websocket: WebSocket,
+			});
+
+			const reconnectedDappClient = new DappClient({
+				transport: reconnectedDappTransport,
+				sessionstore: dappSessionStore,
+			});
+			dappClient = reconnectedDappClient; // reassign for afterEach cleanup
+			walletClient = reconnectedWalletClient; // reassign for afterEach cleanup
+
+			const receivedResponses: unknown[] = [];
+			const allResponsesReceived = new Promise<void>((resolve) => {
+				const handler = (payload: unknown) => {
+					receivedResponses.push(payload);
+					if (receivedResponses.length === 3) {
+						reconnectedDappClient.off("message", handler);
+						resolve();
+					}
+				};
+				reconnectedDappClient.on("message", handler);
+			});
+
+			const dappReconnected = new Promise<void>((resolve) => {
+				reconnectedDappClient.on("connected", () => resolve());
+			});
+
+			await reconnectedDappClient.resume(sessionId as string);
+			await dappReconnected;
+
+			// Wait for all offline responses to be received
+			await allResponsesReceived;
+
+			// 6. Verify all responses were received in the correct order
+			const expectedResponses = [...offlineResponses, additionalResponse];
+			t.expect(receivedResponses).toHaveLength(3);
+			t.expect(receivedResponses).toEqual(expectedResponses);
+		},
+		30000,
+	);
 });

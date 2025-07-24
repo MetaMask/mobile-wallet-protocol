@@ -34,5 +34,8 @@
 			"simple-git-hooks": false,
 			"tsup>esbuild": false
 		}
+	},
+	"dependencies": {
+		"eventemitter3": "^5.0.1"
 	}
 }
