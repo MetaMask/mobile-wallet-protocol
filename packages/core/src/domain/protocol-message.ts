@@ -1,33 +1,22 @@
-/**
- * The handshake message sent by the wallet to the dApp.
- * Its payload is part of the protocol itself and should be strongly typed.
- */
-export type WalletHandshake = {
-	type: "wallet-handshake";
-	payload: {
-		publicKeyB64: string;
-	};
+export type HandshakeOfferPayload = {
+	publicKeyB64: string;
+	channelId: string;
+	otp: string;
+	deadline: number;
 };
 
-/**
- * A generic request sent from the dApp to the wallet.
- * The payload is application-defined.
- */
-export type DappRequest = {
-	type: "dapp-request";
+export type HandshakeOffer = {
+	type: "handshake-offer";
+	payload: HandshakeOfferPayload;
+};
+
+export type HandshakeAck = {
+	type: "handshake-ack";
+};
+
+export type Message = {
+	type: "message";
 	payload: unknown;
 };
 
-/**
- * A generic response sent from the wallet to the dApp.
- * The payload is application-defined.
- */
-export type WalletResponse = {
-	type: "wallet-response";
-	payload: unknown;
-};
-
-/**
- * A union of all possible protocol messages.
- */
-export type ProtocolMessage = WalletHandshake | DappRequest | WalletResponse;
+export type ProtocolMessage = HandshakeOffer | HandshakeAck | Message;

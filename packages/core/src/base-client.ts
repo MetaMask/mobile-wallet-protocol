@@ -8,9 +8,8 @@ import type { ISessionStore } from "./domain/session-store";
 import type { ITransport } from "./domain/transport";
 
 /**
- * Provides the foundational tools for communication: a transport, a key manager, session management
- * and methods for sending/receiving encrypted messages. It does not manage
- * the handshake state itself, leaving that to the concrete implementations.
+ * Provides foundational communication tools: a transport, key manager, session management,
+ * and methods for sending/receiving encrypted messages.
  */
 export abstract class BaseClient extends EventEmitter {
 	protected transport: ITransport;
@@ -60,6 +59,9 @@ export abstract class BaseClient extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Disconnects from the transport and clears the session.
+	 */
 	public async disconnect(): Promise<void> {
 		if (!this.session) return;
 		await this.transport.disconnect();
@@ -72,18 +74,19 @@ export abstract class BaseClient extends EventEmitter {
 
 	protected abstract handleMessage(message: ProtocolMessage): void;
 
-	protected async sendMessage(message: ProtocolMessage): Promise<void> {
+	/**
+	 * Encrypts and sends a protocol message to a specified channel.
+	 */
+	protected async sendMessage(channel: string, message: ProtocolMessage): Promise<void> {
 		if (!this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send message: session is not initialized.");
-
 		await this.checkSessionExpiry();
 		const plaintext = JSON.stringify(message);
 		const encrypted = await this.keymanager.encrypt(plaintext, this.session.theirPublicKey);
-		await this.transport.publish(this.session.channel, encrypted);
+		await this.transport.publish(channel, encrypted);
 	}
 
 	private async checkSessionExpiry(): Promise<void> {
 		if (!this.session) return;
-
 		if (this.session.expiresAt < Date.now()) {
 			await this.disconnect();
 			throw new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired");

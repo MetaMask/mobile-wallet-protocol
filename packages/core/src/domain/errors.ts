@@ -5,16 +5,23 @@ export enum ErrorCode {
 	SESSION_INVALID_STATE = "SESSION_INVALID_STATE",
 	SESSION_SAVE_FAILED = "SESSION_SAVE_FAILED",
 
-	// Transport/Connection errors
+	// Transport errors
 	TRANSPORT_DISCONNECTED = "TRANSPORT_DISCONNECTED",
 	TRANSPORT_PUBLISH_FAILED = "TRANSPORT_PUBLISH_FAILED",
 	TRANSPORT_SUBSCRIBE_FAILED = "TRANSPORT_SUBSCRIBE_FAILED",
 	TRANSPORT_HISTORY_FAILED = "TRANSPORT_HISTORY_FAILED",
 	TRANSPORT_PARSE_FAILED = "TRANSPORT_PARSE_FAILED",
 
-	// Crypto/Handshake errors
+	// Crypto errors
 	DECRYPTION_FAILED = "DECRYPTION_FAILED",
+
+	// Handshake errors
 	REQUEST_EXPIRED = "REQUEST_EXPIRED",
+
+	// OTP errors
+	OTP_INCORRECT = "OTP_INCORRECT",
+	OTP_MAX_ATTEMPTS_REACHED = "OTP_MAX_ATTEMPTS_REACHED",
+	OTP_ENTRY_TIMEOUT = "OTP_ENTRY_TIMEOUT",
 
 	// Generic fallback
 	UNKNOWN = "UNKNOWN",
@@ -30,7 +37,6 @@ export class ProtocolError extends Error {
 	}
 }
 
-// Subclasses for grouping (optional but helps with type matching)
 export class SessionError extends ProtocolError {}
 export class TransportError extends ProtocolError {}
 export class CryptoError extends ProtocolError {}

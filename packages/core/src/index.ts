@@ -4,7 +4,7 @@ export { CryptoError, ErrorCode, ProtocolError, SessionError, TransportError } f
 export type { IKeyManager } from "./domain/key-manager";
 export type { KeyPair } from "./domain/key-pair";
 export type { IKVStore } from "./domain/kv-store";
-export type { DappRequest, ProtocolMessage, WalletHandshake, WalletResponse } from "./domain/protocol-message";
+export type { HandshakeAck, HandshakeOffer, HandshakeOfferPayload, Message, ProtocolMessage } from "./domain/protocol-message";
 export type { Session } from "./domain/session";
 export type { SessionRequest } from "./domain/session-request";
 export type { ISessionStore } from "./domain/session-store";
