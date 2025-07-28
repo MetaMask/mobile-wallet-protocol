@@ -229,8 +229,8 @@ t.describe("WebSocketTransport", () => {
 			// Now connect the publisher
 			await publisher.connect();
 
-			// The promise should now resolve, and the message should be received
-			await t.expect(publishPromise).resolves.toBeUndefined();
+			// The promise should now resolve with true, and the message should be received
+			await t.expect(publishPromise).resolves.toBe(true);
 			const received = await messagePromise;
 			t.expect(received.data).toBe(payload);
 		});
@@ -248,7 +248,7 @@ t.describe("WebSocketTransport", () => {
 
 			await connectPromise;
 
-			await t.expect(publishPromise).resolves.toBeUndefined();
+			await t.expect(publishPromise).resolves.toBe(true);
 			const received = await messagePromise;
 			t.expect(received.data).toBe(payload);
 		});
@@ -291,13 +291,13 @@ t.describe("WebSocketTransport", () => {
 			t.expect(received.data).toBe(payload);
 		});
 
-		t.test("should reject queued messages on disconnect", async () => {
-			const publishPromise = publisher.publish(channel, "this will be rejected");
+		t.test("should resolve queued messages with false on disconnect", async () => {
+			const publishPromise = publisher.publish(channel, "this will be cancelled");
 
-			// Disconnecting while a message is in the queue should cause its promise to reject.
+			// Disconnecting while a message is in the queue should cause its promise to resolve with false.
 			await publisher.disconnect();
 
-			await t.expect(publishPromise).rejects.toThrow("Transport disconnected by client.");
+			await t.expect(publishPromise).resolves.toBe(false);
 		});
 	});
 
@@ -653,7 +653,7 @@ t.describe("WebSocketTransport", () => {
 			// Subscribe and receive some messages to build up history
 			await transport.subscribe(channel);
 
-			const messagePromises = [];
+			const messagePromises: Promise<any>[] = [];
 			for (let i = 0; i < 3; i++) {
 				messagePromises.push(waitFor(transport, "message"));
 				await publisher.publish(channel, `message-${i}`);

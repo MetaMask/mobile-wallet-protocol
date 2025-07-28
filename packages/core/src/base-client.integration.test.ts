@@ -53,8 +53,8 @@ class TestClient extends BaseClient {
 	}
 
 	// Expose the protected sendMessage for easier testing.
-	public sendMessage(message: ProtocolMessage): Promise<void> {
-		return super.sendMessage(message);
+	public sendMessage(channel: string, message: ProtocolMessage): Promise<void> {
+		return super.sendMessage(channel, message);
 	}
 }
 
@@ -122,8 +122,8 @@ t.describe("BaseClient", () => {
 		await clientB["transport"].subscribe(channel);
 
 		// 3. Client A sends a message
-		const messageToSend: ProtocolMessage = { type: "dapp-request", payload: { method: "eth_sendTransaction" } };
-		await clientA.sendMessage(messageToSend);
+		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "eth_sendTransaction", params: [] } };
+		await clientA.sendMessage(channel, messageToSend);
 
 		// 4. Wait for Client B to receive and process the message
 		await new Promise((resolve) => {
@@ -182,10 +182,10 @@ t.describe("BaseClient", () => {
 		clientA.setSession(expiredSession);
 
 		// 2. Try to send a message with expired session
-		const messageToSend: ProtocolMessage = { type: "dapp-request", payload: { method: "test" } };
+		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "test" } };
 
 		// 3. Expect it to throw "Session expired" error
-		await t.expect(clientA.sendMessage(messageToSend)).rejects.toThrow("Session expired");
+		await t.expect(clientA.sendMessage(channel, messageToSend)).rejects.toThrow("Session expired");
 
 		// 4. Verify that the session was cleaned up (client disconnected)
 		t.expect(clientA.getSession()).toBeNull();

@@ -24,7 +24,7 @@ type TransportMessage = {
 type QueuedItem = {
 	channel: string;
 	payload: string;
-	resolve: () => void;
+	resolve: (ok: boolean) => void;
 	reject: (reason?: Error) => void;
 };
 
@@ -113,7 +113,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 * Disconnects from the relay server.
 	 */
 	public disconnect(): Promise<void> {
-		this.queue.forEach((msg) => msg.reject(new TransportError(ErrorCode.TRANSPORT_DISCONNECTED, "Transport disconnected by client.")));
+		this.queue.forEach((msg) => msg.resolve(false));
 		this.queue.length = 0;
 
 		if (this.state === "disconnected") {
@@ -162,8 +162,8 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	/**
 	 * Publishes a message to a channel. Returns a promise that resolves when the message is published.
 	 */
-	public publish(channel: string, payload: string): Promise<void> {
-		const promise = new Promise<void>((resolve, reject) => {
+	public publish(channel: string, payload: string): Promise<boolean> {
+		const promise = new Promise<boolean>((resolve, reject) => {
 			this.queue.push({ channel, payload, resolve, reject });
 		});
 		this._processQueue();
@@ -268,7 +268,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 				try {
 					await this._process(item);
 					this.queue.shift(); // Remove from queue on success.
-					item.resolve();
+					item.resolve(true);
 				} catch (error) {
 					// Remove the failed item from queue and reject its promise.
 					this.queue.shift();

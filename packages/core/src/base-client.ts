@@ -1,6 +1,6 @@
 import EventEmitter from "eventemitter3";
 import { ClientState } from "./domain/client-state";
-import { CryptoError, ErrorCode, SessionError } from "./domain/errors";
+import { CryptoError, ErrorCode, SessionError, TransportError } from "./domain/errors";
 import type { IKeyManager } from "./domain/key-manager";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
@@ -64,11 +64,12 @@ export abstract class BaseClient extends EventEmitter {
 	 */
 	public async disconnect(): Promise<void> {
 		if (!this.session) return;
-		await this.transport.disconnect();
-		await this.transport.clear(this.session.channel);
-		await this.sessionstore.delete(this.session.id);
+		const session = this.session; // Capture reference before setting to null
 		this.session = null;
 		this.state = ClientState.DISCONNECTED;
+		await this.transport.disconnect();
+		await this.transport.clear(session.channel);
+		await this.sessionstore.delete(session.id);
 		this.emit("disconnected");
 	}
 
@@ -82,7 +83,8 @@ export abstract class BaseClient extends EventEmitter {
 		await this.checkSessionExpiry();
 		const plaintext = JSON.stringify(message);
 		const encrypted = await this.keymanager.encrypt(plaintext, this.session.theirPublicKey);
-		await this.transport.publish(channel, encrypted);
+		const ok = await this.transport.publish(channel, encrypted);
+		if (!ok) throw new TransportError(ErrorCode.TRANSPORT_DISCONNECTED, "Message could not be sent because the transport is disconnected.");
 	}
 
 	private async checkSessionExpiry(): Promise<void> {

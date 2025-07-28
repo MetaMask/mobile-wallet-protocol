@@ -16,7 +16,9 @@
 		"lint": "yarn biome lint ./packages",
 		"lint:ci": "yarn biome ci ./packages",
 		"lint:fix": "yarn biome format --write ./apps ./packages",
-		"llm": "npx repomix -o .llm.txt"
+		"llm": "npx repomix -o .llm.txt",
+		"llm:packages": "npx repomix -o .llm-packages.txt ./packages",
+		"llm:apps": "npx repomix -o .llm-apps.txt ./apps"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.0.0",
