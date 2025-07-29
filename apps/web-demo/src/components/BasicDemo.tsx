@@ -1,7 +1,7 @@
 "use client";
 
 import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
+import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useState } from "react";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
@@ -14,6 +14,9 @@ export default function BasicDemo() {
 	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
 	const [sessionRequest, setSessionRequest] = useState<SessionRequest | null>(null);
 	const [isConnected, setIsConnected] = useState(false);
+	const [otp, setOtp] = useState<string>("");
+	const [otpPayload, setOtpPayload] = useState<OtpRequiredPayload | null>(null);
+	const [otpDeadline, setOtpDeadline] = useState<number>(0);
 
 	useEffect(() => {
 		let mounted = true;
@@ -88,6 +91,20 @@ export default function BasicDemo() {
 				wallet.on("error", (error: Error) => {
 					console.error("Wallet error:", error);
 					setStatus(`Wallet error: ${error.message}`);
+				});
+
+				dapp.on("otp_required", (payload: OtpRequiredPayload) => {
+					console.log("OTP required. User needs to enter OTP from wallet.", payload);
+					setStatus("OTP Required: Enter the code displayed on your wallet.");
+					setOtpPayload(payload);
+					setOtpDeadline(payload.deadline);
+				});
+
+				wallet.on("display_otp", (otp: string, deadline: number) => {
+					console.log(`Wallet should display OTP: ${otp}, it expires at ${new Date(deadline).toLocaleTimeString()}`);
+					setStatus(`Wallet received OTP: ${otp}. Please enter it into the dApp.`);
+					// In this demo, we can auto-fill it for convenience.
+					setOtp(otp);
 				});
 
 				if (!mounted) return;
@@ -171,6 +188,9 @@ export default function BasicDemo() {
 			// Reset state for fresh connection
 			setIsConnected(false);
 			setSessionRequest(null);
+			setOtp("");
+			setOtpPayload(null);
+			setOtpDeadline(0);
 			setStatus("Starting fresh connection...");
 
 			// Disconnect existing sessions if any
@@ -210,6 +230,27 @@ export default function BasicDemo() {
 		}
 	};
 
+	const handleOtpSubmit = async () => {
+		if (!otpPayload || !otp) {
+			setStatus("OTP payload or input is missing.");
+			return;
+		}
+
+		try {
+			setStatus("Submitting OTP...");
+			await otpPayload.submit(otp);
+			setStatus("OTP accepted! Both clients are now connected.");
+			// The 'connected' event from the dapp client will set isConnected to true.
+			setOtpPayload(null);
+			setOtp("");
+			setOtpDeadline(0);
+		} catch (error) {
+			console.error("OTP submission failed:", error);
+			setStatus(`OTP submission failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+			// Do not clear the payload, allow the user to retry.
+		}
+	};
+
 	const handleSendTestMessage = async () => {
 		if (!dappClient || !walletClient || !isConnected) {
 			setStatus("Not ready to send messages");
@@ -236,6 +277,9 @@ export default function BasicDemo() {
 			await Promise.all([dappClient?.disconnect(), walletClient?.disconnect()]);
 			setIsConnected(false);
 			setSessionRequest(null);
+			setOtp("");
+			setOtpPayload(null);
+			setOtpDeadline(0);
 			setStatus("Disconnected");
 		} catch (error) {
 			console.error("Disconnect failed:", error);
@@ -283,33 +327,61 @@ export default function BasicDemo() {
 			<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
 				<h3 className="font-semibold mb-4 text-gray-900 dark:text-white">Actions:</h3>
 				<div className="space-y-3">
+					{/* Step 1: DApp initiates connection */}
 					<button
 						type="button"
 						onClick={handleConnect}
-						disabled={!dappClient || !walletClient || isConnected}
+						disabled={!dappClient || !!sessionRequest || isConnected}
 						className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
 					>
 						1. Start Dapp Connection
 					</button>
 
+					{/* Step 2: Wallet "scans" and starts handshake */}
 					<button
 						type="button"
 						onClick={handleWalletConnect}
-						disabled={!sessionRequest || isConnected}
+						disabled={!sessionRequest || !!otpPayload || isConnected}
 						className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
 					>
-						2. Connect Wallet
+						2. Simulate Wallet Scan
 					</button>
 
+					{/* Step 3: OTP Submission (conditionally rendered) */}
+					{otpPayload && !isConnected && (
+						<div className="border-t pt-4 mt-4 space-y-3">
+							<p className="text-sm text-center font-semibold text-gray-800 dark:text-gray-200">Enter One-Time Password</p>
+							<input
+								type="text"
+								value={otp}
+								onChange={(e) => setOtp(e.target.value)}
+								placeholder="6-digit OTP"
+								maxLength={6}
+								className="w-full text-center tracking-widest font-mono text-2xl p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+							/>
+							<button
+								type="button"
+								onClick={handleOtpSubmit}
+								disabled={!otp || otp.length !== 6}
+								className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+							>
+								3. Submit OTP
+							</button>
+							{otpDeadline > 0 && <p className="text-xs text-center text-gray-500">Expires at: {new Date(otpDeadline).toLocaleTimeString()}</p>}
+						</div>
+					)}
+
+					{/* Step 4: Send a message (after connection) */}
 					<button
 						type="button"
 						onClick={handleSendTestMessage}
 						disabled={!isConnected}
 						className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
 					>
-						3. Send Test Message
+						4. Send Test Message
 					</button>
 
+					{/* Disconnect Button */}
 					<button
 						type="button"
 						onClick={handleDisconnect}
