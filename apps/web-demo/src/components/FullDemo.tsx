@@ -191,7 +191,7 @@ export default function FullDemo() {
 			});
 
 			// Set up event listeners
-			dapp.on("session-request", (request: SessionRequest) => {
+			dapp.on("session_request", (request: SessionRequest) => {
 				addDappLog("system", `Session request generated: ${request.id}`);
 				setSessionRequest(request);
 

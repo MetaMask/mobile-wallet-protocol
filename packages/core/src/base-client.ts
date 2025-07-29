@@ -8,8 +8,11 @@ import type { ISessionStore } from "./domain/session-store";
 import type { ITransport } from "./domain/transport";
 
 /**
- * Provides foundational communication tools: a transport, key manager, session management,
- * and methods for sending/receiving encrypted messages.
+ * An abstract client that provides the core logic for establishing and managing
+ * secure, session-based communication. It handles encryption, message transport,
+ * and session lifecycle events.
+ *
+ * Subclasses must implement the `handleMessage` method to process incoming data.
  */
 export abstract class BaseClient extends EventEmitter {
 	protected transport: ITransport;
@@ -18,6 +21,13 @@ export abstract class BaseClient extends EventEmitter {
 	protected session: Session | null = null;
 	protected state: ClientState = ClientState.DISCONNECTED;
 
+	/**
+	 * Initializes the BaseClient with its core dependencies.
+	 *
+	 * @param transport - The transport layer for communication.
+	 * @param keymanager - The key manager for cryptographic operations.
+	 * @param sessionstore - The persistent store for session management.
+	 */
 	constructor(transport: ITransport, keymanager: IKeyManager, sessionstore: ISessionStore) {
 		super();
 		this.transport = transport;
@@ -34,10 +44,12 @@ export abstract class BaseClient extends EventEmitter {
 	}
 
 	/**
-	 * Resumes an existing session using the provided session ID,
-	 * reconnecting to the transport and channel.
-	 * @param sessionId - The ID of the session to resume
-	 * @throws Error if the session is not found or has expired
+	 * Resumes an existing session by loading it from storage and connecting to the
+	 * transport on the session's secure channel.
+	 *
+	 * @param sessionId - The ID of the session to resume.
+	 * @throws {SessionError} If the session is not found, has expired, or the client
+	 * is not in a `DISCONNECTED` state.
 	 */
 	public async resume(sessionId: string): Promise<void> {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot resume when state is ${this.state}`);
@@ -60,7 +72,8 @@ export abstract class BaseClient extends EventEmitter {
 	}
 
 	/**
-	 * Disconnects from the transport and clears the session.
+	 * Disconnects the client, clears the active session from memory and persistent
+	 * storage, and cleans up the transport channel. Emits a 'disconnected' event.
 	 */
 	public async disconnect(): Promise<void> {
 		if (!this.session) return;
@@ -73,10 +86,22 @@ export abstract class BaseClient extends EventEmitter {
 		this.emit("disconnected");
 	}
 
+	/**
+	 * Handles a decrypted, incoming protocol message.
+	 * Subclasses must implement this method to define their message handling logic.
+	 *
+	 * @param message - The decrypted protocol message.
+	 */
 	protected abstract handleMessage(message: ProtocolMessage): void;
 
 	/**
 	 * Encrypts and sends a protocol message to a specified channel.
+	 * Automatically checks for session expiry before sending.
+	 *
+	 * @param channel - The communication channel to publish the message on.
+	 * @param message - The protocol message to send.
+	 * @throws {SessionError} If the client session is not initialized or is expired.
+	 * @throws {TransportError} If the message fails to send due to a transport issue.
 	 */
 	protected async sendMessage(channel: string, message: ProtocolMessage): Promise<void> {
 		if (!this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send message: session is not initialized.");
@@ -87,6 +112,10 @@ export abstract class BaseClient extends EventEmitter {
 		if (!ok) throw new TransportError(ErrorCode.TRANSPORT_DISCONNECTED, "Message could not be sent because the transport is disconnected.");
 	}
 
+	/**
+	 * Checks if the current session is expired. If it is, triggers a disconnect.
+	 * @throws {SessionError} if the session is expired.
+	 */
 	private async checkSessionExpiry(): Promise<void> {
 		if (!this.session) return;
 		if (this.session.expiresAt < Date.now()) {
@@ -95,6 +124,13 @@ export abstract class BaseClient extends EventEmitter {
 		}
 	}
 
+	/**
+	 * Decrypts an incoming message payload.
+	 *
+	 * @param encrypted - The base64-encoded encrypted payload.
+	 * @returns The parsed `ProtocolMessage`, or `null` if decryption fails.
+	 * On failure, it emits a `CryptoError`.
+	 */
 	private async decryptMessage(encrypted: string): Promise<ProtocolMessage | null> {
 		if (!this.session?.keyPair.privateKey) return null;
 		try {

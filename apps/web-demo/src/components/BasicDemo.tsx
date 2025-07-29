@@ -58,7 +58,7 @@ export default function BasicDemo() {
 				});
 
 				// Set up event listeners
-				dapp.on("session-request", (request: SessionRequest) => {
+				dapp.on("session_request", (request: SessionRequest) => {
 					console.log("Session request received:", request);
 					setSessionRequest(request);
 				});
