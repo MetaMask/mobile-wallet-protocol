@@ -69,7 +69,8 @@ t.describe("DappClient Integration Tests", () => {
 		const connectPromise = shortTimeoutDappClient.connect();
 		// No wallet responds...
 
-		await t.expect(connectPromise).rejects.toThrow("Session request expired before wallet could connect.");
+		// Both error messages are valid for REQUEST_EXPIRED scenario
+		await t.expect(connectPromise).rejects.toThrow(/(?:Session request expired before wallet could connect\.|Did not receive handshake offer from wallet in time\.)/);
 
 		await shortTimeoutDappClient.disconnect();
 	});

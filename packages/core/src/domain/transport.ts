@@ -41,7 +41,7 @@ export interface ITransport {
 	 * @param handler The callback function to execute.
 	 */
 	on(event: "message", handler: (payload: { channel: string; data: string }) => void): void;
-	on(event: "connected" | "disconnected", handler: () => void): void;
+	on(event: "connecting" | "connected" | "disconnected", handler: () => void): void;
 	on(event: "error", handler: (error: Error) => void): void;
 
 	/**

@@ -37,8 +37,8 @@ export class WalletClient extends BaseClient {
 	public override on(event: "connected" | "disconnected", listener: () => void): this;
 	public override on(event: "message", listener: (payload: unknown) => void): this;
 	public override on(event: "error", listener: (error: Error) => void): this;
-	public override on(event: string, listener: (...args: any[]) => void): this {
-		return super.on(event, listener);
+	public override on(event: string | symbol, listener: (...args: any[]) => void): this {
+		return super.on(event as any, listener);
 	}
 
 	constructor(options: WalletClientOptions) {
@@ -97,7 +97,7 @@ export class WalletClient extends BaseClient {
 	protected handleMessage(message: ProtocolMessage): void {
 		if (message.type === "handshake-ack") {
 			// Internal event to resolve the connect() promise chain.
-			this.emit("handshake-ack-received");
+			this.emit("handshake_ack_received");
 			return;
 		}
 		if (message.type === "message") {
@@ -189,7 +189,7 @@ export class WalletClient extends BaseClient {
 			}
 
 			const timeoutId = setTimeout(() => {
-				this.off("handshake-ack-received", onAckReceived);
+				this.off("handshake_ack_received", onAckReceived);
 				reject(new SessionError(ErrorCode.OTP_ENTRY_TIMEOUT, "DApp did not acknowledge the handshake in time."));
 			}, timeoutDuration);
 
@@ -198,7 +198,7 @@ export class WalletClient extends BaseClient {
 				resolve();
 			};
 
-			this.once("handshake-ack-received", onAckReceived);
+			this.once("handshake_ack_received", onAckReceived);
 		});
 	}
 }

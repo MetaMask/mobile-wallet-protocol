@@ -59,8 +59,8 @@ export class DappClient extends BaseClient {
 	public override on(event: "connected" | "disconnected", listener: () => void): this;
 	public override on(event: "message", listener: (payload: unknown) => void): this;
 	public override on(event: "error", listener: (error: Error) => void): this;
-	public override on(event: string, listener: (...args: any[]) => void): this {
-		return super.on(event, listener);
+	public override on(event: string | symbol, listener: (...args: any[]) => void): this {
+		return super.on(event as any, listener);
 	}
 
 	constructor(options: DappClientOptions) {
@@ -129,7 +129,7 @@ export class DappClient extends BaseClient {
 	protected handleMessage(message: ProtocolMessage): void {
 		if (this.state === ClientState.CONNECTING && message.type === "handshake-offer") {
 			// Internal event to pass the offer to the connect() promise chain.
-			this.emit("handshake-offer-received", message.payload);
+			this.emit("handshake_offer_received", message.payload);
 		} else if (this.state === ClientState.CONNECTED && message.type === "message") {
 			this.emit("message", message.payload);
 		}
@@ -177,7 +177,7 @@ export class DappClient extends BaseClient {
 			}
 
 			this.timeoutId = setTimeout(() => {
-				this.off("handshake-offer-received", onOfferReceived);
+				this.off("handshake_offer_received", onOfferReceived);
 				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Did not receive handshake offer from wallet in time."));
 			}, timeoutDuration);
 
@@ -186,7 +186,7 @@ export class DappClient extends BaseClient {
 				resolve(payload);
 			};
 
-			this.once("handshake-offer-received", onOfferReceived);
+			this.once("handshake_offer_received", onOfferReceived);
 		});
 	}
 
