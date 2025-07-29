@@ -2,29 +2,10 @@
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
-import type { IKVStore } from "../../domain/kv-store";
+import { InMemoryKVStore } from "../../storage/in-memory";
 import { WebSocketTransport } from ".";
 
 const WEBSOCKET_URL = "ws://localhost:8000/connection/websocket";
-
-/**
- * Simple in-memory KV store implementation for testing.
- */
-class InMemoryKVStore implements IKVStore {
-	private store = new Map<string, string>();
-
-	async get(key: string): Promise<string | null> {
-		return this.store.get(key) || null;
-	}
-
-	async set(key: string, value: string): Promise<void> {
-		this.store.set(key, value);
-	}
-
-	async delete(key: string): Promise<void> {
-		this.store.delete(key);
-	}
-}
 
 interface Emitter {
 	once(event: string | symbol, listener: (...args: any[]) => void): this;

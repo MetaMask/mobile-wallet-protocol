@@ -1,10 +1,11 @@
 // Path: context/WalletContext.tsx
 import "react-native-get-random-values";
 import { type Session, SessionStore } from "@metamask/mobile-wallet-protocol-core";
+import { AsyncStorageKVStore } from "@metamask/mobile-wallet-protocol-core/storage/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
-import { AsyncStorageKVStore } from "@/lib/AsyncStorageKVStore";
 import { type GlobalActivityLogEntry, SessionManager } from "@/lib/SessionManager";
 
 const getDevServerUrl = () => {
@@ -61,7 +62,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 				setError(null);
 				setIsInitializing(true);
 
-				const kvstore = new AsyncStorageKVStore("wallet-");
+				const kvstore = new AsyncStorageKVStore(AsyncStorage, "wallet-");
 				const sessionstore = new SessionStore(kvstore);
 
 				manager = new SessionManager(sessionstore, RELAY_URL);

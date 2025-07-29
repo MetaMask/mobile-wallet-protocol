@@ -1,23 +1,11 @@
-import { type IKVStore, KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { InMemoryKVStore } from "@metamask/mobile-wallet-protocol-core/storage/in-memory";
 import { fromUint8Array } from "js-base64";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { WalletClient } from "./client";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
-
-class InMemoryKVStore implements IKVStore {
-	private store = new Map<string, string>();
-	async get(key: string): Promise<string | null> {
-		return this.store.get(key) || null;
-	}
-	async set(key: string, value: string): Promise<void> {
-		this.store.set(key, value);
-	}
-	async delete(key: string): Promise<void> {
-		this.store.delete(key);
-	}
-}
 
 t.describe("WalletClient Integration Tests", () => {
 	let walletClient: WalletClient;

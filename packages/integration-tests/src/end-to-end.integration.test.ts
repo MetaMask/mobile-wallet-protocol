@@ -1,24 +1,11 @@
-import { type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { InMemoryKVStore } from "@metamask/mobile-wallet-protocol-core/storage/in-memory";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
 import WebSocket from "ws";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
-
-class InMemoryKVStore implements IKVStore {
-	private store = new Map<string, string>();
-
-	async get(key: string): Promise<string | null> {
-		return this.store.get(key) || null;
-	}
-	async set(key: string, value: string): Promise<void> {
-		this.store.set(key, value);
-	}
-	async delete(key: string): Promise<void> {
-		this.store.delete(key);
-	}
-}
 
 // Helper function to establish a full, successful connection between a Dapp and Wallet client.
 async function connectClients(dappClient: DappClient, walletClient: WalletClient) {

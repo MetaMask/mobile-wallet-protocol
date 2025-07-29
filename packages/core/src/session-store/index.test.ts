@@ -3,27 +3,8 @@
 import * as t from "vitest";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
+import { InMemoryKVStore } from "../storage/in-memory";
 import { SessionStore } from "./index";
-
-class MockKVStore implements IKVStore {
-	private readonly store = new Map<string, string>();
-
-	async set(key: string, value: string): Promise<void> {
-		this.store.set(key, value);
-	}
-
-	async get(key: string): Promise<string | null> {
-		return this.store.get(key) ?? null;
-	}
-
-	async delete(key: string): Promise<void> {
-		this.store.delete(key);
-	}
-
-	async list(): Promise<string[]> {
-		return Array.from(this.store.keys());
-	}
-}
 
 t.describe("SessionStore", () => {
 	let sessionstore: SessionStore;
@@ -42,7 +23,7 @@ t.describe("SessionStore", () => {
 	});
 
 	t.beforeEach(() => {
-		kvstore = new MockKVStore();
+		kvstore = new InMemoryKVStore();
 		sessionstore = new SessionStore(kvstore);
 	});
 
@@ -68,7 +49,7 @@ t.describe("SessionStore", () => {
 		// Manually set an expired session for testing purposes
 		const key = `session:${session.id}`;
 		await kvstore.set(key, JSON.stringify({ ...session, keyPair: {}, theirPublicKeyB64: "" }));
-		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["3"]));
+		await kvstore.set("sessions:master-list", JSON.stringify(["3"]));
 
 		const retrieved = await sessionstore.get("3");
 		t.expect(retrieved).toBeNull();
@@ -105,7 +86,7 @@ t.describe("SessionStore", () => {
 	t.test("should return null and delete a corrupted session on get", async () => {
 		const key = "session:corrupted";
 		await kvstore.set(key, "this is not json");
-		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["corrupted"]));
+		await kvstore.set("sessions:master-list", JSON.stringify(["corrupted"]));
 
 		const retrieved = await sessionstore.get("corrupted");
 		t.expect(retrieved).toBeNull();
@@ -123,7 +104,7 @@ t.describe("SessionStore", () => {
 		// Manually setting an expired session by bypassing the `set` method's check
 		const expiredKey = `session:${expired.id}`;
 		await kvstore.set(expiredKey, JSON.stringify(expired));
-		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["valid", "expired"]));
+		await kvstore.set("sessions:master-list", JSON.stringify(["valid", "expired"]));
 
 		// Manually trigger garbage collection
 		await (sessionstore as any).garbageCollect();

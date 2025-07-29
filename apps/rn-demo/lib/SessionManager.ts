@@ -1,8 +1,9 @@
 // Path: lib/SessionManager.ts
 import { type Session, type SessionRequest, type SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { AsyncStorageKVStore } from "@metamask/mobile-wallet-protocol-core/storage/async-storage";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import EventEmitter from "eventemitter3";
-import { AsyncStorageKVStore } from "./AsyncStorageKVStore";
 
 // This type can be moved to a more central location later
 export type GlobalActivityLogEntry = {
@@ -114,7 +115,7 @@ export class SessionManager extends EventEmitter {
 	private async createClient(): Promise<WalletClient> {
 		// Each client needs its own transport instance, but they can share the same underlying kvstore prefix
 		// as the transport keys are namespaced by channel.
-		const kvstore = new AsyncStorageKVStore("wallet-transport-");
+		const kvstore = new AsyncStorageKVStore(AsyncStorage, "wallet-transport-");
 		const transport = await WebSocketTransport.create({
 			url: this.relayUrl,
 			kvstore,

@@ -1,10 +1,10 @@
 "use client";
 
 import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { IndexedDBKVStore } from "@metamask/mobile-wallet-protocol-core/storage/indexed-db";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useState } from "react";
-import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
 
@@ -26,8 +26,8 @@ export default function BasicDemo() {
 				setStatus("Creating storage and transports...");
 
 				// Create separate storage for dapp and wallet
-				const dappKvStore = new LocalStorageKVStore("dapp-");
-				const walletKvStore = new LocalStorageKVStore("wallet-");
+				const dappKvStore = new IndexedDBKVStore("dapp-");
+				const walletKvStore = new IndexedDBKVStore("wallet-");
 
 				const dappSessionStore = new SessionStore(dappKvStore);
 				const walletSessionStore = new SessionStore(walletKvStore);

@@ -5,34 +5,14 @@ import * as t from "vitest";
 import WebSocket from "ws";
 import { BaseClient } from "./base-client";
 import { ClientState } from "./domain/client-state";
-import type { IKVStore } from "./domain/kv-store";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
 import { KeyManager } from "./key-manager";
 import { SessionStore } from "./session-store";
+import { InMemoryKVStore } from "./storage/in-memory";
 import { WebSocketTransport } from "./transport/websocket";
 
 const WEBSOCKET_URL = "ws://localhost:8000/connection/websocket";
-
-class InMemoryKVStore implements IKVStore {
-	private store = new Map<string, string>();
-
-	public async get(key: string): Promise<string | null> {
-		return this.store.get(key) || null;
-	}
-
-	public async set(key: string, value: string): Promise<void> {
-		this.store.set(key, value);
-	}
-
-	public async delete(key: string): Promise<void> {
-		this.store.delete(key);
-	}
-
-	public async list(): Promise<string[]> {
-		return Array.from(this.store.keys());
-	}
-}
 
 class TestClient extends BaseClient {
 	public receivedMessages: ProtocolMessage[] = [];

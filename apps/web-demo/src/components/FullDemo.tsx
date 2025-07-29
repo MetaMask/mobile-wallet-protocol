@@ -1,10 +1,10 @@
 "use client";
 
 import { ErrorCode, SessionError, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { IndexedDBKVStore } from "@metamask/mobile-wallet-protocol-core/storage/indexed-db";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useRef, useState } from "react";
-import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
 
@@ -191,7 +191,7 @@ export default function FullDemo() {
 			setDappStatus("Initializing...");
 			addDappLog("system", "Creating dApp client...");
 
-			const dappKvStore = new LocalStorageKVStore("full-demo-dapp-");
+			const dappKvStore = new IndexedDBKVStore("full-demo-dapp-");
 			const dappSessionStore = new SessionStore(dappKvStore);
 
 			const dappTransport = await WebSocketTransport.create({
@@ -359,7 +359,7 @@ export default function FullDemo() {
 			setWalletStatus("Initializing...");
 			addWalletLog("system", "Creating wallet client...");
 
-			const walletKvStore = new LocalStorageKVStore("full-demo-wallet-");
+			const walletKvStore = new IndexedDBKVStore("full-demo-wallet-");
 			const walletSessionStore = new SessionStore(walletKvStore);
 
 			const walletTransport = await WebSocketTransport.create({
