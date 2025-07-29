@@ -22,9 +22,11 @@ export interface ITransport {
 	 * Publishes a message to a specific channel.
 	 * @param channel The channel to publish the message to.
 	 * @param message The message payload to send.
-	 * Returns a promise that resolves when the message is published.
+	 * @returns A promise that resolves with `true` if published successfully,
+	 * or `false` if the operation was cancelled (e.g., due to a disconnect)
+	 * before the message could be sent. It rejects on a true publication failure.
 	 */
-	publish(channel: string, message: string): Promise<void>;
+	publish(channel: string, message: string): Promise<boolean>;
 
 	/**
 	 * Subscribes to a channel to begin receiving messages.
@@ -39,7 +41,7 @@ export interface ITransport {
 	 * @param handler The callback function to execute.
 	 */
 	on(event: "message", handler: (payload: { channel: string; data: string }) => void): void;
-	on(event: "connected" | "disconnected", handler: () => void): void;
+	on(event: "connecting" | "connected" | "disconnected", handler: () => void): void;
 	on(event: "error", handler: (error: Error) => void): void;
 
 	/**

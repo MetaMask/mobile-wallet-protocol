@@ -37,4 +37,6 @@ packages/*/*.tsbuildinfo
 
 # LLM
 .llm.txt
+.llm-packages.txt
+.llm-apps.txt
 .todo.md
