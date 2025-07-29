@@ -62,7 +62,18 @@ export class SessionManager extends EventEmitter {
 	public async createClientForSession(sessionRequest: SessionRequest): Promise<WalletClient> {
 		console.log(`SessionManager: Creating new client for session request ${sessionRequest.id}`);
 		const client = await this.createClient();
+
+		// Listen for the OTP event just for this connection attempt.
+		client.once("display_otp", (otp: string, deadline: number) => {
+			this.emit("otp_display_request", { otp, deadline });
+		});
+
+		// The 'connect' promise now waits for the full handshake, including OTP verification.
 		await client.connect({ sessionRequest });
+
+		// Add this line:
+		this.emit("handshake_complete");
+
 		this.clients.set(sessionRequest.id, client);
 		this.setupClientListeners(client, sessionRequest.id);
 		console.log(`SessionManager: New session ${sessionRequest.id} connected.`);

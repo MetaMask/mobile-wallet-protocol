@@ -1,7 +1,7 @@
 "use client";
 
-import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
+import { ErrorCode, SessionError, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useRef, useState } from "react";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
@@ -44,6 +44,8 @@ export default function FullDemo() {
 	const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
 	const [sessionTimerId, setSessionTimerId] = useState<NodeJS.Timeout | null>(null);
 	const [isSessionExpired, setIsSessionExpired] = useState(false);
+	const [otpInputValue, setOtpInputValue] = useState("");
+	const [otpPayload, setOtpPayload] = useState<OtpRequiredPayload | null>(null);
 
 	// Wallet State
 	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
@@ -52,6 +54,8 @@ export default function FullDemo() {
 	const [walletLogs, setWalletLogs] = useState<WalletLogEntry[]>([]);
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
 	const [walletMessage, setWalletMessage] = useState("Hello from Wallet!");
+	const [displayedOtp, setDisplayedOtp] = useState<string>("");
+	const [otpDeadline, setOtpDeadline] = useState<number>(0);
 
 	// Refs for auto-scrolling
 	const dappLogsRef = useRef<HTMLDivElement>(null);
@@ -79,8 +83,9 @@ export default function FullDemo() {
 			if (timeLeft === 0) {
 				clearInterval(timerId);
 				setSessionTimerId(null);
-				addDappLog("system", "Session request expired.");
-				setIsSessionExpired(true);
+				addDappLog("system", "The connection attempt has expired. Please start over.");
+				// Fully reset the DApp UI instead of just marking as expired
+				resetDappConnectionState();
 			}
 		}, 1000);
 
@@ -150,6 +155,16 @@ export default function FullDemo() {
 		setWalletLogs((prev) => [...prev, newLog]);
 	};
 
+	const resetDappConnectionState = () => {
+		clearSessionTimer();
+		setSessionRequest(null);
+		setQrCodeData("");
+		setOtpInputValue("");
+		setOtpPayload(null);
+		setIsSessionExpired(false);
+		setDappStatus("Ready to connect");
+	};
+
 	// Generate QR code data URL
 	const generateQrCodeUrl = async (data: string): Promise<string> => {
 		// For simplicity, we'll create a data URL with base64 encoded QR code
@@ -214,10 +229,7 @@ export default function FullDemo() {
 			dapp.on("disconnected", () => {
 				addDappLog("system", "DApp disconnected from wallet");
 				setDappConnected(false);
-				setDappStatus("Disconnected");
-				if (!isSessionExpired) {
-					clearSessionTimer();
-				}
+				resetDappConnectionState(); // Use the reset function here
 			});
 
 			dapp.on("message", (payload: unknown) => {
@@ -226,6 +238,13 @@ export default function FullDemo() {
 
 			dapp.on("error", (error: Error) => {
 				addDappLog("system", `DApp error: ${error.message}`);
+			});
+
+			dapp.on("otp_required", (payload: OtpRequiredPayload) => {
+				addDappLog("system", "OTP Required. Enter the code displayed on your wallet.");
+				setOtpPayload(payload);
+				// Use the session timer to show OTP expiration
+				startSessionTimer(payload.deadline);
 			});
 
 			setDappClient(dapp);
@@ -279,12 +298,10 @@ export default function FullDemo() {
 	const handleDappDisconnect = async () => {
 		if (dappClient) {
 			try {
-				clearSessionTimer(); // Clear timer on disconnect
 				await dappClient.disconnect();
-				setDappConnected(false);
-				setDappStatus("Disconnected");
-				setSessionRequest(null);
-				setQrCodeData("");
+				// All state clearing is now handled by the 'disconnected' event listener
+				// or by this reset function for a clean UI immediately.
+				resetDappConnectionState();
 				addDappLog("system", "Disconnected from wallet");
 			} catch (error) {
 				addDappLog("system", `Disconnect error: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -310,6 +327,29 @@ export default function FullDemo() {
 			await dappClient.sendRequest(message);
 		} catch (error) {
 			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	};
+
+	const handleOtpSubmit = async () => {
+		if (!otpPayload || !otpInputValue) {
+			addDappLog("system", "OTP payload or input value is missing.");
+			return;
+		}
+		try {
+			addDappLog("sent", `Submitting OTP: ${otpInputValue}`);
+			await otpPayload.submit(otpInputValue);
+			// On success, the 'connected' event will fire, cleaning up state.
+			addDappLog("system", "OTP accepted! Connecting...");
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			addDappLog("system", `OTP submission failed: ${errorMessage}`);
+
+			// Check if this was the final attempt. If so, reset the flow.
+			if (error instanceof SessionError && error.code === ErrorCode.OTP_MAX_ATTEMPTS_REACHED) {
+				addDappLog("system", "Connection failed. Please start over.");
+				resetDappConnectionState();
+			}
+			// For other errors (e.g., 'Incorrect OTP'), we do nothing, allowing the user to retry.
 		}
 	};
 
@@ -366,6 +406,12 @@ export default function FullDemo() {
 
 			wallet.on("error", (error: Error) => {
 				addWalletLog("system", `Wallet error: ${error.message}`);
+			});
+
+			wallet.on("display_otp", (otp: string, deadline: number) => {
+				addWalletLog("system", `Generated OTP: ${otp}. It will expire at ${new Date(deadline).toLocaleTimeString()}`);
+				setDisplayedOtp(otp);
+				setOtpDeadline(deadline);
 			});
 
 			setWalletClient(wallet);
@@ -435,6 +481,8 @@ export default function FullDemo() {
 				setWalletConnected(false);
 				setWalletStatus("Disconnected");
 				setPendingRequests([]);
+				setDisplayedOtp("");
+				setOtpDeadline(0);
 				addWalletLog("system", "Disconnected from dApp");
 			} catch (error) {
 				addWalletLog("system", `Disconnect error: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -565,35 +613,56 @@ export default function FullDemo() {
 								)}
 							</div>
 
-							{/* **MODIFIED**: QR Code Display with expiration logic */}
-							{qrCodeData && !dappConnected && (
+							{qrCodeData && !dappConnected && !otpPayload && (
 								<div className="mt-4">
 									<div className="flex items-center justify-between mb-2">
 										<h5 className="font-medium text-gray-900 dark:text-white">QR Code for Mobile Wallet</h5>
 										{isSessionExpired ? (
 											<span className="text-sm text-red-600 dark:text-red-400 font-medium">Session expired</span>
 										) : (
-											sessionTimeLeft > 0 && (
-												<span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Expires in {formatTimeLeft(sessionTimeLeft)}</span>
-											)
+											sessionTimeLeft > 0 && <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Expires in {formatTimeLeft(sessionTimeLeft)}</span>
 										)}
 									</div>
 									<div className={`bg-white p-4 rounded-lg inline-block transition-opacity ${isSessionExpired ? "opacity-50" : ""}`}>
 										<QRCodeDisplay data={qrCodeData} />
 									</div>
 									<div className="flex items-center justify-between mt-2">
-										<p className="text-xs text-gray-500 dark:text-gray-400">
-											{isSessionExpired ? "This QR code has expired." : "Scan this QR code with your mobile wallet app"}
-										</p>
+										<p className="text-xs text-gray-500 dark:text-gray-400">{isSessionExpired ? "This QR code has expired." : "Scan this QR code with your mobile wallet app"}</p>
 										{isSessionExpired && (
-											<button
-												type="button"
-												onClick={handleGenerateNewQrCode}
-												className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-											>
+											<button type="button" onClick={handleGenerateNewQrCode} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
 												Generate New QR
 											</button>
 										)}
+									</div>
+								</div>
+							)}
+
+							{/* OTP Input Section */}
+							{otpPayload && !dappConnected && (
+								<div className="mt-4 border-t-2 border-dashed border-gray-300 dark:border-gray-600 pt-4">
+									<h5 className="font-medium text-gray-900 dark:text-white mb-2">Enter One-Time Password</h5>
+									<p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Enter the 6-digit code displayed on your wallet to confirm the connection.</p>
+									<div className="space-y-3">
+										<input
+											type="text"
+											value={otpInputValue}
+											onChange={(e) => setOtpInputValue(e.target.value.replace(/\D/g, ""))}
+											placeholder="123456"
+											maxLength={6}
+											className="w-full text-center tracking-[0.5em] font-mono text-2xl p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+										/>
+										<button
+											type="button"
+											onClick={handleOtpSubmit}
+											disabled={!otpInputValue || otpInputValue.length !== 6 || isSessionExpired}
+											className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+										>
+											Submit OTP
+										</button>
+										{sessionTimeLeft > 0 && !isSessionExpired && (
+											<p className="text-sm text-center text-orange-600 dark:text-orange-400">Code expires in {formatTimeLeft(sessionTimeLeft)}</p>
+										)}
+										{isSessionExpired && <p className="text-sm text-center text-red-600 dark:text-red-400">OTP has expired. Please start over.</p>}
 									</div>
 								</div>
 							)}
@@ -686,7 +755,8 @@ export default function FullDemo() {
 										<button
 											type="button"
 											onClick={handleWalletScanQR}
-											disabled={!qrCodeData}
+											// Disable if QR isn't available or if OTP has already been generated
+											disabled={!qrCodeData || !!displayedOtp}
 											className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
 										>
 											Scan QR Code
@@ -698,9 +768,19 @@ export default function FullDemo() {
 									)}
 								</div>
 
-								{walletConnected && (
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										<p className="font-medium">Status: Connected and ready to receive messages</p>
+								{/* OTP Display Section */}
+								{displayedOtp && !walletConnected && (
+									<div className="mt-4 border-t-2 border-dashed border-gray-300 dark:border-gray-600 pt-4">
+										<h5 className="font-medium text-gray-900 dark:text-white mb-2">Your One-Time Password</h5>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Enter this code in the DApp to complete the connection.</p>
+										<div className="bg-white dark:bg-gray-900 p-4 rounded-lg text-center">
+											<p className="font-mono text-4xl tracking-[0.2em] text-gray-900 dark:text-white">{displayedOtp}</p>
+										</div>
+										{otpDeadline > Date.now() ? (
+											<p className="text-xs text-center text-gray-500 mt-2">Expires at: {new Date(otpDeadline).toLocaleTimeString()}</p>
+										) : (
+											<p className="text-xs text-center text-red-500 mt-2">Expired</p>
+										)}
 									</div>
 								)}
 							</div>

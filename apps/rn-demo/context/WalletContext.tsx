@@ -24,6 +24,8 @@ interface WalletContextType {
 	isInitializing: boolean;
 	error: string | null;
 	addLog: (entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => void;
+	otpToDisplay: string | null;
+	clearOtpDisplay: () => void;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -34,6 +36,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 	const [globalActivityLog, setGlobalActivityLog] = useState<GlobalActivityLogEntry[]>([]);
 	const [isInitializing, setIsInitializing] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [otpToDisplay, setOtpToDisplay] = useState<string | null>(null);
 
 	const addLog = useCallback((entry: Omit<GlobalActivityLogEntry, "id" | "timestamp">) => {
 		const newLogEntry = {
@@ -42,6 +45,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 			...entry,
 		};
 		setGlobalActivityLog((prev) => [newLogEntry, ...prev]);
+	}, []);
+
+	const clearOtpDisplay = useCallback(() => {
+		setOtpToDisplay(null);
 	}, []);
 
 	useEffect(() => {
@@ -83,6 +90,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 					});
 				});
 
+				// Add this new listener
+				manager.on("otp_display_request", ({ otp }: { otp: string }) => {
+					setOtpToDisplay(otp);
+				});
+
+				// Add this new listener:
+				manager.on("handshake_complete", () => {
+					clearOtpDisplay();
+				});
+
 				await manager.resumeAllClients();
 
 				if (isMounted) {
@@ -110,7 +127,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 		};
 	}, [addLog]);
 
-	const value = { sessionManager, sessions, globalActivityLog, isInitializing, error, addLog };
+	const value = { sessionManager, sessions, globalActivityLog, isInitializing, error, addLog, otpToDisplay, clearOtpDisplay };
 
 	return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
