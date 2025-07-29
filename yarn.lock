@@ -2337,6 +2337,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/mobile-wallet-protocol-core@workspace:packages/core"
   dependencies:
+    "@react-native-async-storage/async-storage": ^1.23.1
     "@types/uuid": ^10.0.0
     "@types/ws": ^8.18.1
     centrifuge: ^5.3.5
@@ -2345,6 +2346,11 @@ __metadata:
     tsup: ^8.5.0
     uuid: ^11.1.0
     ws: ^8.18.2
+  peerDependencies:
+    "@react-native-async-storage/async-storage": ">=1.23.0"
+  peerDependenciesMeta:
+    "@react-native-async-storage/async-storage":
+      optional: true
   languageName: unknown
   linkType: soft
 
@@ -2752,6 +2758,17 @@ __metadata:
   peerDependencies:
     react-native: ^0.0.0-0 || >=0.60 <1.0
   checksum: 7096546ed4a5faf1f6e0425e2e15713575f1a7493a04524da386ff35c3844b57b8fd20544fad4157b4a61e048b10235f2f06124f262da5b327edc74fbc31e02b
+  languageName: node
+  linkType: hard
+
+"@react-native-async-storage/async-storage@npm:^1.23.1":
+  version: 1.24.0
+  resolution: "@react-native-async-storage/async-storage@npm:1.24.0"
+  dependencies:
+    merge-options: ^3.0.4
+  peerDependencies:
+    react-native: ^0.0.0-0 || >=0.60 <1.0
+  checksum: 7e56a2e97f48332f57c56ebf473b763c7ca2b1ef82f4b5f8e1c73350231ec91b8eafc4e4d1f972c4c1005da0d304816fa725dc6f07a8a7543e90f8bd16c22ab4
   languageName: node
   linkType: hard
 
