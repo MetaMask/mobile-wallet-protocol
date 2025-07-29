@@ -712,14 +712,15 @@ export default function FullDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${log.type === "sent"
-												? "bg-blue-100 dark:bg-blue-900"
-												: log.type === "received"
-													? "bg-green-100 dark:bg-green-900"
-													: log.type === "notification"
-														? "bg-yellow-100 dark:bg-yellow-900"
-														: "bg-gray-200 dark:bg-gray-700"
-												}`}
+											className={`p-2 rounded text-xs ${
+												log.type === "sent"
+													? "bg-blue-100 dark:bg-blue-900"
+													: log.type === "received"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+											}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -864,14 +865,15 @@ export default function FullDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${log.type === "request"
-													? "bg-purple-100 dark:bg-purple-900"
-													: log.type === "response"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-													}`}
+												className={`p-2 rounded text-xs ${
+													log.type === "request"
+														? "bg-purple-100 dark:bg-purple-900"
+														: log.type === "response"
+															? "bg-green-100 dark:bg-green-900"
+															: log.type === "notification"
+																? "bg-yellow-100 dark:bg-yellow-900"
+																: "bg-gray-200 dark:bg-gray-700"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

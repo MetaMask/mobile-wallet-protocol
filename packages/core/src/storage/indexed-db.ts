@@ -65,4 +65,4 @@ export class IndexedDBKVStore implements IKVStore {
 	private getKey(key: string): string {
 		return `${this.prefix}${key}`;
 	}
-} 
+}

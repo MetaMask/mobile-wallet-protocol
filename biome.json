@@ -6,7 +6,7 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"includes": ["**", "!**/node_modules/**", "!**/dist/**"],
+		"includes": ["**", "!**/node_modules/**", "!**/dist/**", "!**/.next/**", "!**/.expo/**", "!**/build/**", "!**/coverage/**"],
 		"ignoreUnknown": false
 	},
 	"formatter": {
