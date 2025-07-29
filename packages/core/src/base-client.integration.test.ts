@@ -4,6 +4,7 @@ import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { BaseClient } from "./base-client";
+import { ClientState } from "./domain/client-state";
 import type { IKVStore } from "./domain/kv-store";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
@@ -219,5 +220,144 @@ t.describe("BaseClient", () => {
 
 		// 4. Verify that the expired session was deleted from storage
 		t.expect(await sessionStoreA.get("expired-resume-session")).toBeNull();
+	});
+
+	t.test("should handle decryption failures gracefully", async () => {
+		// 1. Setup two clients with shared session
+		const keyManagerA = new KeyManager();
+		const keyManagerB = new KeyManager();
+		const keyPairA = keyManagerA.generateKeyPair();
+		const keyPairB = keyManagerB.generateKeyPair();
+
+		const sessionA: Session = {
+			id: "session-decryption-test",
+			channel,
+			keyPair: keyPairA,
+			theirPublicKey: keyPairB.publicKey,
+			expiresAt: Date.now() + 60000,
+		};
+		const sessionB: Session = {
+			id: "session-decryption-test",
+			channel,
+			keyPair: keyPairB,
+			theirPublicKey: keyPairA.publicKey,
+			expiresAt: Date.now() + 60000,
+		};
+
+		clientA.setSession(sessionA);
+		clientB.setSession(sessionB);
+
+		// 2. Subscribe both clients to the shared channel
+		await clientA["transport"].subscribe(channel);
+		await clientB["transport"].subscribe(channel);
+
+		// 3. Create a third client to publish garbage data
+		const kvstoreC = new InMemoryKVStore();
+		const transportC = await WebSocketTransport.create({ url: WEBSOCKET_URL, kvstore: kvstoreC, websocket: WebSocket });
+		const clientC = new TestClient(transportC, new KeyManager(), new SessionStore(kvstoreC));
+		await clientC["transport"].connect();
+
+		// 4. Listen for error events on client B
+		const errorPromise = new Promise<any>((resolve) => {
+			clientB.once("error", resolve);
+		});
+
+		// 5. Client C publishes garbage/non-decryptable data to the channel
+		await clientC["transport"].publish(channel, "garbage-non-decryptable-data");
+
+		// 6. Wait for the error event and verify it's a CryptoError with DECRYPTION_FAILED
+		const error = await errorPromise;
+		t.expect(error).toEqual(t.expect.objectContaining({
+			name: "DECRYPTION_FAILED",
+			code: "DECRYPTION_FAILED"
+		}));
+
+		// 7. Verify that client B didn't crash and still has its session
+		t.expect(clientB.getSession()).not.toBeNull();
+
+		// 8. Verify normal operation still works by sending a valid message if still connected
+		const validMessage: ProtocolMessage = { type: "message", payload: { method: "test_after_error" } };
+		await clientA.sendMessage(channel, validMessage);
+
+		// 9. Wait for Client B to receive the valid message
+		await new Promise((resolve) => {
+			const interval = setInterval(() => {
+				if (clientB.receivedMessages.length > 0) {
+					clearInterval(interval);
+					resolve(true);
+				}
+			}, 50);
+		});
+
+		t.expect(clientB.receivedMessages).toHaveLength(1);
+		t.expect(clientB.receivedMessages[0]).toEqual(validMessage);
+
+		await clientC.disconnect();
+	});
+
+	t.test("should handle transport publish failures", async () => {
+		// 1. Setup a client with a valid session (using proper key pairs)
+		const keyManagerA = new KeyManager();
+		const keyManagerB = new KeyManager();
+		const keyPairA = keyManagerA.generateKeyPair();
+		const keyPairB = keyManagerB.generateKeyPair();
+
+		const session: Session = {
+			id: "session-transport-fail",
+			channel,
+			keyPair: keyPairA,
+			theirPublicKey: keyPairB.publicKey, // Use a valid public key
+			expiresAt: Date.now() + 60000,
+		};
+
+		clientA.setSession(session);
+
+		// 2. Spy on the transport.publish method to make it return false
+		const publishSpy = t.vi.spyOn(clientA["transport"], "publish").mockResolvedValue(false);
+
+		// 3. Try to send a message
+		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "test_transport_fail" } };
+
+		// 4. Verify that sendMessage rejects with TransportError and TRANSPORT_DISCONNECTED code
+		await t.expect(clientA.sendMessage(channel, messageToSend)).rejects.toThrow(
+			"Message could not be sent because the transport is disconnected."
+		);
+
+		// 5. Verify the spy was called
+		t.expect(publishSpy).toHaveBeenCalledOnce();
+
+		// 6. Restore the original method
+		publishSpy.mockRestore();
+	});
+
+	t.test("should reject resume() when client is already connected", async () => {
+		// 1. Create and store a valid session
+		const keyManagerA = new KeyManager();
+		const keyManagerB = new KeyManager();
+		const keyPairA = keyManagerA.generateKeyPair();
+		const keyPairB = keyManagerB.generateKeyPair();
+
+		const session: Session = {
+			id: "resume-invalid-state-session",
+			channel,
+			keyPair: keyPairA,
+			theirPublicKey: keyPairB.publicKey,
+			expiresAt: Date.now() + 60000,
+		};
+
+		await sessionStoreA.set(session);
+
+		// 2. Set up client A to be in CONNECTED state
+		clientA.setSession(session);
+		clientA["state"] = ClientState.CONNECTED;
+
+		// 3. Try to resume a session when already connected
+		// 4. Verify that resume() rejects with SessionError and SESSION_INVALID_STATE code
+		await t.expect(clientA.resume("resume-invalid-state-session")).rejects.toThrow(
+			"Cannot resume when state is CONNECTED"
+		);
+
+		// 5. Verify the client is still in connected state
+		t.expect(clientA["state"]).toBe(ClientState.CONNECTED);
 	});
 });
