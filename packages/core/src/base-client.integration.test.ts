@@ -267,10 +267,12 @@ t.describe("BaseClient", () => {
 
 		// 6. Wait for the error event and verify it's a CryptoError with DECRYPTION_FAILED
 		const error = await errorPromise;
-		t.expect(error).toEqual(t.expect.objectContaining({
-			name: "DECRYPTION_FAILED",
-			code: "DECRYPTION_FAILED"
-		}));
+		t.expect(error).toEqual(
+			t.expect.objectContaining({
+				name: "DECRYPTION_FAILED",
+				code: "DECRYPTION_FAILED",
+			}),
+		);
 
 		// 7. Verify that client B didn't crash and still has its session
 		t.expect(clientB.getSession()).not.toBeNull();
@@ -319,9 +321,7 @@ t.describe("BaseClient", () => {
 		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "test_transport_fail" } };
 
 		// 4. Verify that sendMessage rejects with TransportError and TRANSPORT_DISCONNECTED code
-		await t.expect(clientA.sendMessage(channel, messageToSend)).rejects.toThrow(
-			"Message could not be sent because the transport is disconnected."
-		);
+		await t.expect(clientA.sendMessage(channel, messageToSend)).rejects.toThrow("Message could not be sent because the transport is disconnected.");
 
 		// 5. Verify the spy was called
 		t.expect(publishSpy).toHaveBeenCalledOnce();
@@ -353,9 +353,7 @@ t.describe("BaseClient", () => {
 
 		// 3. Try to resume a session when already connected
 		// 4. Verify that resume() rejects with SessionError and SESSION_INVALID_STATE code
-		await t.expect(clientA.resume("resume-invalid-state-session")).rejects.toThrow(
-			"Cannot resume when state is CONNECTED"
-		);
+		await t.expect(clientA.resume("resume-invalid-state-session")).rejects.toThrow("Cannot resume when state is CONNECTED");
 
 		// 5. Verify the client is still in connected state
 		t.expect(clientA["state"]).toBe(ClientState.CONNECTED);

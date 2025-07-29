@@ -52,14 +52,14 @@ t.describe("DappClient Integration Tests", () => {
 			// @ts-expect-error - accessing private property for testing
 			transport: dappClient.transport,
 			// @ts-expect-error - accessing private property for testing
-			sessionstore: dappClient.sessionstore
+			sessionstore: dappClient.sessionstore,
 		});
 
 		// Override the session request TTL for this test
 		// @ts-expect-error - accessing private method for testing
 		const originalMethod = shortTimeoutDappClient.createPendingSessionAndRequest;
 
-		// @ts-expect-error - accessing private method for testing  
+		// @ts-expect-error - accessing private method for testing
 		shortTimeoutDappClient.createPendingSessionAndRequest = function () {
 			const result = originalMethod.call(this);
 			result.request.expiresAt = Date.now() + 10; // Set a much shorter expiry (10ms instead of 60 seconds)
