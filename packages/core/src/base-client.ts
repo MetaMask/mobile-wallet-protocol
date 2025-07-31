@@ -24,6 +24,7 @@ export abstract class BaseClient extends EventEmitter {
 	public override on(event: "connected" | "disconnected", listener: () => void): this;
 	public override on(event: "error", listener: (error: Error) => void): this;
 	public override on(event: "message", listener: (payload: unknown) => void): this;
+	// biome-ignore lint/suspicious/noExplicitAny: used for event listeners
 	public override on(event: string | symbol, listener: (...args: any[]) => void): this {
 		return super.on(event, listener);
 	}

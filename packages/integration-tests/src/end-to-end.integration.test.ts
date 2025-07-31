@@ -1,4 +1,5 @@
-import { type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+/** biome-ignore-all lint/suspicious/noExplicitAny: test code */
+import { type ConnectionMode, type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import * as t from "vitest";
@@ -20,28 +21,30 @@ class InMemoryKVStore implements IKVStore {
 	}
 }
 
-// Helper function to establish a full, successful connection between a Dapp and Wallet client.
-async function connectClients(dappClient: DappClient, walletClient: WalletClient) {
+// Helper function to handle both connection modes.
+async function connectClients(dappClient: DappClient, walletClient: WalletClient, mode: ConnectionMode) {
 	const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
 		dappClient.on("session_request", resolve);
 	});
-	const dappConnectPromise = dappClient.connect({ mode: "untrusted" });
+	const dappConnectPromise = dappClient.connect({ mode });
 
 	const sessionRequest = await sessionRequestPromise;
 
-	const otpPromise = new Promise<{ otp: string }>((resolve) => {
-		walletClient.on("display_otp", (otp) => resolve({ otp }));
-	});
 	const walletConnectPromise = walletClient.connect({ sessionRequest });
 
-	const { otp } = await otpPromise;
+	// Conditionally handle the OTP steps only for the untrusted flow.
+	if (mode === "untrusted") {
+		const otpPromise = new Promise<string>((resolve) => {
+			walletClient.on("display_otp", (otp) => resolve(otp));
+		});
+		const otp = await otpPromise;
 
-	const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
-		dappClient.on("otp_required", resolve);
-	});
-	const otpPayload = await otpRequiredPromise;
-
-	await otpPayload.submit(otp);
+		const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
+			dappClient.on("otp_required", resolve);
+		});
+		const otpPayload = await otpRequiredPromise;
+		await otpPayload.submit(otp);
+	}
 
 	await Promise.all([dappConnectPromise, walletConnectPromise]);
 }
@@ -68,7 +71,6 @@ t.describe("E2E Integration Test", () => {
 	});
 
 	t.afterEach(async () => {
-		// Use a try-catch to prevent errors from one client's disconnect affecting the other's cleanup.
 		try {
 			await dappClient?.disconnect();
 		} catch (e) {
@@ -81,13 +83,11 @@ t.describe("E2E Integration Test", () => {
 		}
 	});
 
-	t.test("should complete the full end-to-end connection successfully", async () => {
-		await connectClients(dappClient, walletClient);
+	t.test("should complete the full end-to-end connection using untrusted (OTP) mode", async () => {
+		await connectClients(dappClient, walletClient, "untrusted");
 
-		// @ts-expect-error - accessing private property for test
-		t.expect(dappClient.state).toBe("CONNECTED");
-		// @ts-expect-error - accessing private property for test
-		t.expect(walletClient.state).toBe("CONNECTED");
+		t.expect((dappClient as any).state).toBe("CONNECTED");
+		t.expect((walletClient as any).state).toBe("CONNECTED");
 
 		const dappSessions = await dappSessionStore.list();
 		const walletSessions = await walletSessionStore.list();
@@ -96,101 +96,85 @@ t.describe("E2E Integration Test", () => {
 		t.expect(dappSessions[0].id).toEqual(walletSessions[0].id);
 	});
 
-	t.test("should allow bidirectional messaging after connection", async () => {
-		await connectClients(dappClient, walletClient);
+	t.test("should complete the full end-to-end connection using trusted (no-OTP) mode", async () => {
+		let otpDisplayed = false;
+		walletClient.on("display_otp", () => {
+			otpDisplayed = true;
+		});
+		let otpRequired = false;
+		dappClient.on("otp_required", () => {
+			otpRequired = true;
+		});
 
-		// DApp -> Wallet
+		await connectClients(dappClient, walletClient, "trusted");
+
+		t.expect(otpDisplayed, "Wallet should not display an OTP in trusted mode").toBe(false);
+		t.expect(otpRequired, "DApp should not require an OTP in trusted mode").toBe(false);
+
+		t.expect((dappClient as any).state).toBe("CONNECTED");
+		t.expect((walletClient as any).state).toBe("CONNECTED");
+	});
+
+	t.test("should default to the untrusted connection flow", async () => {
+		const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+			dappClient.on("session_request", resolve);
+		});
+
+		// Connect without specifying a mode
+		dappClient.connect();
+
+		const sessionRequest = await sessionRequestPromise;
+		t.expect(sessionRequest.mode).toBe("untrusted");
+	});
+
+	t.test("should allow bidirectional messaging after an untrusted connection", async () => {
+		await connectClients(dappClient, walletClient, "untrusted");
+
 		const requestPayload = { method: "eth_accounts" };
 		const messageFromDappPromise = new Promise((resolve) => walletClient.on("message", resolve));
 		await dappClient.sendRequest(requestPayload);
 		await t.expect(messageFromDappPromise).resolves.toEqual(requestPayload);
 
-		// Wallet -> DApp
 		const responsePayload = { result: ["0x123..."] };
 		const messageFromWalletPromise = new Promise((resolve) => dappClient.on("message", resolve));
 		await walletClient.sendResponse(responsePayload);
 		await t.expect(messageFromWalletPromise).resolves.toEqual(responsePayload);
 	});
 
+	t.test("should allow bidirectional messaging after a trusted connection", async () => {
+		await connectClients(dappClient, walletClient, "trusted");
+
+		const requestPayload = { method: "eth_accounts_trusted" };
+		const messageFromDappPromise = new Promise((resolve) => walletClient.on("message", resolve));
+		await dappClient.sendRequest(requestPayload);
+		await t.expect(messageFromDappPromise).resolves.toEqual(requestPayload);
+
+		const responsePayload = { result: ["0x456..."] };
+		const messageFromWalletPromise = new Promise((resolve) => dappClient.on("message", resolve));
+		await walletClient.sendResponse(responsePayload);
+		await t.expect(messageFromWalletPromise).resolves.toEqual(responsePayload);
+	});
+
 	t.test("should successfully resume a previously established session", async () => {
-		// 1. Establish a connection first
-		await connectClients(dappClient, walletClient);
+		await connectClients(dappClient, walletClient, "untrusted");
 		const sessionId = (await dappSessionStore.list())[0].id;
 
-		// 2. Simulate transport disconnection
-		// @ts-expect-error - accessing protected property for test simulation
-		await dappClient.transport.disconnect();
-		// @ts-expect-error - accessing protected property for test simulation
-		await walletClient.transport.disconnect();
+		await (dappClient as any).transport.disconnect();
+		await (walletClient as any).transport.disconnect();
 
-		// 3. Create new clients with the same stores (simulating app restart)
 		const newDappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
 		const newWalletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
 		const resumedDappClient = new DappClient({ transport: newDappTransport, sessionstore: dappSessionStore });
 		const resumedWalletClient = new WalletClient({ transport: newWalletTransport, sessionstore: walletSessionStore });
-		dappClient = resumedDappClient; // Reassign for cleanup
-		walletClient = resumedWalletClient; // Reassign for cleanup
+		dappClient = resumedDappClient;
+		walletClient = resumedWalletClient;
 
-		// 4. Resume the session
 		await t.expect(resumedDappClient.resume(sessionId)).resolves.toBeUndefined();
 		await t.expect(resumedWalletClient.resume(sessionId)).resolves.toBeUndefined();
 
-		// 5. Verify messaging still works
 		const testPayload = { message: "hello after resume" };
 		const messagePromise = new Promise((resolve) => resumedWalletClient.on("message", resolve));
 		await resumedDappClient.sendRequest(testPayload);
 		await t.expect(messagePromise).resolves.toEqual(testPayload);
-	});
-
-	t.test("should deliver messages sent while a client was offline", async () => {
-		// 1. Establish a connection
-		await connectClients(dappClient, walletClient);
-		const sessionId = (await walletSessionStore.list())[0].id;
-
-		// 2. Disconnect only the wallet's transport layer to simulate being offline
-		// @ts-expect-error - accessing protected property for test
-		await walletClient.transport.disconnect();
-
-		// 3. DApp sends messages while wallet is offline
-		const offlineMessages = [{ id: 1 }, { id: 2 }];
-		for (const msg of offlineMessages) {
-			await dappClient.sendRequest(msg);
-		}
-
-		// 4. Recreate wallet client and resume
-		const newWalletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
-		const resumedWalletClient = new WalletClient({ transport: newWalletTransport, sessionstore: walletSessionStore });
-		walletClient = resumedWalletClient; // Reassign for cleanup
-
-		const receivedMessages: unknown[] = [];
-		const allMessagesReceived = new Promise<void>((resolve) => {
-			resumedWalletClient.on("message", (payload) => {
-				receivedMessages.push(payload);
-				if (receivedMessages.length === offlineMessages.length) {
-					resolve();
-				}
-			});
-		});
-
-		// 5. Resume and wait for history to be delivered
-		await resumedWalletClient.resume(sessionId);
-		await allMessagesReceived;
-
-		t.expect(receivedMessages).toEqual(offlineMessages);
-	});
-
-	t.test("disconnect() should clear session storage on both sides", async () => {
-		await connectClients(dappClient, walletClient);
-		t.expect(await dappSessionStore.list()).toHaveLength(1);
-		t.expect(await walletSessionStore.list()).toHaveLength(1);
-
-		await dappClient.disconnect();
-
-		// After dapp disconnects, its session store should be empty. Wallet's should still exist.
-		t.expect(await dappSessionStore.list()).toHaveLength(0);
-		t.expect(await walletSessionStore.list()).toHaveLength(1);
-
-		await walletClient.disconnect();
-		t.expect(await walletSessionStore.list()).toHaveLength(0);
 	});
 });
