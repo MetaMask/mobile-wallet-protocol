@@ -10,18 +10,18 @@ The protocol is composed of four main components that work together to establish
 
 -   **Location:** Lives inside the web-based or react-native decentralized application (dApp).
 -   **Responsibilities:**
-    -   Initiates new connection requests.
-    -   Generates a `SessionRequest` to be displayed as a QR code or deeplinked.
+    -   Initiates new connection requests, specifying a desired connection `mode` (`trusted` or `untrusted`).
+    -   Generates a `SessionRequest` to be displayed as a QR code or deeplink.
     -   Manages the dApp's side of the cryptographic handshake.
-    -   Handles OTP (One-Time Password) verification submitted by the user.
+    -   Handles One-Time Password (OTP) verification when in `untrusted` mode.
     -   Encrypts outgoing requests and decrypts incoming responses from the wallet.
 
 ### 2. Wallet Client (`@metamask/mobile-wallet-protocol-wallet-client`)
 
 -   **Location:** Lives inside the Metamask mobile wallet application.
 -   **Responsibilities:**
-    -   Parses a `SessionRequest` (from a scanned QR code or from deeplink).
-    -   Generates a secret OTP to be displayed to the user.
+    -   Parses a `SessionRequest` and routes logic based on the specified `mode`.
+    -   Generates and displays a secret OTP to the user when in `untrusted` mode.
     -   Manages the wallet's side of the cryptographic handshake.
     -   Encrypts outgoing responses and decrypts incoming requests from the dApp.
     -   Presents requests to the user for approval or rejection.
@@ -39,24 +39,24 @@ The protocol is composed of four main components that work together to establish
 -   **Location:** A shared library used by both the DApp and Wallet clients.
 -   **Responsibilities:**
     -   Provides the foundational logic and interfaces for the entire system.
-    -   **Session Management:** Defines the structure for sessions and includes a `SessionStore` for persisting them.
+    -   **Session Management:** Defines the structure for sessions, `SessionRequest`, and connection modes.
     -   **Cryptography:** Includes a `KeyManager` for handling ECIES key generation, encryption, and decryption.
-    -   **Transport Abstraction:** Defines the `ITransport` interface, ensuring clients are agnostic to the underlying communication mechanism (currently WebSocket).
+    -   **Transport Abstraction:** Defines the `ITransport` interface, ensuring clients are agnostic to the underlying communication mechanism.
 
 ## High-Level Diagram
 
-The following diagram illustrates how these components fit together:
+The following diagram illustrates how these components fit together, highlighting the new routing logic for connection modes.
 
 ```mermaid
 graph TD
     subgraph "Browser"
         DAppUI["dApp UI (e.g., Next.js)"]
-        DappClient["<b>DApp Client</b><br/>@/dapp-client"]
+        DappClient["<b>DApp Client</b><br/>@/dapp-client<br/>- Selects connection mode<br/>- Routes to Trusted or Untrusted Flow"]
     end
 
     subgraph "Mobile Device"
         WalletUI["Wallet UI (e.g., React Native)"]
-        WalletClient["<b>Wallet Client</b><br/>@/wallet-client"]
+        WalletClient["<b>Wallet Client</b><br/>@/wallet-client<br/>- Detects connection mode<br/>- Routes to Trusted or Untrusted Flow"]
     end
 
     subgraph "Backend"
@@ -75,3 +75,4 @@ graph TD
     
     DappClient --> Core
     WalletClient --> Core
+```
