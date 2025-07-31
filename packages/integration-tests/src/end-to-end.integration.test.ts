@@ -25,7 +25,7 @@ async function connectClients(dappClient: DappClient, walletClient: WalletClient
 	const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
 		dappClient.on("session_request", resolve);
 	});
-	const dappConnectPromise = dappClient.connect();
+	const dappConnectPromise = dappClient.connect({ mode: "untrusted" });
 
 	const sessionRequest = await sessionRequestPromise;
 

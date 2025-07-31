@@ -57,16 +57,16 @@ t.describe("DappClient Integration Tests", () => {
 
 		// Override the session request TTL for this test
 		// @ts-expect-error - accessing private method for testing
-		const originalMethod = shortTimeoutDappClient.createPendingSessionAndRequest;
+		const originalMethod = shortTimeoutDappClient._createPendingSessionAndRequest;
 
 		// @ts-expect-error - accessing private method for testing
-		shortTimeoutDappClient.createPendingSessionAndRequest = function () {
-			const result = originalMethod.call(this);
+		shortTimeoutDappClient._createPendingSessionAndRequest = function () {
+			const result = originalMethod.call(this, "untrusted");
 			result.request.expiresAt = Date.now() + 10; // Set a much shorter expiry (10ms instead of 60 seconds)
 			return result;
 		};
 
-		const connectPromise = shortTimeoutDappClient.connect();
+		const connectPromise = shortTimeoutDappClient.connect({ mode: "untrusted" });
 		// No wallet responds...
 
 		// Both error messages are valid for REQUEST_EXPIRED scenario

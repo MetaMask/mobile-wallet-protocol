@@ -1,8 +1,8 @@
 export type HandshakeOfferPayload = {
 	publicKeyB64: string;
 	channelId: string;
-	otp: string;
-	deadline: number;
+	otp?: string;
+	deadline?: number;
 };
 
 export type HandshakeOffer = {
