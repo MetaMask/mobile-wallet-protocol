@@ -159,7 +159,6 @@ export default function TrustedDemo() {
 		setDappStatus("Ready to connect");
 	};
 
-
 	// DApp Functions
 	const initializeDappClient = async () => {
 		try {
@@ -214,8 +213,6 @@ export default function TrustedDemo() {
 			dapp.on("error", (error: Error) => {
 				addDappLog("system", `DApp error: ${error.message}`);
 			});
-
-
 
 			setDappClient(dapp);
 
@@ -300,8 +297,6 @@ export default function TrustedDemo() {
 		}
 	};
 
-
-
 	// Wallet Functions
 	const initializeWalletClient = async () => {
 		try {
@@ -356,8 +351,6 @@ export default function TrustedDemo() {
 			wallet.on("error", (error: Error) => {
 				addWalletLog("system", `Wallet error: ${error.message}`);
 			});
-
-
 
 			setWalletClient(wallet);
 
@@ -579,8 +572,6 @@ export default function TrustedDemo() {
 									</div>
 								</div>
 							)}
-
-
 						</div>
 					</div>
 
@@ -627,14 +618,15 @@ export default function TrustedDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${log.type === "sent"
-												? "bg-blue-100 dark:bg-blue-900"
-												: log.type === "received"
-													? "bg-green-100 dark:bg-green-900"
-													: log.type === "notification"
-														? "bg-yellow-100 dark:bg-yellow-900"
-														: "bg-gray-200 dark:bg-gray-700"
-												}`}
+											className={`p-2 rounded text-xs ${
+												log.type === "sent"
+													? "bg-blue-100 dark:bg-blue-900"
+													: log.type === "received"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+											}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -682,8 +674,6 @@ export default function TrustedDemo() {
 										</button>
 									)}
 								</div>
-
-
 							</div>
 						</div>
 
@@ -765,14 +755,15 @@ export default function TrustedDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${log.type === "request"
-													? "bg-purple-100 dark:bg-purple-900"
-													: log.type === "response"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-													}`}
+												className={`p-2 rounded text-xs ${
+													log.type === "request"
+														? "bg-purple-100 dark:bg-purple-900"
+														: log.type === "response"
+															? "bg-green-100 dark:bg-green-900"
+															: log.type === "notification"
+																? "bg-yellow-100 dark:bg-yellow-900"
+																: "bg-gray-200 dark:bg-gray-700"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

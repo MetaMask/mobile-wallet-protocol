@@ -90,8 +90,6 @@ export default function BasicDemo() {
 					setStatus(`Wallet error: ${error.message}`);
 				});
 
-
-
 				if (!mounted) return;
 
 				setDappClient(dapp);
@@ -212,8 +210,6 @@ export default function BasicDemo() {
 		}
 	};
 
-
-
 	const handleSendTestMessage = async () => {
 		if (!dappClient || !walletClient || !isConnected) {
 			setStatus("Not ready to send messages");
@@ -306,8 +302,6 @@ export default function BasicDemo() {
 					>
 						2. Simulate Wallet Scan
 					</button>
-
-
 
 					{/* Step 4: Send a message (after connection) */}
 					<button
