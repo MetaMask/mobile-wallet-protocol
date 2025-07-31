@@ -63,6 +63,8 @@ export class SessionManager extends EventEmitter {
 		console.log(`SessionManager: Creating new client for session request ${sessionRequest.id}`);
 		const client = await this.createClient();
 
+		this.emit("system-log", { sessionId: sessionRequest.id, message: `Incoming connection request (mode: ${sessionRequest.mode})` });
+
 		// Listen for the OTP event just for this connection attempt.
 		client.once("display_otp", (otp: string, deadline: number) => {
 			this.emit("otp_display_request", { otp, deadline });

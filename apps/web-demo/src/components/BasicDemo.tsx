@@ -1,7 +1,7 @@
 "use client";
 
 import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
+import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useState } from "react";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
@@ -14,9 +14,6 @@ export default function BasicDemo() {
 	const [walletClient, setWalletClient] = useState<WalletClient | null>(null);
 	const [sessionRequest, setSessionRequest] = useState<SessionRequest | null>(null);
 	const [isConnected, setIsConnected] = useState(false);
-	const [otp, setOtp] = useState<string>("");
-	const [otpPayload, setOtpPayload] = useState<OtpRequiredPayload | null>(null);
-	const [otpDeadline, setOtpDeadline] = useState<number>(0);
 
 	useEffect(() => {
 		let mounted = true;
@@ -93,19 +90,7 @@ export default function BasicDemo() {
 					setStatus(`Wallet error: ${error.message}`);
 				});
 
-				dapp.on("otp_required", (payload: OtpRequiredPayload) => {
-					console.log("OTP required. User needs to enter OTP from wallet.", payload);
-					setStatus("OTP Required: Enter the code displayed on your wallet.");
-					setOtpPayload(payload);
-					setOtpDeadline(payload.deadline);
-				});
 
-				wallet.on("display_otp", (otp: string, deadline: number) => {
-					console.log(`Wallet should display OTP: ${otp}, it expires at ${new Date(deadline).toLocaleTimeString()}`);
-					setStatus(`Wallet received OTP: ${otp}. Please enter it into the dApp.`);
-					// In this demo, we can auto-fill it for convenience.
-					setOtp(otp);
-				});
 
 				if (!mounted) return;
 
@@ -188,9 +173,6 @@ export default function BasicDemo() {
 			// Reset state for fresh connection
 			setIsConnected(false);
 			setSessionRequest(null);
-			setOtp("");
-			setOtpPayload(null);
-			setOtpDeadline(0);
 			setStatus("Starting fresh connection...");
 
 			// Disconnect existing sessions if any
@@ -201,7 +183,7 @@ export default function BasicDemo() {
 			}
 
 			// Start the dapp connection process
-			dappClient.connect().catch((error) => {
+			dappClient.connect({ mode: "trusted" }).catch((error) => {
 				console.error("Dapp connection failed:", error);
 				setStatus(`Dapp connection failed: ${error.message}`);
 			});
@@ -230,26 +212,7 @@ export default function BasicDemo() {
 		}
 	};
 
-	const handleOtpSubmit = async () => {
-		if (!otpPayload || !otp) {
-			setStatus("OTP payload or input is missing.");
-			return;
-		}
 
-		try {
-			setStatus("Submitting OTP...");
-			await otpPayload.submit(otp);
-			setStatus("OTP accepted! Both clients are now connected.");
-			// The 'connected' event from the dapp client will set isConnected to true.
-			setOtpPayload(null);
-			setOtp("");
-			setOtpDeadline(0);
-		} catch (error) {
-			console.error("OTP submission failed:", error);
-			setStatus(`OTP submission failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-			// Do not clear the payload, allow the user to retry.
-		}
-	};
 
 	const handleSendTestMessage = async () => {
 		if (!dappClient || !walletClient || !isConnected) {
@@ -277,9 +240,6 @@ export default function BasicDemo() {
 			await Promise.all([dappClient?.disconnect(), walletClient?.disconnect()]);
 			setIsConnected(false);
 			setSessionRequest(null);
-			setOtp("");
-			setOtpPayload(null);
-			setOtpDeadline(0);
 			setStatus("Disconnected");
 		} catch (error) {
 			console.error("Disconnect failed:", error);
@@ -341,35 +301,13 @@ export default function BasicDemo() {
 					<button
 						type="button"
 						onClick={handleWalletConnect}
-						disabled={!sessionRequest || !!otpPayload || isConnected}
+						disabled={!sessionRequest || isConnected}
 						className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
 					>
 						2. Simulate Wallet Scan
 					</button>
 
-					{/* Step 3: OTP Submission (conditionally rendered) */}
-					{otpPayload && !isConnected && (
-						<div className="border-t pt-4 mt-4 space-y-3">
-							<p className="text-sm text-center font-semibold text-gray-800 dark:text-gray-200">Enter One-Time Password</p>
-							<input
-								type="text"
-								value={otp}
-								onChange={(e) => setOtp(e.target.value)}
-								placeholder="6-digit OTP"
-								maxLength={6}
-								className="w-full text-center tracking-widest font-mono text-2xl p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-							/>
-							<button
-								type="button"
-								onClick={handleOtpSubmit}
-								disabled={!otp || otp.length !== 6}
-								className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-							>
-								3. Submit OTP
-							</button>
-							{otpDeadline > 0 && <p className="text-xs text-center text-gray-500">Expires at: {new Date(otpDeadline).toLocaleTimeString()}</p>}
-						</div>
-					)}
+
 
 					{/* Step 4: Send a message (after connection) */}
 					<button
@@ -378,7 +316,7 @@ export default function BasicDemo() {
 						disabled={!isConnected}
 						className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white px-4 py-3 rounded-lg font-medium transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-0"
 					>
-						4. Send Test Message
+						3. Send Test Message
 					</button>
 
 					{/* Disconnect Button */}
