@@ -1,4 +1,3 @@
-// dapp-client/src/handlers/untrusted-connection-handler.ts
 import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { toUint8Array } from "js-base64";
 import type { OtpRequiredPayload } from "../client";
