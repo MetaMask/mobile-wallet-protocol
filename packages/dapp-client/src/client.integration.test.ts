@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import { type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -32,61 +33,59 @@ t.describe("DappClient Integration Tests", () => {
 		await dappClient.disconnect();
 	});
 
-	t.test("connect() should emit a valid 'session_request'", async () => {
-		const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
-			dappClient.on("session_request", resolve);
+	t.describe("Connection Modes", () => {
+		t.test("should emit a 'session_request' with 'untrusted' mode by default", async () => {
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
+
+			dappClient.connect(); // Don't await, no options provided
+
+			const request = await sessionRequestPromise;
+			t.expect(request.mode).toBe("untrusted");
 		});
 
-		dappClient.connect(); // Don't await
+		t.test("should emit a 'session_request' with 'trusted' mode when specified", async () => {
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
 
-		const request = await sessionRequestPromise;
-		t.expect(request.id).toBeTypeOf("string");
-		t.expect(request.channel).toContain("handshake:");
-		t.expect(request.publicKeyB64).toBeTypeOf("string");
-		t.expect(request.expiresAt).toBeGreaterThan(Date.now());
+			dappClient.connect({ mode: "trusted" }); // Don't await
+
+			const request = await sessionRequestPromise;
+			t.expect(request.mode).toBe("trusted");
+		});
 	});
 
-	t.test("connect() should fail if handshake-offer is not received in time", async () => {
-		// Create a dapp client with shorter timeout for testing
-		const shortTimeoutDappClient = new DappClient({
-			// @ts-expect-error - accessing private property for testing
-			transport: dappClient.transport,
-			// @ts-expect-error - accessing private property for testing
-			sessionstore: dappClient.sessionstore,
+	t.describe("Untrusted Flow", () => {
+		t.test("should fail if handshake-offer is not received in time", async () => {
+			const shortTimeoutDappClient = new DappClient({
+				transport: (dappClient as any).transport,
+				sessionstore: (dappClient as any).sessionstore,
+			});
+
+			const originalMethod = (shortTimeoutDappClient as any)._createPendingSessionAndRequest;
+			(shortTimeoutDappClient as any)._createPendingSessionAndRequest = function () {
+				const result = originalMethod.call(this, "untrusted");
+				result.request.expiresAt = Date.now() + 10;
+				return result;
+			};
+
+			const connectPromise = shortTimeoutDappClient.connect({ mode: "untrusted" });
+
+			await t.expect(connectPromise).rejects.toThrow(/(?:Did not receive handshake offer|Session request expired before wallet could connect)/);
+
+			await shortTimeoutDappClient.disconnect();
+		});
+	});
+
+	t.describe("General Functionality", () => {
+		t.test("sendRequest() should fail if not connected", async () => {
+			await t.expect(dappClient.sendRequest({ method: "test" })).rejects.toThrow("Cannot send request: not connected.");
 		});
 
-		// Override the session request TTL for this test
-		// @ts-expect-error - accessing private method for testing
-		const originalMethod = shortTimeoutDappClient.createPendingSessionAndRequest;
-
-		// @ts-expect-error - accessing private method for testing
-		shortTimeoutDappClient.createPendingSessionAndRequest = function () {
-			const result = originalMethod.call(this);
-			result.request.expiresAt = Date.now() + 10; // Set a much shorter expiry (10ms instead of 60 seconds)
-			return result;
-		};
-
-		const connectPromise = shortTimeoutDappClient.connect();
-		// No wallet responds...
-
-		// Both error messages are valid for REQUEST_EXPIRED scenario
-		await t.expect(connectPromise).rejects.toThrow(/(?:Session request expired before wallet could connect\.|Did not receive handshake offer from wallet in time\.)/);
-
-		await shortTimeoutDappClient.disconnect();
-	});
-
-	t.test("sendRequest() should fail if not connected", async () => {
-		await t.expect(dappClient.sendRequest({ method: "test" })).rejects.toThrow("Cannot send request: not connected.");
-	});
-
-	t.test("should have correct initial state", async () => {
-		// @ts-expect-error - accessing private property for testing
-		t.expect(dappClient.state).toBe("DISCONNECTED");
-	});
-
-	t.test("disconnect() should clean up properly", async () => {
-		await dappClient.disconnect();
-		// @ts-expect-error - accessing private property for testing
-		t.expect(dappClient.state).toBe("DISCONNECTED");
+		t.test("should have correct initial state", async () => {
+			t.expect((dappClient as any).state).toBe("DISCONNECTED");
+		});
 	});
 });

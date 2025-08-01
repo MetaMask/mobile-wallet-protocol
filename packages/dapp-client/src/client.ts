@@ -1,9 +1,9 @@
 import {
 	BaseClient,
 	ClientState,
+	type ConnectionMode,
 	DEFAULT_SESSION_TTL,
 	ErrorCode,
-	type HandshakeOfferPayload,
 	type ISessionStore,
 	type ITransport,
 	KeyManager,
@@ -12,8 +12,12 @@ import {
 	SessionError,
 	type SessionRequest,
 } from "@metamask/mobile-wallet-protocol-core";
-import { fromUint8Array, toUint8Array } from "js-base64";
+import { fromUint8Array } from "js-base64";
 import { v4 as uuid } from "uuid";
+import type { IConnectionHandler } from "./domain/connection-handler";
+import type { IConnectionHandlerContext } from "./domain/connection-handler-context";
+import { TrustedConnectionHandler } from "./handlers/trusted-connection-handler";
+import { UntrustedConnectionHandler } from "./handlers/untrusted-connection-handler";
 
 const SESSION_REQUEST_TTL = 60 * 1000; // 60 seconds
 
@@ -25,6 +29,14 @@ export interface DappClientOptions {
 	transport: ITransport;
 	/** An initialized session store for persistent session management. */
 	sessionstore: ISessionStore;
+}
+
+/**
+ * Options for configuring the connection behavior.
+ */
+export interface DappConnectOptions {
+	/** The connection mode: 'trusted' for same-device flows, 'untrusted' for high-security OTP flows. */
+	mode?: ConnectionMode;
 }
 
 /**
@@ -47,19 +59,20 @@ export type OtpRequiredPayload = {
 
 /**
  * Manages the connection from the dApp's perspective. It handles session
- * initiation, secure communication via an OTP handshake, and request/response
- * messaging with a wallet.
+ * initiation, secure communication, and request/response messaging with a wallet.
+ *
+ * Supports both 'trusted' (streamlined, same-device) and 'untrusted' (OTP-based)
+ * connection flows through self-contained handlers.
  */
 export class DappClient extends BaseClient {
-	private readonly otpAttempts = 3;
-	private timeoutId: NodeJS.Timeout | null = null;
-
 	public override on(event: "session_request", listener: (request: SessionRequest) => void): this;
 	public override on(event: "otp_required", listener: (payload: OtpRequiredPayload) => void): this;
 	public override on(event: "connected" | "disconnected", listener: () => void): this;
 	public override on(event: "message", listener: (payload: unknown) => void): this;
 	public override on(event: "error", listener: (error: Error) => void): this;
+	// biome-ignore lint/suspicious/noExplicitAny: used for event emitter
 	public override on(event: string | symbol, listener: (...args: any[]) => void): this {
+		// biome-ignore lint/suspicious/noExplicitAny: used for event emitter
 		return super.on(event as any, listener);
 	}
 
@@ -68,31 +81,59 @@ export class DappClient extends BaseClient {
 	}
 
 	/**
-	 * Initiates a new session with a wallet. This process involves:
-	 * 1. Emitting a `session_request` event (typically with a QR code/deep-link payload).
-	 * 2. Waiting for the wallet to send a handshake offer.
-	 * 3. Emitting an `otp_required` event for the user to verify the connection.
-	 * 4. Finalizing the secure, encrypted session.
+	 * Initiates a new session with a wallet. The process differs based on the connection mode:
 	 *
-	 * @returns A promise that resolves when the session is successfully established.
+	 * **Trusted Mode** (same-device/trusted context):
+	 * 1. Emits a `session_request` event
+	 * 2. Waits for wallet handshake offer
+	 * 3. Automatically finalizes secure session
+	 *
+	 * **Untrusted Mode** (high-security):
+	 * 1. Emits a `session_request` event
+	 * 2. Waits for wallet handshake offer with OTP
+	 * 3. Emits `otp_required` event for user verification
+	 * 4. Finalizes secure, encrypted session after OTP validation
+	 *
+	 * @param options - Connection options including the desired mode
+	 * @returns A promise that resolves when the session is successfully established
 	 * @throws {SessionError} If the client is not in a `DISCONNECTED` state or if the
-	 * connection process times out.
+	 * connection process fails
 	 */
-	public async connect(): Promise<void> {
+	public async connect(options: DappConnectOptions = {}): Promise<void> {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
-		const { pendingSession, request } = this.createPendingSessionAndRequest();
+		const { mode = "untrusted" } = options;
+		const { pendingSession, request } = this._createPendingSessionAndRequest(mode);
 		this.session = pendingSession;
 		this.emit("session_request", request);
 
+		const self = this;
+		const context: IConnectionHandlerContext = {
+			transport: this.transport,
+			sessionstore: this.sessionstore,
+			get session() {
+				return self.session;
+			},
+			set session(session: Session | null) {
+				self.session = session;
+			},
+			get state() {
+				return self.state;
+			},
+			set state(state: ClientState) {
+				self.state = state;
+			},
+			emit: this.emit.bind(this),
+			once: this.once.bind(this),
+			off: this.off.bind(this),
+			sendMessage: this.sendMessage.bind(this),
+		};
+
+		const handler: IConnectionHandler = mode === "trusted" ? new TrustedConnectionHandler(context) : new UntrustedConnectionHandler(context);
+
 		try {
-			await this.transport.connect();
-			await this.transport.subscribe(request.channel);
-			const offer = await this.waitForHandshakeOffer(request.expiresAt);
-			await this.handleOtpInput(offer);
-			await this.updateSessionAndAcknowledge(pendingSession, offer);
-			await this.finalizeConnection(request.channel);
+			await handler.execute(pendingSession, request);
 		} catch (error) {
 			await this.disconnect();
 			throw error;
@@ -100,21 +141,10 @@ export class DappClient extends BaseClient {
 	}
 
 	/**
-	 * Disconnects the client and clears any pending connection timeouts.
-	 */
-	public async disconnect(): Promise<void> {
-		if (this.timeoutId) {
-			clearTimeout(this.timeoutId);
-			this.timeoutId = null;
-		}
-		await super.disconnect();
-	}
-
-	/**
 	 * Sends a request payload to the connected wallet.
 	 *
-	 * @param payload - The request payload to send to the wallet.
-	 * @throws {SessionError} If the client is not in a `CONNECTED` state.
+	 * @param payload - The request payload to send to the wallet
+	 * @throws {SessionError} If the client is not in a `CONNECTED` state
 	 */
 	public async sendRequest(payload: unknown): Promise<void> {
 		if (this.state !== ClientState.CONNECTED || !this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send request: not connected.");
@@ -128,7 +158,7 @@ export class DappClient extends BaseClient {
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
 		if (this.state === ClientState.CONNECTING && message.type === "handshake-offer") {
-			// Internal event to pass the offer to the connect() promise chain.
+			// Internal event to pass the offer to the connection handler
 			this.emit("handshake_offer_received", message.payload);
 		} else if (this.state === ClientState.CONNECTED && message.type === "message") {
 			this.emit("message", message.payload);
@@ -138,115 +168,30 @@ export class DappClient extends BaseClient {
 	/**
 	 * Creates a temporary session object and the corresponding `SessionRequest`
 	 * payload to be shared with the wallet.
+	 *
+	 * @param mode - The connection mode to use for this session
+	 * @returns An object containing the pending session and session request
 	 */
-	private createPendingSessionAndRequest(): { pendingSession: Session; request: SessionRequest } {
+	private _createPendingSessionAndRequest(mode: ConnectionMode): { pendingSession: Session; request: SessionRequest } {
 		const id = uuid();
 		const keyPair = this.keymanager.generateKeyPair();
 
-		// The session is "pending" because the channel and theirPublicKey are unknown until the handshake.
+		// The session is "pending" because the channel and theirPublicKey are unknown until the handshake
 		const pendingSession: Session = {
 			id,
-			channel: "", // To be determined by the wallet's handshake offer.
+			channel: "", // To be determined by the wallet's handshake offer
 			keyPair,
-			theirPublicKey: new Uint8Array(0), // Placeholder, will be updated.
+			theirPublicKey: new Uint8Array(0), // Placeholder, will be updated
 			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
 		};
 
 		const request: SessionRequest = {
 			id,
+			mode,
 			channel: `handshake:${id}`,
 			publicKeyB64: fromUint8Array(keyPair.publicKey),
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
 		};
-
 		return { pendingSession, request };
-	}
-
-	/**
-	 * Waits for a `handshake-offer` message from the wallet on the handshake channel.
-	 *
-	 * @param requestExpiry - The timestamp when the session request expires.
-	 * @returns A promise that resolves with the `HandshakeOfferPayload`.
-	 * @throws {SessionError} If the offer is not received before the request expires.
-	 */
-	private waitForHandshakeOffer(requestExpiry: number): Promise<HandshakeOfferPayload> {
-		return new Promise((resolve, reject) => {
-			const timeoutDuration = requestExpiry - Date.now();
-			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Session request expired before wallet could connect."));
-			}
-
-			this.timeoutId = setTimeout(() => {
-				this.off("handshake_offer_received", onOfferReceived);
-				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Did not receive handshake offer from wallet in time."));
-			}, timeoutDuration);
-
-			const onOfferReceived = (payload: HandshakeOfferPayload) => {
-				if (this.timeoutId) clearTimeout(this.timeoutId);
-				resolve(payload);
-			};
-
-			this.once("handshake_offer_received", onOfferReceived);
-		});
-	}
-
-	/**
-	 * Manages the OTP verification step by emitting the `otp_required` event and
-	 * waiting for the user to submit the correct OTP.
-	 *
-	 * @param offer - The handshake offer from the wallet containing the OTP.
-	 * @throws {SessionError} If the OTP is incorrect after max attempts, the OTP expires,
-	 * or the user cancels.
-	 */
-	private handleOtpInput(offer: HandshakeOfferPayload): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (Date.now() > offer.deadline) {
-				return reject(new SessionError(ErrorCode.OTP_ENTRY_TIMEOUT, "The OTP has already expired."));
-			}
-
-			let attempts = 0;
-			const submit = async (otp: string): Promise<void> => {
-				if (otp !== offer.otp) {
-					attempts++;
-					if (attempts >= this.otpAttempts) {
-						reject(new SessionError(ErrorCode.OTP_MAX_ATTEMPTS_REACHED, "Maximum OTP attempts reached."));
-					} else {
-						throw new SessionError(ErrorCode.OTP_INCORRECT, `Incorrect OTP. ${this.otpAttempts - attempts} attempts remaining.`);
-					}
-					return;
-				}
-				resolve(); // OTP is correct
-			};
-
-			const cancel = () => reject(new Error("User cancelled OTP entry."));
-			this.emit("otp_required", { submit, cancel, deadline: offer.deadline });
-		});
-	}
-
-	/**
-	 * Updates the pending session with the final details from the wallet's offer
-	 * and sends a `handshake-ack` to the wallet on the new secure channel.
-	 *
-	 * @param pendingSession - The temporary session object.
-	 * @param offer - The handshake offer payload from the wallet.
-	 */
-	private async updateSessionAndAcknowledge(pendingSession: Session, offer: HandshakeOfferPayload): Promise<void> {
-		this.session = { ...pendingSession, channel: `session:${offer.channelId}`, theirPublicKey: toUint8Array(offer.publicKeyB64) };
-		await this.transport.subscribe(this.session.channel);
-		await this.sendMessage(this.session.channel, { type: "handshake-ack" });
-	}
-
-	/**
-	 * Completes the connection by persisting the session, cleaning up the
-	 * temporary handshake channel, and transitioning to the `CONNECTED` state.
-	 *
-	 * @param handshakeChannel - The temporary channel used for the initial handshake.
-	 */
-	private async finalizeConnection(handshakeChannel: string): Promise<void> {
-		if (!this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE);
-		await this.sessionstore.set(this.session);
-		await this.transport.clear(handshakeChannel);
-		this.state = ClientState.CONNECTED;
-		this.emit("connected");
 	}
 }
