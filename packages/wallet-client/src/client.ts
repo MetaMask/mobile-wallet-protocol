@@ -1,3 +1,4 @@
+// wallet-client/src/client.ts
 import {
 	BaseClient,
 	ClientState,
