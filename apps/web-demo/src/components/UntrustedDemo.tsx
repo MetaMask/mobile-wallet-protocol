@@ -29,7 +29,7 @@ type PendingRequest = {
 	timestamp: Date;
 };
 
-export default function FullDemo() {
+export default function UntrustedDemo() {
 	// UI State
 	const [showWalletClient, setShowWalletClient] = useState(true);
 
@@ -165,33 +165,13 @@ export default function FullDemo() {
 		setDappStatus("Ready to connect");
 	};
 
-	// Generate QR code data URL
-	const generateQrCodeUrl = async (data: string): Promise<string> => {
-		// For simplicity, we'll create a data URL with base64 encoded QR code
-		// In a real implementation, you'd use a QR code library like 'qrcode'
-		try {
-			const { default: QRCode } = await import("qrcode");
-			return await QRCode.toDataURL(data, {
-				width: 256,
-				margin: 2,
-				color: {
-					dark: "#000000",
-					light: "#FFFFFF",
-				},
-			});
-		} catch (error) {
-			console.error("QR Code generation failed:", error);
-			return "";
-		}
-	};
-
 	// DApp Functions
 	const initializeDappClient = async () => {
 		try {
 			setDappStatus("Initializing...");
 			addDappLog("system", "Creating dApp client...");
 
-			const dappKvStore = new LocalStorageKVStore("full-demo-dapp-");
+			const dappKvStore = new LocalStorageKVStore("untrusted-demo-dapp-");
 			const dappSessionStore = new SessionStore(dappKvStore);
 
 			const dappTransport = await WebSocketTransport.create({
@@ -359,7 +339,7 @@ export default function FullDemo() {
 			setWalletStatus("Initializing...");
 			addWalletLog("system", "Creating wallet client...");
 
-			const walletKvStore = new LocalStorageKVStore("full-demo-wallet-");
+			const walletKvStore = new LocalStorageKVStore("untrusted-demo-wallet-");
 			const walletSessionStore = new SessionStore(walletKvStore);
 
 			const walletTransport = await WebSocketTransport.create({
@@ -575,7 +555,7 @@ export default function FullDemo() {
 				<div className="space-y-6">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
-							<h3 className="text-xl font-bold text-gray-900 dark:text-white">DApp Client</h3>
+							<h3 className="text-xl font-bold text-gray-900 dark:text-white">DApp Client (Untrusted)</h3>
 							<div className="flex items-center gap-2">
 								<div className={`w-3 h-3 rounded-full ${dappConnected ? "bg-green-500" : "bg-gray-400"}`}></div>
 								<span className="text-sm text-gray-600 dark:text-gray-400">{dappStatus}</span>
@@ -712,14 +692,15 @@ export default function FullDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${log.type === "sent"
-												? "bg-blue-100 dark:bg-blue-900"
-												: log.type === "received"
-													? "bg-green-100 dark:bg-green-900"
-													: log.type === "notification"
-														? "bg-yellow-100 dark:bg-yellow-900"
-														: "bg-gray-200 dark:bg-gray-700"
-												}`}
+											className={`p-2 rounded text-xs ${
+												log.type === "sent"
+													? "bg-blue-100 dark:bg-blue-900"
+													: log.type === "received"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+											}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -738,7 +719,7 @@ export default function FullDemo() {
 				{showWalletClient && (
 					<div className="space-y-6">
 						<div className="flex items-center gap-3">
-							<h3 className="text-xl font-bold text-gray-900 dark:text-white">Wallet Client</h3>
+							<h3 className="text-xl font-bold text-gray-900 dark:text-white">Wallet Client (Untrusted)</h3>
 							<div className="flex items-center gap-2">
 								<div className={`w-3 h-3 rounded-full ${walletConnected ? "bg-green-500" : "bg-gray-400"}`}></div>
 								<span className="text-sm text-gray-600 dark:text-gray-400">{walletStatus}</span>
@@ -864,14 +845,15 @@ export default function FullDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${log.type === "request"
-													? "bg-purple-100 dark:bg-purple-900"
-													: log.type === "response"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-													}`}
+												className={`p-2 rounded text-xs ${
+													log.type === "request"
+														? "bg-purple-100 dark:bg-purple-900"
+														: log.type === "response"
+															? "bg-green-100 dark:bg-green-900"
+															: log.type === "notification"
+																? "bg-yellow-100 dark:bg-yellow-900"
+																: "bg-gray-200 dark:bg-gray-700"
+												}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

@@ -86,4 +86,4 @@ const styles = StyleSheet.create({
 		color: "gray",
 		marginTop: 4,
 	},
-}); 
+});

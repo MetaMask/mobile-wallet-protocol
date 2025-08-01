@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 
 const demos = [
 	{ name: "Basic Demo", href: "/" },
-	{ name: "Full Demo", href: "/full-demo" },
+	{ name: "Trusted Demo", href: "/trusted-demo" },
+	{ name: "Untrusted Demo", href: "/untrusted-demo" },
 ];
 
 export default function Navigation() {

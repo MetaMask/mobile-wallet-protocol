@@ -1,4 +1,3 @@
-// wallet-client/src/handlers/untrusted-wallet-handler.ts
 import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { fromUint8Array } from "js-base64";
 import type { IConnectionHandler } from "../domain/connection-handler";
