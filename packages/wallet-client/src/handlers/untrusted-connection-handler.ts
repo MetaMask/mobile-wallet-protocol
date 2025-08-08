@@ -1,5 +1,5 @@
 import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
-import { fromUint8Array } from "js-base64";
+import { bytesToBase64 } from "@metamask/utils";
 import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
@@ -60,7 +60,7 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 	private async _sendHandshakeOffer(channel: string, otp: string, deadline: number): Promise<void> {
 		if (!this.context.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE);
 		const handshakePayload: HandshakeOfferPayload = {
-			publicKeyB64: fromUint8Array(this.context.session.keyPair.publicKey),
+			publicKeyB64: bytesToBase64(this.context.session.keyPair.publicKey),
 			channelId: this.context.session.channel.replace("session:", ""),
 			otp,
 			deadline,

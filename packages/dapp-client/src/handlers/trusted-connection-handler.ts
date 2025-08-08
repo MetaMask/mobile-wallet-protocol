@@ -1,5 +1,5 @@
 import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
-import { toUint8Array } from "js-base64";
+import { base64ToBytes } from "@metamask/utils";
 import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
@@ -78,7 +78,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		return {
 			...session,
 			channel: `session:${offer.channelId}`,
-			theirPublicKey: toUint8Array(offer.publicKeyB64),
+			theirPublicKey: base64ToBytes(offer.publicKeyB64),
 		};
 	}
 

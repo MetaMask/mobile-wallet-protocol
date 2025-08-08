@@ -12,7 +12,7 @@ import {
 	SessionError,
 	type SessionRequest,
 } from "@metamask/mobile-wallet-protocol-core";
-import { toUint8Array } from "js-base64";
+import { base64ToBytes } from "@metamask/utils";
 import { v4 as uuid } from "uuid";
 import type { IConnectionHandler } from "./domain/connection-handler";
 import type { IConnectionHandlerContext } from "./domain/connection-handler-context";
@@ -153,7 +153,7 @@ export class WalletClient extends BaseClient {
 			id: request.id,
 			channel: `session:${uuid()}`, // Create a new, unique channel for secure communication
 			keyPair: this.keymanager.generateKeyPair(),
-			theirPublicKey: toUint8Array(request.publicKeyB64),
+			theirPublicKey: base64ToBytes(request.publicKeyB64),
 			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
 		};
 	}
