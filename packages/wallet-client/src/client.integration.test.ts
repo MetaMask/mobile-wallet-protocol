@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import { type IKVStore, KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { fromUint8Array } from "js-base64";
+import { bytesToBase64 } from "@metamask/utils";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { WalletClient } from "./client";
@@ -35,7 +35,7 @@ t.describe("WalletClient Integration Tests", () => {
 		const baseRequest = {
 			id: "test-session",
 			channel: "handshake:test-session",
-			publicKeyB64: fromUint8Array(dappKeyPair.publicKey),
+			publicKeyB64: bytesToBase64(dappKeyPair.publicKey),
 			expiresAt: Date.now() + 5 * 60 * 1000,
 		};
 		untrustedSessionRequest = { ...baseRequest, mode: "untrusted" };

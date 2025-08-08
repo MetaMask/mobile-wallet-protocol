@@ -56,7 +56,7 @@ t.describe("TrustedConnectionHandler", () => {
 		};
 		mockOffer = {
 			channelId: "secure-channel",
-			publicKeyB64: "pubkey",
+			publicKeyB64: "cHVia2V5",
 		}; // No OTP for trusted flow
 
 		context.once = t.vi.fn((event, callback) => {

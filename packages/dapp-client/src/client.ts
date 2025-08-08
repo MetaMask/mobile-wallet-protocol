@@ -12,7 +12,7 @@ import {
 	SessionError,
 	type SessionRequest,
 } from "@metamask/mobile-wallet-protocol-core";
-import { fromUint8Array } from "js-base64";
+import { bytesToBase64 } from "@metamask/utils";
 import { v4 as uuid } from "uuid";
 import type { IConnectionHandler } from "./domain/connection-handler";
 import type { IConnectionHandlerContext } from "./domain/connection-handler-context";
@@ -189,7 +189,7 @@ export class DappClient extends BaseClient {
 			id,
 			mode,
 			channel: `handshake:${id}`,
-			publicKeyB64: fromUint8Array(keyPair.publicKey),
+			publicKeyB64: bytesToBase64(keyPair.publicKey),
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
 		};
 		return { pendingSession, request };
