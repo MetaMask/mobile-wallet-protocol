@@ -11,7 +11,6 @@
 		"prepack": "./scripts/prepack.sh",
 		"changelog:update": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:update",
 		"changelog:validate": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:validate",
-		"create-release-branch": "create-release-branch",
 		"prepare-preview-builds": "./scripts/prepare-preview-builds.sh",
 		"publish-previews": "yarn workspaces foreach --no-private --parallel --verbose run publish:preview",
 		"test": "vitest run",
