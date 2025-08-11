@@ -29,11 +29,19 @@ prepare-preview-manifest() {
   mv temp.json "$manifest_file"
 }
 
+workspaces_list=$(yarn workspaces list --no-private --json | jq --slurp --raw-output 'map(select(.location != ".")) | map([.location, .name]) | map(@tsv) | .[]')
+
 echo "Preparing manifests..."
 while IFS=$'\t' read -r location name; do
   echo "- $name"
   prepare-preview-manifest "$location/package.json"
-done < <(yarn workspaces list --no-private --json | jq --slurp --raw-output 'map(select(.location != ".")) | map([.location, .name]) | map(@tsv) | .[]')
+done <<< "$workspaces_list"
+
+echo "Updating internal dependencies..."
+while IFS=$'\t' read -r location name; do
+  manifest_file="$location/package.json"
+  sed -i'' -e "s#\"@metamask/\(.*\)": \"workspace:\*\"#\"$npm_scope/\1\": \"workspace:*\"#g" "$manifest_file"
+done <<< "$workspaces_list"
 
 echo "Installing dependencies..."
 yarn install --no-immutable
