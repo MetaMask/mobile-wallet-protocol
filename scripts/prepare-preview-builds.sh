@@ -19,29 +19,25 @@ npm_scope="$1"
 # preview build is unique and can be linked to a specific commit.
 shorthash="$2"
 
-prepare-preview-manifest() {
-  local manifest_file="$1"
-
-  # jq does not support in-place modification of files, so a temporary file is
-  # used to store the result of the operation. The original file is then
-  # overwritten with the temporary file.
-  jq --raw-output --arg npm_scope "$npm_scope" --arg hash "$shorthash" --from-file scripts/prepare-preview-builds.jq "$manifest_file" > temp.json
-  mv temp.json "$manifest_file"
-}
-
-workspaces_list=$(yarn workspaces list --no-private --json | jq --slurp --raw-output 'map(select(.location != ".")) | map([.location, .name]) | map(@tsv) | .[]')
-
 echo "Preparing manifests..."
-while IFS=$'\t' read -r location name; do
-  echo "- $name"
-  prepare-preview-manifest "$location/package.json"
-done <<< "$workspaces_list"
 
-echo "Updating internal dependencies..."
-while IFS=$'\t' read -r location name; do
-  manifest_file="$location/package.json"
-  sed -i'' -e "/\"@metamask\/.*\": \"workspace:\*\"/s/@metamask\//$npm_scope\//g" "$manifest_file"
-done <<< "$workspaces_list"
+# Get a list of all package.json files for our workspaces.
+# The `read -r` and `mapfile` commands are a safe way to handle file paths.
+read -r -d '' -a package_json_files < <(yarn workspaces list --no-private --json | jq --compact-output --raw-output 'select(.location != ".") | .location + "/package.json"' && printf '\0')
 
-echo "Installing dependencies..."
+# Pass all package.json files to jq to rename them and update their versions.
+# This is more efficient than calling jq once per file.
+for file in "${package_json_files[@]}"; do
+  jq \
+    --arg npm_scope "$npm_scope" \
+    --arg hash "$shorthash" \
+    --from-file scripts/prepare-preview-builds.jq \
+    "$file" > tmp.json && mv tmp.json "$file"
+done
+
+echo "Updating internal dependencies to preview scope..."
+node scripts/update-preview-deps.js "$npm_scope" "${package_json_files[@]}"
+
+echo "Installing dependencies with updated names..."
+# The --no-immutable flag is critical because we have modified package.json files.
 yarn install --no-immutable
