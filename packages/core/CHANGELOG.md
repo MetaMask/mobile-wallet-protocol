@@ -6,4 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated package metadata and added publishing scripts. ([#21])
+
 [Unreleased]: https://github.com/MetaMask/metamask-monorepo-template/

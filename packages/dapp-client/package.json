@@ -1,7 +1,6 @@
 {
 	"name": "@metamask/mobile-wallet-protocol-dapp-client",
 	"version": "0.1.0",
-	"private": true,
 	"homepage": "https://github.com/MetaMask/mobile-wallet-protocol/tree/main/packages/dapp-client#readme",
 	"bugs": {
 		"url": "https://github.com/MetaMask/mobile-wallet-protocol/issues"
@@ -14,7 +13,10 @@
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "tsup src/index.ts --format cjs,esm --dts"
+		"build": "tsup src/index.ts --format cjs,esm --dts",
+		"changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-dapp-client",
+		"changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-dapp-client",
+		"publish:preview": "yarn npm publish --tag preview"
 	},
 	"publishConfig": {
 		"access": "public",
