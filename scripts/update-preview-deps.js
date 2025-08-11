@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+import { readFileSync, writeFileSync } from "fs";
+import { basename, dirname } from "path";
 
 // The first argument is the preview scope (e.g., '@metamask-previews').
 // The rest of the arguments are paths to the package.json files.
@@ -12,11 +12,11 @@ if (!previewScope) {
 
 // First, derive all the new preview package names from the file paths.
 // e.g., 'packages/core/package.json' becomes '@metamask-previews/core'
-const previewPackageNames = new Set(packageJsonPaths.map((p) => `${previewScope}/${path.basename(path.dirname(p))}`));
+const previewPackageNames = new Set(packageJsonPaths.map((p) => `${previewScope}/${basename(dirname(p))}`));
 
 // Now, iterate through each package.json and update its dependencies.
 for (const manifestPath of packageJsonPaths) {
-	const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 	let wasModified = false;
 
 	// Check dependencies, devDependencies, and peerDependencies
@@ -24,8 +24,14 @@ for (const manifestPath of packageJsonPaths) {
 		if (!manifest[depType]) continue;
 
 		for (const depName in manifest[depType]) {
-			// Reconstruct what the new preview name would be for this dependency.
-			const newDepName = `${previewScope}/${depName.replace("@metamask/", "")}`;
+			// Skip if not a @metamask package
+			if (!depName.startsWith("@metamask/")) continue;
+
+			// Extract the package name after @metamask/
+			const packageNameAfterScope = depName.split("/")[1];
+			// Remove 'mobile-wallet-protocol-' prefix to match the renamed packages
+			const simplifiedName = packageNameAfterScope.replace("mobile-wallet-protocol-", "");
+			const newDepName = `${previewScope}/${simplifiedName}`;
 
 			// If this dependency is one of our internal packages, we need to rename it.
 			if (previewPackageNames.has(newDepName)) {
@@ -39,6 +45,8 @@ for (const manifestPath of packageJsonPaths) {
 
 	// Only write the file back if we actually changed something.
 	if (wasModified) {
-		fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, "\t") + "\n");
+		writeFileSync(manifestPath, JSON.stringify(manifest, null, "\t") + "\n");
 	}
 }
+
+console.log("Successfully updated internal dependencies.");
