@@ -40,7 +40,7 @@ done <<< "$workspaces_list"
 echo "Updating internal dependencies..."
 while IFS=$'\t' read -r location name; do
   manifest_file="$location/package.json"
-  sed -i'' -e "s#\"@metamask/\(.*\)": \"workspace:\*\"#\"$npm_scope/\1\": \"workspace:*\"#g" "$manifest_file"
+  sed -i'' -e "s#\"@metamask/\(.*\)\": \"workspace:\*\"#\"$npm_scope/\1\": \"workspace:\*\"#g" "$manifest_file"
 done <<< "$workspaces_list"
 
 echo "Installing dependencies..."
