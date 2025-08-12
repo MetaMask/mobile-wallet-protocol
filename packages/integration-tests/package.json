@@ -1,6 +1,7 @@
 {
 	"name": "@metamask/mobile-wallet-protocol-integration-tests",
 	"private": true,
+	"version": "0.0.1",
 	"devDependencies": {
 		"@metamask/mobile-wallet-protocol-core": "workspace:^",
 		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:^",
