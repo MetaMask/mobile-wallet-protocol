@@ -1,6 +1,6 @@
 {
 	"name": "mobile-wallet-protocol",
-	"version": "2.0.0",
+	"version": "3.0.0",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -13,7 +13,7 @@
 	},
 	"scripts": {
 		"build": "yarn workspaces foreach --topological --verbose run build",
-		"create-release-branch": "create-release-branch",
+		"create-release-branch": "create-release-branch -i",
 		"changelog:update": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:update",
 		"changelog:validate": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:validate",
 		"test": "vitest run",
