@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4]
+
+### Fixed
+
+- Fixed publishing process
+
 ## [0.0.3]
 
 ### Fixed
@@ -19,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.0.3...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.0.4...HEAD
+[0.0.4]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.0.3...@metamask/mobile-wallet-protocol-wallet-client@0.0.4
 [0.0.3]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.0.2...@metamask/mobile-wallet-protocol-wallet-client@0.0.3
 [0.0.2]: https://github.com/MetaMask/mobile-wallet-protocol/releases/tag/@metamask/mobile-wallet-protocol-wallet-client@0.0.2
