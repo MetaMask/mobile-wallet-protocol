@@ -12,7 +12,7 @@ jobs:
     outputs:
       IS_FORK: ${{ steps.is-fork.outputs.IS_FORK }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Determine whether this PR is from a fork
         id: is-fork
         run: echo "IS_FORK=$(gh pr view --json isCrossRepository --jq '.isCrossRepository' "${PR_NUMBER}" )" >> "$GITHUB_OUTPUT"
@@ -29,20 +29,24 @@ jobs:
     if: ${{ needs.is-fork-pull-request.outputs.IS_FORK == 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check out pull request
+      - uses: actions/checkout@v3
+      - name: Checkout pull request
         run: gh pr checkout "${PR_NUMBER}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
-      - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@v1
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
-          is-high-risk-environment: true
+          node-version-file: '.nvmrc'
+          cache: yarn
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@MetaMask'
+      - run: yarn --immutable
       - name: Get commit SHA
         id: commit-sha
         run: echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - run: yarn prepare-preview-builds @metamask-previews ${{ steps.commit-sha.outputs.COMMIT_SHA }}
+      - run: yarn prepare-preview-builds ${{ steps.commit-sha.outputs.COMMIT_SHA }}
       - run: yarn build
       - name: Publish preview build
         run: yarn publish-previews

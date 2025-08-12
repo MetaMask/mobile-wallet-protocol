@@ -5,19 +5,15 @@ on:
     branches: [main]
   pull_request:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !contains(github.ref, 'refs/heads/main') }}
-
 jobs:
   check-workflows:
     name: Check workflows
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Download actionlint
         id: download-actionlint
-        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/7fdc9630cc360ea1a469eed64ac6d78caeda1234/scripts/download-actionlint.bash) 1.6.25
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/7fdc9630cc360ea1a469eed64ac6d78caeda1234/scripts/download-actionlint.bash) 1.6.22
         shell: bash
       - name: Check workflow files
         run: ${{ steps.download-actionlint.outputs.executable }} -color
@@ -37,9 +33,9 @@ jobs:
       IS_RELEASE: ${{ steps.is-release.outputs.IS_RELEASE }}
     steps:
       - id: is-release
-        uses: MetaMask/action-is-release@dc4672b05e3b1d464cdaf783579b04a4e43f8b02
+        uses: MetaMask/action-is-release@v1
         with:
-          commit-starts-with: 'Release v[version]'
+          commit-starts-with: 'Release [version]'
 
   publish-release:
     name: Publish release
@@ -50,7 +46,6 @@ jobs:
     uses: ./.github/workflows/publish-release.yml
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   all-jobs-pass:
     name: All jobs pass
