@@ -9,9 +9,9 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
-		"@metamask/mobile-wallet-protocol-core": "workspace:*",
-		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:*",
-		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:*",
+		"@metamask/mobile-wallet-protocol-core": "workspace:^",
+		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:^",
+		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
 		"@types/qrcode": "^1.5.5",
 		"next": "15.4.1",
 		"qrcode": "^1.5.4",
