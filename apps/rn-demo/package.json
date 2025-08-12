@@ -11,8 +11,8 @@
 	},
 	"dependencies": {
 		"@expo/vector-icons": "^14.1.0",
-		"@metamask/mobile-wallet-protocol-core": "workspace:*",
-		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:*",
+		"@metamask/mobile-wallet-protocol-core": "workspace:^",
+		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
 		"@react-native-async-storage/async-storage": "1.23.1",
 		"@react-navigation/bottom-tabs": "^7.3.10",
 		"@react-navigation/elements": "^2.3.8",
