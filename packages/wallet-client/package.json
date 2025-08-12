@@ -27,8 +27,10 @@
 		"uuid": "^11.1.0"
 	},
 	"devDependencies": {
+		"@metamask/auto-changelog": "^5.0.2",
 		"@types/uuid": "^10.0.0",
 		"@types/ws": "^8.18.1",
+		"prettier": "^3.3.3",
 		"tsup": "^8.5.0",
 		"ws": "^8.18.2"
 	}
