@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5]
+
 ### Uncategorized
 
 - chore: Repo structure tidy up ([#31](https://github.com/MetaMask/mobile-wallet-protocol/pull/31))
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-dapp-client@0.0.4...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-dapp-client@0.0.5...HEAD
+[0.0.5]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-dapp-client@0.0.4...@metamask/mobile-wallet-protocol-dapp-client@0.0.5
 [0.0.4]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-dapp-client@0.0.3...@metamask/mobile-wallet-protocol-dapp-client@0.0.4
 [0.0.3]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-dapp-client@0.0.2...@metamask/mobile-wallet-protocol-dapp-client@0.0.3
 [0.0.2]: https://github.com/MetaMask/mobile-wallet-protocol/releases/tag/@metamask/mobile-wallet-protocol-dapp-client@0.0.2
