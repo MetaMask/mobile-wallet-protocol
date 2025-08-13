@@ -155,6 +155,8 @@ export class DappClient extends BaseClient {
 	 * Routes incoming messages based on the client's connection state.
 	 * During connection, it handles handshake messages. Once connected, it
 	 * handles standard application messages.
+	 *
+	 * @param message - The incoming message to handle
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
 		if (this.state === ClientState.CONNECTING && message.type === "handshake-offer") {

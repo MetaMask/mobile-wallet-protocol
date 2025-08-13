@@ -11,7 +11,6 @@ import type { ITransport } from "./domain/transport";
  * An abstract client that provides the core logic for establishing and managing
  * secure, session-based communication. It handles encryption, message transport,
  * and session lifecycle events.
- *
  * Subclasses must implement the `handleMessage` method to process incoming data.
  */
 export abstract class BaseClient extends EventEmitter {

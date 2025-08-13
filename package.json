@@ -12,13 +12,13 @@
 		"url": "https://github.com/MetaMask/mobile-wallet-protocol.git"
 	},
 	"scripts": {
+		"release": "node scripts/create-release.mjs",
 		"build": "yarn workspaces foreach --topological --verbose run build",
-		"create-release-branch": "create-release-branch -i",
 		"changelog:update": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:update",
 		"changelog:validate": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:validate",
 		"test": "vitest run",
-		"test:unit": "vitest run --exclude '**/integration-tests/**' --exclude '**/*.integration.test.ts'",
-		"test:integration": "vitest run packages/integration-tests **/*.integration.test.ts",
+		"test:unit": "vitest run --exclude '**/apps/integration-tests/**' --exclude '**/*.integration.test.ts'",
+		"test:integration": "vitest run apps/integration-tests '**/*.integration.test.ts'",
 		"test:watch": "vitest watch",
 		"test:ci": "vitest run --coverage --coverage.reporter=text --silent",
 		"lint": "yarn biome lint ./packages",
