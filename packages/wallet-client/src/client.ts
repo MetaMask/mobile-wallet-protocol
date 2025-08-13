@@ -129,6 +129,8 @@ export class WalletClient extends BaseClient {
 	/**
 	 * Routes incoming messages based on their type. It handles handshake
 	 * acknowledgements and standard application messages.
+	 *
+	 * @param message - The incoming message to handle
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
 		if (message.type === "handshake-ack") {
