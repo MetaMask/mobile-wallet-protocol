@@ -2466,9 +2466,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@metamask/mobile-wallet-protocol-integration-tests@workspace:packages/integration-tests":
+"@metamask/mobile-wallet-protocol-integration-tests@workspace:apps/integration-tests":
   version: 0.0.0-use.local
-  resolution: "@metamask/mobile-wallet-protocol-integration-tests@workspace:packages/integration-tests"
+  resolution: "@metamask/mobile-wallet-protocol-integration-tests@workspace:apps/integration-tests"
   dependencies:
     "@metamask/mobile-wallet-protocol-core": "workspace:^"
     "@metamask/mobile-wallet-protocol-dapp-client": "workspace:^"
