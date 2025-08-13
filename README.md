@@ -96,3 +96,29 @@ To automatically fix formatting issues:
 ```bash
 yarn lint:fix
 ```
+
+## Release Process
+
+Creating a new release for the packages in this monorepo requires a special script to ensure that only publishable packages are included in the release process.
+
+### How to Create a Release
+
+To initiate a release, run the following command from the root of the project:
+
+```bash
+yarn release
+```
+
+Do **not** run `yarn create-release-branch` directly.
+
+### Why a Custom Script is Necessary
+
+The underlying release tool (`@metamask/create-release-branch`) automatically detects all workspaces defined in the root `package.json`. By default, this includes our non-publishable demo applications located in the `apps/` directory (like `web-demo` and `rn-demo`).
+
+To work around this, the `yarn release` command executes a wrapper script (`scripts/create-release.mjs`) that does the following:
+
+1.  **Temporarily Modifies `package.json`**: It creates an in-memory version of `package.json` where the `apps/*` workspace is filtered out.
+2.  **Runs the Release Tool**: It then executes the standard release tool, which now only sees the publishable packages under `packages/*`.
+3.  **Restores `package.json`**: After the process completes (whether it succeeds or fails), it restores the original `package.json` file.
+
+This approach ensures that our development workflow, which relies on Yarn workspaces to link the demo apps with local packages, remains unbroken, while also producing a clean and correct release.
