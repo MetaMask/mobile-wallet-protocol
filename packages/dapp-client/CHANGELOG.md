@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: Repo structure tidy up ([#31](https://github.com/MetaMask/mobile-wallet-protocol/pull/31))
+
 ## [0.0.4]
 
 ### Fixed
