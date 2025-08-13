@@ -21,7 +21,7 @@ async function runRelease() {
 		// Run the release command
 		// Pass through any additional arguments to the script
 		const args = process.argv.slice(2).join(" ");
-		execSync(`yarn create-release-branch ${args}`, { stdio: "inherit" });
+		execSync(`yarn run create-release-branch ${args}`, { stdio: "inherit" });
 	} catch (error) {
 		console.error("\nAn error occurred during the release process. Restoring original package.json.");
 		// Re-throw the error so the script exits with a non-zero code
