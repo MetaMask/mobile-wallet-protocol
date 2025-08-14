@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.6]
+
+### Fixed
+
+- fix: Add secret var input to github action ([#33](https://github.com/MetaMask/mobile-wallet-protocol/pull/33))
+
 ## [0.0.5]
 
 ### Fixed
@@ -31,7 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.5...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.6...HEAD
+[0.0.6]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.5...@metamask/mobile-wallet-protocol-core@0.0.6
 [0.0.5]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.4...@metamask/mobile-wallet-protocol-core@0.0.5
 [0.0.4]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.3...@metamask/mobile-wallet-protocol-core@0.0.4
 [0.0.3]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.2...@metamask/mobile-wallet-protocol-core@0.0.3

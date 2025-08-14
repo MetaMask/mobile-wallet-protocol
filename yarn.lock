@@ -1758,6 +1758,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo/json-file@npm:^10.0.0":
+  version: 10.0.0
+  resolution: "@expo/json-file@npm:10.0.0"
+  dependencies:
+    "@babel/code-frame": ~7.10.4
+    json5: ^2.2.3
+  checksum: 5f02b22bd91b84d2cf9027eea77156cddc0bc25c74e8086200eaf90c239713d967957ba6efea4950f2c382492063cc292c639ffcf64168c983d24e1870d5d85d
+  languageName: node
+  linkType: hard
+
 "@expo/json-file@npm:^9.1.5, @expo/json-file@npm:~9.1.5":
   version: 9.1.5
   resolution: "@expo/json-file@npm:9.1.5"
@@ -1805,26 +1815,26 @@ __metadata:
   linkType: hard
 
 "@expo/osascript@npm:^2.2.5":
-  version: 2.2.5
-  resolution: "@expo/osascript@npm:2.2.5"
+  version: 2.3.0
+  resolution: "@expo/osascript@npm:2.3.0"
   dependencies:
     "@expo/spawn-async": ^1.7.2
     exec-async: ^2.2.0
-  checksum: 1025a18f02a934326f494fa84f64201a6887324fb4406099792c6434a75f3366f2ffcfe669ebd32451dfaa027c7ee83b5ba8ac53a0a8d31bbab1887a15c2e588
+  checksum: 5f284897fca5be280a7bb7924401977b15e2020a95f31dc203f1fd8bfb15f5ce31e3cab187bb932f354bb1363759e7ec765dc481efeaa764d03a3b068d927935
   languageName: node
   linkType: hard
 
 "@expo/package-manager@npm:^1.8.6":
-  version: 1.8.6
-  resolution: "@expo/package-manager@npm:1.8.6"
+  version: 1.9.0
+  resolution: "@expo/package-manager@npm:1.9.0"
   dependencies:
-    "@expo/json-file": ^9.1.5
+    "@expo/json-file": ^10.0.0
     "@expo/spawn-async": ^1.7.2
     chalk: ^4.0.0
     npm-package-arg: ^11.0.0
     ora: ^3.4.0
     resolve-workspace-root: ^2.0.0
-  checksum: b2311cd739d80d934415bd1e1389b89ce6363dbc29b4efa086efc5226de25093d42e5b6839426b4c9b182ab5939620ff481ca5f15bd0b7195cad47e971cc4448
+  checksum: 166c08a9c3ddfee5b9ea7e9b9693dfb5a30c61b66a5d8fb55bfbdae582cfd83e2839d5a485ae98a0ec1b698bc897e504ccadf7d20c7ec9ebd17f087fd5b3b3b9
   languageName: node
   linkType: hard
 
@@ -5144,9 +5154,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001579, caniuse-lite@npm:^1.0.30001733":
-  version: 1.0.30001734
-  resolution: "caniuse-lite@npm:1.0.30001734"
-  checksum: 2ebb37ff671e005fd945a963ccc496cc5cafeb39c02d883903909b43f8849e544f4b1cb80cc76cb31171b23d50716634b7d08b3d5bfe6c14e66c43b82572bd9a
+  version: 1.0.30001735
+  resolution: "caniuse-lite@npm:1.0.30001735"
+  checksum: 41ee174f41b876a76d9f9a164d84a43a2d7d4cfba9076b459f165370fd5e0778327262ec3cd676c05f8e8cdeb4f6362d31714fecdcdc584034ae91e987b5bf84
   languageName: node
   linkType: hard
 
