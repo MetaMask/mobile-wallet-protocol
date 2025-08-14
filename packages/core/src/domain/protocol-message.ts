@@ -19,4 +19,8 @@ export type Message = {
 	payload: unknown;
 };
 
+/**
+ * A protocol message is a message that is sent between the dapp and the wallet.
+ * It can be a handshake offer, a handshake ack, or a message.
+ */
 export type ProtocolMessage = HandshakeOffer | HandshakeAck | Message;
