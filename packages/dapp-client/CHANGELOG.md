@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.6]
 
-### Uncategorized
+### Fixed
 
 - fix : release process ([#34](https://github.com/MetaMask/mobile-wallet-protocol/pull/34))
 
