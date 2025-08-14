@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix: Add secret var input to github action ([#33](https://github.com/MetaMask/mobile-wallet-protocol/pull/33))
+
 ## [0.0.5]
 
 ### Fixed
