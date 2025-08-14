@@ -194,6 +194,7 @@ export class DappClient extends BaseClient {
 			publicKeyB64: bytesToBase64(keyPair.publicKey),
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
 		};
+
 		return { pendingSession, request };
 	}
 }

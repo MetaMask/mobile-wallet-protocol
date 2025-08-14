@@ -106,7 +106,7 @@ Creating a new release for the packages in this monorepo requires a special scri
 To initiate a release, run the following command from the root of the project:
 
 ```bash
-yarn release
+yarn release -i
 ```
 
 Do **not** run `yarn create-release-branch` directly.
@@ -117,8 +117,9 @@ The underlying release tool (`@metamask/create-release-branch`) automatically de
 
 To work around this, the `yarn release` command executes a wrapper script (`scripts/create-release.mjs`) that does the following:
 
-1.  **Temporarily Modifies `package.json`**: It creates an in-memory version of `package.json` where the `apps/*` workspace is filtered out.
-2.  **Runs the Release Tool**: It then executes the standard release tool, which now only sees the publishable packages under `packages/*`.
-3.  **Restores `package.json`**: After the process completes (whether it succeeds or fails), it restores the original `package.json` file.
+1.  **Backs Up and Modifies `package.json`**: The script first creates a backup of the original `package.json`. It then modifies the `package.json` file to remove non-publishable workspaces (e.g., the demo apps in `apps/*`).
+2.  **Runs the Release Tool**: It executes the underlying release tool (`@metamask/create-release-branch`), which operates only on the publishable packages from the modified `package.json`.
+3.  **Restores and Updates `package.json`**: After the release tool completes, the script reads the new version number. It then restores the original `package.json` contents from the backup and updates its version to match the new release version.
+4.  **Finalizes the Release**: Finally, the script removes the backup file and runs `yarn install` and `yarn lint:fix` to ensure the project is in a consistent state.
 
 This approach ensures that our development workflow, which relies on Yarn workspaces to link the demo apps with local packages, remains unbroken, while also producing a clean and correct release.
