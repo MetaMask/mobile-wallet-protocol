@@ -3,6 +3,7 @@ import { type Session, type SessionRequest, type SessionStore, WebSocketTranspor
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import EventEmitter from "eventemitter3";
 import { AsyncStorageKVStore } from "./AsyncStorageKVStore";
+import { KeyManager } from "./KeyManager";
 
 // This type can be moved to a more central location later
 export type GlobalActivityLogEntry = {
@@ -125,6 +126,7 @@ export class SessionManager extends EventEmitter {
 		return new WalletClient({
 			transport,
 			sessionstore: this.sessionStore,
+			keymanager: new KeyManager(),
 		});
 	}
 

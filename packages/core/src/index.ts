@@ -10,6 +10,5 @@ export type { Session } from "./domain/session";
 export type { SessionRequest } from "./domain/session-request";
 export type { ISessionStore } from "./domain/session-store";
 export type { ITransport } from "./domain/transport";
-export { KeyManager } from "./key-manager";
 export { DEFAULT_SESSION_TTL, SessionStore } from "./session-store";
 export { WebSocketTransport, type WebSocketTransportOptions } from "./transport/websocket/index";

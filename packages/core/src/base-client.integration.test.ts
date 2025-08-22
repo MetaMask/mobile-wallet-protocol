@@ -1,14 +1,17 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 /** biome-ignore-all lint/complexity/useLiteralKeys: test code */
+
+import { decrypt, encrypt, PrivateKey } from "eciesjs";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { BaseClient } from "./base-client";
 import { ClientState } from "./domain/client-state";
+import type { IKeyManager } from "./domain/key-manager";
+import type { KeyPair } from "./domain/key-pair";
 import type { IKVStore } from "./domain/kv-store";
 import type { ProtocolMessage } from "./domain/protocol-message";
 import type { Session } from "./domain/session";
-import { KeyManager } from "./key-manager";
 import { SessionStore } from "./session-store";
 import { WebSocketTransport } from "./transport/websocket";
 
@@ -31,6 +34,25 @@ class InMemoryKVStore implements IKVStore {
 
 	public async list(): Promise<string[]> {
 		return Array.from(this.store.keys());
+	}
+}
+
+export class KeyManager implements IKeyManager {
+	generateKeyPair(): KeyPair {
+		const privateKey = new PrivateKey();
+		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {
+		const plaintextBuffer = Buffer.from(plaintext, "utf8");
+		const encryptedBuffer = encrypt(theirPublicKey, plaintextBuffer);
+		return encryptedBuffer.toString("base64");
+	}
+
+	async decrypt(encryptedB64: string, myPrivateKey: Uint8Array): Promise<string> {
+		const encryptedBuffer = Buffer.from(encryptedB64, "base64");
+		const decryptedBuffer = await decrypt(myPrivateKey, encryptedBuffer);
+		return Buffer.from(decryptedBuffer).toString("utf8");
 	}
 }
 

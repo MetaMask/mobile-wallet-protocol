@@ -4,9 +4,9 @@ import {
 	type ConnectionMode,
 	DEFAULT_SESSION_TTL,
 	ErrorCode,
+	type IKeyManager,
 	type ISessionStore,
 	type ITransport,
-	KeyManager,
 	type ProtocolMessage,
 	type Session,
 	SessionError,
@@ -29,6 +29,8 @@ export interface DappClientOptions {
 	transport: ITransport;
 	/** An initialized session store for persistent session management. */
 	sessionstore: ISessionStore;
+	/** An initialized key manager for cryptographic operations. */
+	keymanager: IKeyManager;
 }
 
 /**
@@ -77,7 +79,7 @@ export class DappClient extends BaseClient {
 	}
 
 	constructor(options: DappClientOptions) {
-		super(options.transport, new KeyManager(), options.sessionstore);
+		super(options.transport, options.keymanager, options.sessionstore);
 	}
 
 	/**

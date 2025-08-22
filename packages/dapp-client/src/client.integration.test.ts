@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import { type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { decrypt, encrypt, PrivateKey } from "eciesjs";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { DappClient } from "./client";
@@ -19,6 +20,25 @@ class InMemoryKVStore implements IKVStore {
 	}
 }
 
+export class KeyManager implements IKeyManager {
+	generateKeyPair(): KeyPair {
+		const privateKey = new PrivateKey();
+		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {
+		const plaintextBuffer = Buffer.from(plaintext, "utf8");
+		const encryptedBuffer = encrypt(theirPublicKey, plaintextBuffer);
+		return encryptedBuffer.toString("base64");
+	}
+
+	async decrypt(encryptedB64: string, myPrivateKey: Uint8Array): Promise<string> {
+		const encryptedBuffer = Buffer.from(encryptedB64, "base64");
+		const decryptedBuffer = await decrypt(myPrivateKey, encryptedBuffer);
+		return Buffer.from(decryptedBuffer).toString("utf8");
+	}
+}
+
 t.describe("DappClient Integration Tests", () => {
 	let dappClient: DappClient;
 
@@ -26,7 +46,7 @@ t.describe("DappClient Integration Tests", () => {
 		const dappKvStore = new InMemoryKVStore();
 		const dappSessionStore = new SessionStore(dappKvStore);
 		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
-		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore });
+		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore, keymanager: new KeyManager() });
 	});
 
 	t.afterEach(async () => {
@@ -62,6 +82,7 @@ t.describe("DappClient Integration Tests", () => {
 			const shortTimeoutDappClient = new DappClient({
 				transport: (dappClient as any).transport,
 				sessionstore: (dappClient as any).sessionstore,
+				keymanager: new KeyManager(),
 			});
 
 			const originalMethod = (shortTimeoutDappClient as any)._createPendingSessionAndRequest;

@@ -4,6 +4,7 @@ import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useState } from "react";
+import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
@@ -50,11 +51,13 @@ export default function BasicDemo() {
 				const dapp = new DappClient({
 					transport: dappTransport,
 					sessionstore: dappSessionStore,
+					keymanager: new KeyManager(),
 				});
 
 				const wallet = new WalletClient({
 					transport: walletTransport,
 					sessionstore: walletSessionStore,
+					keymanager: new KeyManager(),
 				});
 
 				// Set up event listeners

@@ -4,6 +4,7 @@ import { ErrorCode, SessionError, type SessionRequest, SessionStore, WebSocketTr
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useRef, useState } from "react";
+import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
@@ -183,6 +184,7 @@ export default function UntrustedDemo() {
 			const dapp = new DappClient({
 				transport: dappTransport,
 				sessionstore: dappSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners
@@ -351,6 +353,7 @@ export default function UntrustedDemo() {
 			const wallet = new WalletClient({
 				transport: walletTransport,
 				sessionstore: walletSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners
@@ -692,15 +695,14 @@ export default function UntrustedDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${
-												log.type === "sent"
+											className={`p-2 rounded text-xs ${log.type === "sent"
 													? "bg-blue-100 dark:bg-blue-900"
 													: log.type === "received"
 														? "bg-green-100 dark:bg-green-900"
 														: log.type === "notification"
 															? "bg-yellow-100 dark:bg-yellow-900"
 															: "bg-gray-200 dark:bg-gray-700"
-											}`}
+												}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -845,15 +847,14 @@ export default function UntrustedDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${
-													log.type === "request"
+												className={`p-2 rounded text-xs ${log.type === "request"
 														? "bg-purple-100 dark:bg-purple-900"
 														: log.type === "response"
 															? "bg-green-100 dark:bg-green-900"
 															: log.type === "notification"
 																? "bg-yellow-100 dark:bg-yellow-900"
 																: "bg-gray-200 dark:bg-gray-700"
-												}`}
+													}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>

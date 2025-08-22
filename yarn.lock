@@ -2485,6 +2485,7 @@ __metadata:
     "@metamask/mobile-wallet-protocol-wallet-client": "workspace:^"
     "@types/ws": ^8.18.1
     centrifuge: ^5.3.5
+    eciesjs: ^0.4.15
     vitest: ^3.2.4
     ws: ^8.18.3
   languageName: unknown
@@ -13223,6 +13224,7 @@ __metadata:
     "@types/qrcode": ^1.5.5
     "@types/react": ^19
     "@types/react-dom": ^19
+    eciesjs: ^0.4.15
     eslint: ^9
     eslint-config-next: 15.4.1
     next: 15.4.1
