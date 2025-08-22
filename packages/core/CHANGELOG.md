@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- refactor: Removed eciejs as dependency ([#36](https://github.com/MetaMask/mobile-wallet-protocol/pull/36))
+
 ## [0.0.6]
 
 ### Fixed
