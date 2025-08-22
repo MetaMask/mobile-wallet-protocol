@@ -1,11 +1,6 @@
+import type { IKeyManager, KeyPair } from "@metamask/mobile-wallet-protocol-core";
 import { decrypt, encrypt, PrivateKey } from "eciesjs";
-import type { IKeyManager } from "../domain/key-manager";
-import type { KeyPair } from "../domain/key-pair";
 
-/**
- * KeyManager is a class that implements the IKeyManager interface.
- * It is used to generate key pairs, encrypt and decrypt messages using ECIES.
- */
 export class KeyManager implements IKeyManager {
 	generateKeyPair(): KeyPair {
 		const privateKey = new PrivateKey();

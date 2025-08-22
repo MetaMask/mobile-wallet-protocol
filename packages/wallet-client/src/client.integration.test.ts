@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import { type IKVStore, KeyManager, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { bytesToBase64 } from "@metamask/utils";
+import { decrypt, encrypt, PrivateKey } from "eciesjs";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { WalletClient } from "./client";
@@ -20,6 +21,25 @@ class InMemoryKVStore implements IKVStore {
 	}
 }
 
+export class KeyManager implements IKeyManager {
+	generateKeyPair(): KeyPair {
+		const privateKey = new PrivateKey();
+		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {
+		const plaintextBuffer = Buffer.from(plaintext, "utf8");
+		const encryptedBuffer = encrypt(theirPublicKey, plaintextBuffer);
+		return encryptedBuffer.toString("base64");
+	}
+
+	async decrypt(encryptedB64: string, myPrivateKey: Uint8Array): Promise<string> {
+		const encryptedBuffer = Buffer.from(encryptedB64, "base64");
+		const decryptedBuffer = await decrypt(myPrivateKey, encryptedBuffer);
+		return Buffer.from(decryptedBuffer).toString("utf8");
+	}
+}
+
 t.describe("WalletClient Integration Tests", () => {
 	let walletClient: WalletClient;
 	let untrustedSessionRequest: SessionRequest;
@@ -29,7 +49,7 @@ t.describe("WalletClient Integration Tests", () => {
 		const walletKvStore = new InMemoryKVStore();
 		const walletSessionStore = new SessionStore(walletKvStore);
 		const walletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
-		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore });
+		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore, keymanager: new KeyManager() });
 
 		const dappKeyPair = new KeyManager().generateKeyPair();
 		const baseRequest = {
@@ -55,7 +75,7 @@ t.describe("WalletClient Integration Tests", () => {
 		const walletKvStore2 = new InMemoryKVStore();
 		const walletSessionStore2 = new SessionStore(walletKvStore2);
 		const walletTransport2 = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore2, websocket: WebSocket });
-		const walletClient2 = new WalletClient({ transport: walletTransport2, sessionstore: walletSessionStore2 });
+		const walletClient2 = new WalletClient({ transport: walletTransport2, sessionstore: walletSessionStore2, keymanager: new KeyManager() });
 
 		try {
 			const expiredTrusted = { ...trustedSessionRequest, expiresAt: Date.now() - 1000 };

@@ -4,9 +4,11 @@ import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useRef, useState } from "react";
+import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
-const RELAY_URL = "ws://localhost:8000/connection/websocket";
+// const RELAY_URL = "ws://localhost:8000/connection/websocket";
+const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
 
 type LogEntry = {
 	id: string;
@@ -177,6 +179,7 @@ export default function TrustedDemo() {
 			const dapp = new DappClient({
 				transport: dappTransport,
 				sessionstore: dappSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners
@@ -184,10 +187,26 @@ export default function TrustedDemo() {
 				addDappLog("system", `Session request generated: ${request.id}`);
 				setSessionRequest(request);
 
-				// Generate QR code data with the full session request for external wallets
-				const qrData = JSON.stringify(request);
-				setQrCodeData(qrData);
-				addDappLog("system", "QR code generated. Ready for wallet to scan.");
+				// 1. Create the higher-level ConnectionRequest object.
+				const connectionRequest = {
+					sessionRequest: request, // The original session request from the SDK.
+					dappMetadata: {
+						name: "Trusted Web Demo",
+						url: "http://localhost:3000/trusted-demo",
+					},
+				};
+
+				// 2. Serialize the object to a JSON string.
+				const jsonPayload = JSON.stringify(connectionRequest);
+
+				// 3. URL-encode the JSON payload to make it safe for a URL.
+				const encodedPayload = encodeURIComponent(jsonPayload);
+
+				// 4. Construct the full deep link URL. The mobile app will parse this.
+				const deepLinkUrl = `metamask://connect/mwp/${encodedPayload}`;
+
+				setQrCodeData(deepLinkUrl);
+				addDappLog("system", "QR code generated with deep link. Ready for wallet to scan.");
 
 				// Start session timer
 				startSessionTimer(request.expiresAt);
@@ -315,6 +334,7 @@ export default function TrustedDemo() {
 			const wallet = new WalletClient({
 				transport: walletTransport,
 				sessionstore: walletSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners

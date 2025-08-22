@@ -4,6 +4,7 @@ import { ErrorCode, SessionError, type SessionRequest, SessionStore, WebSocketTr
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { useEffect, useRef, useState } from "react";
+import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
@@ -183,6 +184,7 @@ export default function UntrustedDemo() {
 			const dapp = new DappClient({
 				transport: dappTransport,
 				sessionstore: dappSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners
@@ -351,6 +353,7 @@ export default function UntrustedDemo() {
 			const wallet = new WalletClient({
 				transport: walletTransport,
 				sessionstore: walletSessionStore,
+				keymanager: new KeyManager(),
 			});
 
 			// Set up event listeners

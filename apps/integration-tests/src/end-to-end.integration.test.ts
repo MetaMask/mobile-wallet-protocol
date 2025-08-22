@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import { type ConnectionMode, type IKVStore, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { type ConnectionMode, type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
+import { decrypt, encrypt, PrivateKey } from "eciesjs";
 import * as t from "vitest";
 import WebSocket from "ws";
 
@@ -18,6 +19,25 @@ class InMemoryKVStore implements IKVStore {
 	}
 	async delete(key: string): Promise<void> {
 		this.store.delete(key);
+	}
+}
+
+export class KeyManager implements IKeyManager {
+	generateKeyPair(): KeyPair {
+		const privateKey = new PrivateKey();
+		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {
+		const plaintextBuffer = Buffer.from(plaintext, "utf8");
+		const encryptedBuffer = encrypt(theirPublicKey, plaintextBuffer);
+		return encryptedBuffer.toString("base64");
+	}
+
+	async decrypt(encryptedB64: string, myPrivateKey: Uint8Array): Promise<string> {
+		const encryptedBuffer = Buffer.from(encryptedB64, "base64");
+		const decryptedBuffer = await decrypt(myPrivateKey, encryptedBuffer);
+		return Buffer.from(decryptedBuffer).toString("utf8");
 	}
 }
 
@@ -65,9 +85,10 @@ t.describe("E2E Integration Test", () => {
 
 		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
 		const walletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
+		const keyManager = new KeyManager();
 
-		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore });
-		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore });
+		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore, keymanager: keyManager });
+		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore, keymanager: keyManager });
 	});
 
 	t.afterEach(async () => {
@@ -164,8 +185,9 @@ t.describe("E2E Integration Test", () => {
 
 		const newDappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
 		const newWalletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
-		const resumedDappClient = new DappClient({ transport: newDappTransport, sessionstore: dappSessionStore });
-		const resumedWalletClient = new WalletClient({ transport: newWalletTransport, sessionstore: walletSessionStore });
+		const keyManager = new KeyManager();
+		const resumedDappClient = new DappClient({ transport: newDappTransport, sessionstore: dappSessionStore, keymanager: keyManager });
+		const resumedWalletClient = new WalletClient({ transport: newWalletTransport, sessionstore: walletSessionStore, keymanager: keyManager });
 		dappClient = resumedDappClient;
 		walletClient = resumedWalletClient;
 
