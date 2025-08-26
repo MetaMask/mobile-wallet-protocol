@@ -190,9 +190,15 @@ export default function TrustedDemo() {
 				// 1. Create the higher-level ConnectionRequest object.
 				const connectionRequest = {
 					sessionRequest: request, // The original session request from the SDK.
-					dappMetadata: {
-						name: "Trusted Web Demo",
-						url: "http://localhost:3000/trusted-demo",
+					metadata: {
+						dapp: {
+							name: "Trusted Web Demo",
+							url: "http://localhost:3000/trusted-demo",
+						},
+						sdk: {
+							version: "0.1.0",
+							platform: "web",
+						},
 					},
 				};
 
@@ -217,6 +223,22 @@ export default function TrustedDemo() {
 				setDappConnected(true);
 				setDappStatus("Connected");
 				clearSessionTimer(); // Clear timer on successful connection
+
+				// Send a message immediately on connection
+				const sendInitialMessage = async () => {
+					try {
+						const message = {
+							type: "message",
+							content: "Hello from DApp! Connection established.",
+							timestamp: new Date().toISOString(),
+						};
+						addDappLog("sent", JSON.stringify(message, null, 2));
+						await dapp.sendRequest(message);
+					} catch (error) {
+						addDappLog("system", `Failed to send initial message: ${error instanceof Error ? error.message : "Unknown error"}`);
+					}
+				};
+				sendInitialMessage();
 			});
 
 			dapp.on("disconnected", () => {
@@ -579,8 +601,13 @@ export default function TrustedDemo() {
 											sessionTimeLeft > 0 && <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">Expires in {formatTimeLeft(sessionTimeLeft)}</span>
 										)}
 									</div>
-									<div className={`bg-white p-4 rounded-lg inline-block transition-opacity ${isSessionExpired ? "opacity-50" : ""}`}>
-										<QRCodeDisplay data={qrCodeData} />
+									<div className="text-center">
+										<div className={`bg-white p-4 rounded-lg inline-block transition-opacity ${isSessionExpired ? "opacity-50" : ""}`}>
+											<QRCodeDisplay data={qrCodeData} />
+										</div>
+										<a href={qrCodeData} className="block mt-2 text-blue-500 underline">
+											Open with Mobile Wallet
+										</a>
 									</div>
 									<div className="flex items-center justify-between mt-2">
 										<p className="text-xs text-gray-500 dark:text-gray-400">{isSessionExpired ? "This QR code has expired." : "Scan this QR code with your mobile wallet app"}</p>
@@ -638,15 +665,14 @@ export default function TrustedDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${
-												log.type === "sent"
-													? "bg-blue-100 dark:bg-blue-900"
-													: log.type === "received"
-														? "bg-green-100 dark:bg-green-900"
-														: log.type === "notification"
-															? "bg-yellow-100 dark:bg-yellow-900"
-															: "bg-gray-200 dark:bg-gray-700"
-											}`}
+											className={`p-2 rounded text-xs ${log.type === "sent"
+												? "bg-blue-100 dark:bg-blue-900"
+												: log.type === "received"
+													? "bg-green-100 dark:bg-green-900"
+													: log.type === "notification"
+														? "bg-yellow-100 dark:bg-yellow-900"
+														: "bg-gray-200 dark:bg-gray-700"
+												}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
@@ -775,15 +801,14 @@ export default function TrustedDemo() {
 										{walletLogs.map((log) => (
 											<div
 												key={log.id}
-												className={`p-2 rounded text-xs ${
-													log.type === "request"
-														? "bg-purple-100 dark:bg-purple-900"
-														: log.type === "response"
-															? "bg-green-100 dark:bg-green-900"
-															: log.type === "notification"
-																? "bg-yellow-100 dark:bg-yellow-900"
-																: "bg-gray-200 dark:bg-gray-700"
-												}`}
+												className={`p-2 rounded text-xs ${log.type === "request"
+													? "bg-purple-100 dark:bg-purple-900"
+													: log.type === "response"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+													}`}
 											>
 												<div className="flex justify-between items-start mb-1">
 													<span className="font-medium uppercase">{log.type}</span>
