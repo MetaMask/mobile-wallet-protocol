@@ -49,4 +49,14 @@ export interface ITransport {
 	 * @param channel The channel to clear.
 	 */
 	clear(channel: string): Promise<void>;
+
+	/**
+	 * Forcibly drops the current connection and attempts to re-establish it.
+	 * This is designed to recover from stale or zombie connections without losing
+	 * the client's subscription state. It should trigger the transport's built-in
+	 * recovery mechanisms upon a successful new connection.
+	 *
+	 * @returns A promise that resolves when the connection is re-established.
+	 */
+	reconnect?(): Promise<void>;
 }

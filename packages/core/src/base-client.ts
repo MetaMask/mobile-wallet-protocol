@@ -51,6 +51,25 @@ export abstract class BaseClient extends EventEmitter {
 	}
 
 	/**
+	 * Proactively refreshes the underlying transport connection.
+	 * This is the recommended method for mobile clients to call when the application
+	 * returns to the foreground to ensure the connection is not stale.
+	 */
+	public async reconnect(): Promise<void> {
+		if (this.state === ClientState.CONNECTING || !this.session || !this.transport.reconnect) return;
+
+		try {
+			this.state = ClientState.CONNECTING;
+			await this.transport.reconnect();
+			this.state = ClientState.CONNECTED;
+			this.emit("connected");
+		} catch {
+			this.state = ClientState.DISCONNECTED;
+			throw new TransportError(ErrorCode.TRANSPORT_RECONNECT_FAILED, "Failed to reconnect");
+		}
+	}
+
+	/**
 	 * Resumes an existing session by loading it from storage and connecting to the
 	 * transport on the session's secure channel.
 	 *
