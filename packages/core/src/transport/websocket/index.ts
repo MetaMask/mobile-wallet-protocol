@@ -144,7 +144,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 		return new Promise((resolve, reject) => {
 			this.centrifuge.once("connected", () => resolve());
-			this.centrifuge.once("error", (ctx) => reject(new TransportError(ErrorCode.TRANSPORT_DISCONNECTED, ctx.error.message)));
+			this.centrifuge.once("error", (ctx) => reject(new TransportError(ErrorCode.TRANSPORT_RECONNECT_FAILED, ctx.error.message)));
 			this.centrifuge.connect();
 		});
 	}
