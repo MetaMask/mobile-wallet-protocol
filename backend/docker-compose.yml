@@ -6,4 +6,13 @@ services:
       - 8000:8000
     volumes:
       - ./config.json:/centrifugo/config.json
-    command: centrifugo -c config.json 
+    command: centrifugo -c config.json
+
+  toxiproxy:
+    image: shopify/toxiproxy:latest
+    ports:
+      # The test client will connect through this proxy port
+      - 8001:8001
+      # The test runner will control the proxy via this HTTP API port
+      - 8474:8474
+    command: -host 0.0.0.0 

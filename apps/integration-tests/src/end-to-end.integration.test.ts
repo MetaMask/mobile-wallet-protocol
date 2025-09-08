@@ -1,12 +1,16 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
+/** biome-ignore-all lint/suspicious/noShadowRestrictedNames: test code */
 import { type ConnectionMode, type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { decrypt, encrypt, PrivateKey } from "eciesjs";
+import { type Proxy, Toxiproxy } from "toxiproxy-node-client";
 import * as t from "vitest";
 import WebSocket from "ws";
 
 const RELAY_URL = "ws://localhost:8000/connection/websocket";
+const PROXY_RELAY_URL = "ws://localhost:8001/connection/websocket";
+const TOXIPROXY_URL = "http://localhost:8474";
 
 class InMemoryKVStore implements IKVStore {
 	private store = new Map<string, string>();
@@ -67,6 +71,12 @@ async function connectClients(dappClient: DappClient, walletClient: WalletClient
 	}
 
 	await Promise.all([dappConnectPromise, walletConnectPromise]);
+}
+
+// Helper to assert that a promise does NOT resolve within a given time
+async function assertPromiseNotResolve(promise: Promise<unknown>, timeout: number, message: string) {
+	const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(message)), timeout));
+	await t.expect(Promise.race([promise, timeoutPromise])).rejects.toThrow(message);
 }
 
 t.describe("E2E Integration Test", () => {
@@ -199,4 +209,114 @@ t.describe("E2E Integration Test", () => {
 		await resumedDappClient.sendRequest(testPayload);
 		await t.expect(messagePromise).resolves.toEqual(testPayload);
 	});
+
+});
+
+t.describe("E2E Integration Test via Proxy", () => {
+	let dappClient: DappClient;
+	let walletClient: WalletClient;
+	let dappKvStore: InMemoryKVStore;
+	let walletKvStore: InMemoryKVStore;
+	let dappSessionStore: SessionStore;
+	let walletSessionStore: SessionStore;
+
+	// Toxiproxy setup
+	let toxiproxy: Toxiproxy;
+	let proxy: Proxy;
+	const proxyConfig = {
+		listen: "0.0.0.0:8001",
+		upstream: "centrifugo:8000",
+	};
+
+	t.beforeAll(async () => {
+		toxiproxy = new Toxiproxy(TOXIPROXY_URL);
+		try {
+			proxy = await toxiproxy.get("centrifugo_proxy");
+			await proxy.remove();
+		} catch {
+			// Proxy doesn't exist, which is fine
+		}
+		proxy = await toxiproxy.createProxy({
+			name: "centrifugo_proxy",
+			...proxyConfig,
+		});
+	});
+
+	t.beforeEach(async () => {
+		// Ensure the proxy is enabled before each test
+		await proxy.update({ ...proxyConfig, enabled: true });
+
+		dappKvStore = new InMemoryKVStore();
+		walletKvStore = new InMemoryKVStore();
+		dappSessionStore = new SessionStore(dappKvStore);
+		walletSessionStore = new SessionStore(walletKvStore);
+
+		// DApp connects directly, Wallet connects through proxy
+		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
+		const walletTransport = await WebSocketTransport.create({ url: PROXY_RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
+		const keyManager = new KeyManager();
+
+		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore, keymanager: keyManager });
+		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore, keymanager: keyManager });
+	});
+
+	t.afterEach(async () => {
+		// Reset proxy state after each test
+		if (proxy) {
+			await proxy.update({ ...proxyConfig, enabled: true });
+		}
+		try {
+			await dappClient?.disconnect();
+		} catch (e) {
+			console.error("Error disconnecting dappClient:", e);
+		}
+		try {
+			await walletClient?.disconnect();
+		} catch (e) {
+			console.error("Error disconnecting walletClient:", e);
+		}
+	});
+
+	t.test(
+		"should recover from a one-sided stale connection and receive queued messages after reconnect",
+		async () => {
+			// 1. Establish a normal connection and exchange a message to confirm it works
+			await connectClients(dappClient, walletClient, "trusted");
+			const initialMessage = { step: "initial_message" };
+			const initialMessagePromise = new Promise((resolve) => walletClient.once("message", resolve));
+			await dappClient.sendRequest(initialMessage);
+			await t.expect(initialMessagePromise).resolves.toEqual(initialMessage);
+			t.expect((walletClient as any).state).toBe("CONNECTED");
+
+			// 2. Create a ONE-SIDED network partition using toxiproxy.
+			// This cuts off the Wallet's connection but leaves the DApp's connection intact.
+			await proxy.update({ ...proxyConfig, enabled: false });
+
+			// 3. Dapp sends a message. Its transport is still live, so it successfully publishes to the relay.
+			// The Wallet, however, is now on a stale connection and should NOT receive it.
+			const missedMessage = { step: "missed_message" };
+			const missedMessagePromise = new Promise((resolve) => walletClient.once("message", resolve));
+			await dappClient.sendRequest(missedMessage);
+
+			// Assert that the message is NOT received by the wallet within 2 seconds.
+			await assertPromiseNotResolve(missedMessagePromise, 2000, "Wallet incorrectly received message during network partition.");
+
+			// 4. Restore the network path and trigger the wallet's reconnect logic.
+			await proxy.update({ ...proxyConfig, enabled: true });
+			await walletClient.reconnect();
+
+			// 5. The wallet should now re-establish its connection. The transport's recovery logic
+			// should fetch the missed message from the channel's history.
+			const receivedMissedMessage = await missedMessagePromise;
+			t.expect(receivedMissedMessage).toEqual(missedMessage);
+			t.expect((walletClient as any).state).toBe("CONNECTED");
+
+			// 6. Send a final message to confirm the live connection is fully restored and working.
+			const finalMessage = { step: "final_message" };
+			const finalMessagePromise = new Promise((resolve) => walletClient.once("message", resolve));
+			await dappClient.sendRequest(finalMessage);
+			await t.expect(finalMessagePromise).resolves.toEqual(finalMessage);
+		},
+		15000,
+	);
 });

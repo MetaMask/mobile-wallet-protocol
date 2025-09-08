@@ -103,6 +103,12 @@ export class SessionManager extends EventEmitter {
 		await Promise.all(allSessions.map((id) => this.deleteClient(id)));
 	}
 
+	public async reconnectAllClients(): Promise<void> {
+		console.log("SessionManager: Reconnecting all clients...");
+		const reconnectPromises = Array.from(this.clients.values()).map((client) => client.reconnect());
+		await Promise.all(reconnectPromises);
+	}
+
 	public getClient(sessionId: string): WalletClient | undefined {
 		return this.clients.get(sessionId);
 	}
