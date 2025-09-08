@@ -3,7 +3,7 @@ import "react-native-get-random-values";
 import { type Session, SessionStore } from "@metamask/mobile-wallet-protocol-core";
 import Constants from "expo-constants";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, type AppStateStatus, Platform } from "react-native";
 import { AsyncStorageKVStore } from "@/lib/AsyncStorageKVStore";
 import { type GlobalActivityLogEntry, SessionManager } from "@/lib/SessionManager";
 
@@ -126,6 +126,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 			manager?.deleteAllClients();
 		};
 	}, [addLog]);
+
+	useEffect(() => {
+		const handleAppStateChange = (nextAppState: AppStateStatus) => {
+			console.log(`App state changed to: ${nextAppState}`);
+			if (nextAppState === "active") {
+				console.log("App is in the foreground, reconnecting all clients...");
+				sessionManager?.reconnectAllClients();
+			}
+		};
+
+		const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+		return () => {
+			subscription.remove();
+		};
+	}, [sessionManager]);
 
 	const value = { sessionManager, sessions, globalActivityLog, isInitializing, error, addLog, otpToDisplay, clearOtpDisplay };
 

@@ -131,6 +131,25 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	}
 
 	/**
+	 * Disconnects and immediately reconnects the underlying Centrifuge client.
+	 * This is a proactive way to force a fresh connection while preserving all
+	 * existing subscription objects in memory, allowing for automatic recovery.
+	 */
+	public reconnect(): Promise<void> {
+		if (this.state === "connecting") {
+			return new Promise((resolve) => this.centrifuge.once("connected", () => resolve()));
+		}
+
+		this.centrifuge.disconnect();
+
+		return new Promise((resolve, reject) => {
+			this.centrifuge.once("connected", () => resolve());
+			this.centrifuge.once("error", (ctx) => reject(new TransportError(ErrorCode.TRANSPORT_RECONNECT_FAILED, ctx.error.message)));
+			this.centrifuge.connect();
+		});
+	}
+
+	/**
 	 * Subscribes to a channel and fetches historical messages and sends any queued messages.
 	 */
 	public subscribe(channel: string): Promise<void> {
