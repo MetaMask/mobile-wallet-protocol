@@ -209,7 +209,6 @@ t.describe("E2E Integration Test", () => {
 		await resumedDappClient.sendRequest(testPayload);
 		await t.expect(messagePromise).resolves.toEqual(testPayload);
 	});
-
 });
 
 t.describe("E2E Integration Test via Proxy", () => {
