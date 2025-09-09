@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Chore/package json files attribute ([#40](https://github.com/MetaMask/mobile-wallet-protocol/pull/40))
+
 ## [0.1.0]
 
 ### Added
