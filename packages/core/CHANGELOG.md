@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1]
 
-### Uncategorized
+### Added
 
-- Chore/package json files attribute ([#40](https://github.com/MetaMask/mobile-wallet-protocol/pull/40))
-- feat: Reconnect ([#39](https://github.com/MetaMask/mobile-wallet-protocol/pull/39))
+- New optional method to proactively reconnect the underlying transport ([#39](https://github.com/MetaMask/mobile-wallet-protocol/pull/39))
+
+### Changed
+
+- Added `files` attribute to package json file ([#40](https://github.com/MetaMask/mobile-wallet-protocol/pull/40))
 
 ## [0.1.0]
 
