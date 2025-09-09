@@ -209,7 +209,7 @@ export default function TrustedDemo() {
 				const encodedPayload = encodeURIComponent(jsonPayload);
 
 				// 4. Construct the full deep link URL. The mobile app will parse this.
-				const deepLinkUrl = `metamask://connect/mwp/${encodedPayload}`;
+				const deepLinkUrl = `metamask://connect/mwp?p=${encodedPayload}`;
 
 				setQrCodeData(deepLinkUrl);
 				addDappLog("system", "QR code generated with deep link. Ready for wallet to scan.");
