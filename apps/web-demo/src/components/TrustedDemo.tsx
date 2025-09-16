@@ -42,7 +42,15 @@ export default function TrustedDemo() {
 	const [sessionRequest, setSessionRequest] = useState<SessionRequest | null>(null);
 	const [qrCodeData, setQrCodeData] = useState<string>("");
 	const [dappLogs, setDappLogs] = useState<LogEntry[]>([]);
-	const [dappMessage, setDappMessage] = useState("Hello from DApp!");
+	const [dappMessage, setDappMessage] = useState(JSON.stringify({
+		"jsonrpc": "2.0",
+		"method": "personal_sign",
+		"params": [
+			"0x68656c6c6f",
+			"0x842bab7C3546C5c6CD01bf2dBE02Ecd567Cf26BA"
+		],
+		"id": 1
+	}, null, 2));
 	const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
 	const [sessionTimerId, setSessionTimerId] = useState<NodeJS.Timeout | null>(null);
 	const [isSessionExpired, setIsSessionExpired] = useState(false);
@@ -228,12 +236,13 @@ export default function TrustedDemo() {
 				const sendInitialMessage = async () => {
 					try {
 						const message = {
-							type: "message",
-							content: "Hello from DApp! Connection established.",
-							timestamp: new Date().toISOString(),
+							"jsonrpc": "2.0",
+							"method": "eth_requestAccounts",
+							"params": [],
+							"id": 1
 						};
 						addDappLog("sent", JSON.stringify(message, null, 2));
-						await dapp.sendRequest(message);
+						await dapp.sendRequest(JSON.stringify(message));
 					} catch (error) {
 						addDappLog("system", `Failed to send initial message: ${error instanceof Error ? error.message : "Unknown error"}`);
 					}
@@ -324,15 +333,15 @@ export default function TrustedDemo() {
 		}
 
 		try {
-			const message = {
-				type: "message",
-				content: dappMessage,
-				timestamp: new Date().toISOString(),
-			};
+			// const message = {
+			// 	type: "message",
+			// 	content: dappMessage,
+			// 	timestamp: new Date().toISOString(),
+			// };
 
-			addDappLog("sent", JSON.stringify(message, null, 2));
+			addDappLog("sent", JSON.stringify(dappMessage, null, 2));
 
-			await dappClient.sendRequest(message);
+			await dappClient.sendRequest(dappMessage);
 		} catch (error) {
 			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
@@ -635,7 +644,7 @@ export default function TrustedDemo() {
 									id="dapp-message"
 									value={dappMessage}
 									onChange={(e) => setDappMessage(e.target.value)}
-									placeholder="Hello from DApp!"
+									placeholder={"Hello from DApp!"}
 									rows={3}
 									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
 									disabled={!dappConnected}
