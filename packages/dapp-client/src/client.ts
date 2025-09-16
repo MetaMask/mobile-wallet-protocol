@@ -7,6 +7,7 @@ import {
 	type IKeyManager,
 	type ISessionStore,
 	type ITransport,
+	type Message,
 	type ProtocolMessage,
 	type Session,
 	SessionError,
@@ -39,6 +40,8 @@ export interface DappClientOptions {
 export interface DappConnectOptions {
 	/** The connection mode: 'trusted' for same-device flows, 'untrusted' for high-security OTP flows. */
 	mode?: ConnectionMode;
+	/** An optional payload to send with the session request, this will be processed immediately by the wallet after the handshake. */
+	payload?: Message["payload"];
 }
 
 /**
@@ -105,8 +108,8 @@ export class DappClient extends BaseClient {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
-		const { mode = "untrusted" } = options;
-		const { pendingSession, request } = this._createPendingSessionAndRequest(mode);
+		const { mode = "untrusted", payload } = options;
+		const { pendingSession, request } = this._createPendingSessionAndRequest(mode, payload);
 		this.session = pendingSession;
 		this.emit("session_request", request);
 
@@ -176,7 +179,7 @@ export class DappClient extends BaseClient {
 	 * @param mode - The connection mode to use for this session
 	 * @returns An object containing the pending session and session request
 	 */
-	private _createPendingSessionAndRequest(mode: ConnectionMode): { pendingSession: Session; request: SessionRequest } {
+	private _createPendingSessionAndRequest(mode: ConnectionMode, payload?: Message["payload"]): { pendingSession: Session; request: SessionRequest } {
 		const id = uuid();
 		const keyPair = this.keymanager.generateKeyPair();
 
@@ -195,6 +198,7 @@ export class DappClient extends BaseClient {
 			channel: `handshake:${id}`,
 			publicKeyB64: bytesToBase64(keyPair.publicKey),
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
+			payload,
 		};
 
 		return { pendingSession, request };

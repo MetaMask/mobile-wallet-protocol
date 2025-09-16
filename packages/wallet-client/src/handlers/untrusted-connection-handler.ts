@@ -12,6 +12,7 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  * 3. Sends handshake offer containing OTP and deadline to dApp
  * 4. Waits for dApp acknowledgment within the OTP timeout period
  * 5. Finalizes connection by persisting session and cleaning up
+ * 6. If an payload is provided, it is processed immediately
  *
  * This flow provides maximum security by requiring the user to manually verify
  * the connection through a time-limited One-Time Password displayed on the wallet.
@@ -38,6 +39,7 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this._sendHandshakeOffer(request.channel, otp, deadline);
 		await this._waitForHandshakeAck(deadline);
 		await this._finalizeConnection(request.channel);
+		if (request.payload) this.context.handleMessage({ type: "message", payload: request.payload });
 	}
 
 	/**

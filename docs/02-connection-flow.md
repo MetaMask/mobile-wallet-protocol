@@ -185,7 +185,7 @@ sequenceDiagram
 
 1.  **Phase 1: Session Initiation (DApp)**
     *   **Trigger:** The user clicks "Connect" in the dApp.
-    *   **Action:** The `DappClient` is called with `connect({ mode: 'trusted' })`. It generates a `SessionRequest` object containing its public key, a temporary handshake channel ID, and `mode: 'trusted'`.
+    *   **Action:** The `DappClient` is called with `connect({ mode: 'trusted' })`. It generates a `SessionRequest` object containing its public key, a temporary handshake channel ID, and `mode: 'trusted'`. To solve mobile cold-start issues, it can also include an optional `payload`.
     *   **Result:** The dApp UI renders the `SessionRequest` as a QR code or uses it to construct a deep link.
 
 2.  **Phase 2: Handshake (Wallet)**
@@ -196,4 +196,4 @@ sequenceDiagram
 3.  **Phase 3: Finalization**
     *   **Trigger:** The `DappClient` receives the `handshake-offer`.
     *   **Action:** Because the flow is `trusted`, the `DappClient` bypasses the OTP verification step. It immediately sends an encrypted `handshake-ack` message back to the wallet on the new secure channel.
-    *   **Result:** The `WalletClient` receives the `handshake-ack`. Both clients save the completed session, discard the temporary handshake channel, and transition to the `CONNECTED` state.
+    *   **Result:** The `WalletClient` receives the `handshake-ack`. It immediately processes the `payload` from the `SessionRequest` if present. Both clients then save the completed session, discard the temporary handshake channel, and transition to the `CONNECTED` state.

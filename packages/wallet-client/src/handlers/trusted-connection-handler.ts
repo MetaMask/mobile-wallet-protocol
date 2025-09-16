@@ -12,6 +12,7 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  * 2. Sends handshake offer without OTP directly to dApp
  * 3. Waits for dApp acknowledgment within timeout period
  * 4. Finalizes connection by persisting session and cleaning up
+ * 5. If an payload is provided, it is processed immediately
  *
  * This flow prioritizes user experience over maximum security, making it
  * ideal for same-device scenarios or pre-trusted contexts where the user
@@ -37,6 +38,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		await this._sendHandshakeOffer(request.channel);
 		await this._waitForHandshakeAck(Date.now() + this.handshakeTimeoutMs);
 		await this._finalizeConnection(request.channel);
+		if (request.payload) this.context.handleMessage({ type: "message", payload: request.payload });
 	}
 
 	/**
