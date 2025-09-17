@@ -18,7 +18,7 @@ export abstract class BaseClient extends EventEmitter {
 	protected keymanager: IKeyManager;
 	protected sessionstore: ISessionStore;
 	protected session: Session | null = null;
-	protected state: ClientState = ClientState.DISCONNECTED;
+	protected _state: ClientState = ClientState.DISCONNECTED;
 
 	public override on(event: "connected" | "disconnected", listener: () => void): this;
 	public override on(event: "error", listener: (error: Error) => void): this;
@@ -48,6 +48,14 @@ export abstract class BaseClient extends EventEmitter {
 			const message = await this.decryptMessage(payload.data);
 			if (message) this.handleMessage(message);
 		});
+	}
+
+	public get state(): ClientState {
+		return this._state;
+	}
+
+	protected set state(state: ClientState) {
+		this._state = state;
 	}
 
 	/**
