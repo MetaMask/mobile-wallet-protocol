@@ -371,13 +371,13 @@ t.describe("BaseClient", () => {
 
 		// 2. Set up client A to be in CONNECTED state
 		clientA.setSession(session);
-		clientA["state"] = ClientState.CONNECTED;
+		(clientA as any).state = ClientState.CONNECTED;
 
 		// 3. Try to resume a session when already connected
 		// 4. Verify that resume() rejects with SessionError and SESSION_INVALID_STATE code
 		await t.expect(clientA.resume("resume-invalid-state-session")).rejects.toThrow("Cannot resume when state is CONNECTED");
 
 		// 5. Verify the client is still in connected state
-		t.expect(clientA["state"]).toBe(ClientState.CONNECTED);
+		t.expect(clientA.state).toBe(ClientState.CONNECTED);
 	});
 });
