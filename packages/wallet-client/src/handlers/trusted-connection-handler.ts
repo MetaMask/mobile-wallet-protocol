@@ -64,12 +64,12 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		return new Promise((resolve, reject) => {
 			const timeoutDuration = deadline - Date.now();
 			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.OTP_ENTRY_TIMEOUT, "Handshake timed out before it could begin."));
+				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Handshake timed out before it could begin."));
 			}
 
 			const timeoutId = setTimeout(() => {
 				this.context.off("handshake_ack_received", onAckReceived);
-				reject(new SessionError(ErrorCode.OTP_ENTRY_TIMEOUT, "DApp did not acknowledge the handshake in time."));
+				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "DApp did not acknowledge the handshake in time."));
 			}, timeoutDuration);
 
 			const onAckReceived = () => {
