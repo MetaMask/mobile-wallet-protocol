@@ -26,7 +26,7 @@
 	},
 	"dependencies": {
 		"@metamask/mobile-wallet-protocol-core": "workspace:^",
-		"@metamask/utils": "^9.1.0",
+		"@metamask/utils": "^11.4.0",
 		"uuid": "^11.1.0"
 	},
 	"devDependencies": {
