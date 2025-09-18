@@ -29,6 +29,8 @@ export default function MetaMaskMobileDemo() {
 	const [results, setResults] = useState<string>("");
 	const [dappSessionStore, setDappSessionStore] = useState<SessionStore | null>(null);
 
+	const requestId = useRef(1); // For generating unique JSON-RPC request IDs
+
 	// Refs for auto-scrolling
 	const dappLogsRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +107,7 @@ export default function MetaMaskMobileDemo() {
 			timestamp: new Date(),
 		};
 		setDappLogs((prev) => [...prev, newLog]);
+		console.log(`[${type}] ${content}`);
 	};
 
 	// Format time in MM:SS format
@@ -185,35 +188,52 @@ export default function MetaMaskMobileDemo() {
 				setDappStatus("Connected");
 				clearSessionTimer();
 
-				// Send a standard eth_requestAccounts message immediately on connection.
-				const sendInitialMessage = async () => {
+				// REMOVE the old `sendInitialMessage` function and its call.
+				// REPLACE IT with a direct call to create a multi-chain session.
+
+				const handleCreateSession = async () => {
+					if (!dappClientRef.current) {
+						addDappLog("system", "DApp client not initialized.");
+						return;
+					}
 					try {
-						if (!dappClientRef.current) {
-							addDappLog("system", "DApp client not initialized.");
-							return;
-						}
-						const accountRequest = {
+						// Use the new minimal format to request all available methods
+						const createSessionRequest = {
 							jsonrpc: "2.0",
-							method: "eth_requestAccounts",
-							params: [],
-							id: 1, // This is the first request after connection.
+							method: "wallet_createSession",
+							params: {
+								optionalScopes: {
+									"eip155:1": {
+										methods: [],
+										notifications: [],
+									},
+									"eip155:137": {
+										methods: [],
+										notifications: [],
+									},
+									"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
+										methods: [],
+										notifications: [],
+									},
+								},
+							},
+							id: requestId.current++, // Use and increment the request ID
 						};
 
-						const messageString = JSON.stringify(accountRequest);
+						const messageString = JSON.stringify(createSessionRequest, null, 2);
 						addDappLog("sent", messageString);
-						if (dappClientRef.current) {
-							await dappClientRef.current.sendRequest(accountRequest);
-						}
-						addDappLog("system", "Account request sent. Waiting for user approval in MetaMask Mobile...");
+						await dappClientRef.current.sendRequest(createSessionRequest);
+						addDappLog("system", "Session creation request sent. Waiting for wallet approval...");
 					} catch (error) {
 						addDappLog(
 							"system",
-							`Failed to send account request: ${error instanceof Error ? error.message : "Unknown error"}`,
+							`Failed to send session creation request: ${error instanceof Error ? error.message : "Unknown error"
+							}`,
 						);
 					}
 				};
-				sendInitialMessage();
-				// setTimeout(sendInitialMessage, 500);
+
+				handleCreateSession();
 			});
 
 			dapp.on("disconnected", () => {
@@ -226,16 +246,21 @@ export default function MetaMaskMobileDemo() {
 				const payloadString = JSON.stringify(payload, null, 2);
 				addDappLog("received", payloadString);
 
-				// Check if the payload is a valid JSON-RPC response and display it in the results area.
-				// This allows us to see the output from methods like personal_sign and eth_chainId.
+				// TRY TO PARSE AND STORE THE RESULT
 				try {
+					let parsed: any;
 					if (typeof payload === "string") {
-						const parsed = JSON.parse(payload);
-						if (parsed.result) {
-							setResults(JSON.stringify(parsed, null, 2));
-						}
-					} else if (typeof payload === "object" && payload !== null && "result" in payload) {
-						setResults(JSON.stringify(payload, null, 2));
+						parsed = JSON.parse(payload);
+					} else if (typeof payload === "object" && payload !== null) {
+						parsed = payload;
+					}
+
+					// Check if this is the response for our createSession request
+					if (parsed.result && parsed.result.sessionScopes) {
+						setResults(JSON.stringify(parsed.result, null, 2));
+						addDappLog("system", "Multi-chain session established and details stored.");
+					} else if (parsed.result) {
+						setResults(JSON.stringify(parsed, null, 2));
 					}
 				} catch {
 					// Not a JSON response, do nothing with the results display.
@@ -314,83 +339,107 @@ export default function MetaMaskMobileDemo() {
 		}
 	};
 
-	const handleGetSessionInfo = async () => {
-		if (!dappSessionStore || !dappConnected) {
-			setResults("DApp is not connected or session store is not available.");
-			return;
-		}
+	const getNextId = () => requestId.current++;
 
+	const hardcodedEthAccount = "0x842bab7c3546c5c6cd01bf2dbe02ecd567cf26ba";
+	const hardcodedSolanaAccount = "xURqPthzptGAYqDWDvmkUvuC4we2rFcrkiXFjXyfGXR";
+
+	const handleGetEthBalance = async () => {
+		if (!dappClientRef.current || !dappConnected) return;
 		try {
-			// Retrieve all sessions from the session store
-			const sessions = await dappSessionStore.list();
-
-			if (sessions.length === 0) {
-				setResults("No active sessions found.");
-				return;
-			}
-
-			// Assuming the first session is the active one for this demo
-			const activeSession = sessions[0];
-
-			const sessionInfo = {
-				id: activeSession.id,
-				channel: activeSession.channel,
-				expiresAt: new Date(activeSession.expiresAt).toLocaleString(),
-			};
-
-			setResults(JSON.stringify(sessionInfo, null, 2));
-			addDappLog("system", "Fetched session info from store.");
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "Unknown error";
-			setResults(`Error fetching session info: ${errorMessage}`);
-			addDappLog("system", `Error fetching session info: ${errorMessage}`);
-		}
-	};
-
-	const handlePersonalSign = async () => {
-		if (!dappClientRef.current || !dappConnected) {
-			addDappLog("system", "DApp not connected");
-			return;
-		}
-		try {
-			setResults(""); // Clear previous results
-
-			// Construct the plain JSON-RPC request object
-			const personalSignRequest = {
+			setResults("");
+			const invokeRequest = {
+				id: getNextId(),
 				jsonrpc: "2.0",
-				method: "personal_sign",
-				// Example params: message "hello" and a placeholder address
-				params: ["0x68656c6c6f", "0x842bab7C3546C5c6CD01bf2dBE02Ecd567Cf26BA"],
-				id: 2,
+				method: "wallet_invokeMethod",
+				params: {
+					scope: "eip155:1",
+					request: {
+						method: "eth_getBalance",
+						params: [hardcodedEthAccount, "latest"],
+					},
+				},
 			};
-
-			const messageString = JSON.stringify(personalSignRequest);
-			addDappLog("sent", messageString);
-			await dappClientRef.current.sendRequest(personalSignRequest);
+			addDappLog("sent", JSON.stringify(invokeRequest, null, 2));
+			await dappClientRef.current.sendRequest(invokeRequest);
 		} catch (error) {
 			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
 	};
 
-	const handleGetChainId = async () => {
-		if (!dappClientRef.current || !dappConnected) {
-			addDappLog("system", "DApp not connected");
-			return;
-		}
+	const handleEvmPersonalSign = async () => {
+		if (!dappClientRef.current || !dappConnected) return;
 		try {
-			setResults(""); // Clear previous results
-
-			// Construct the plain JSON-RPC request object
-			const chainIdRequest = {
+			setResults("");
+			const invokeRequest = {
+				id: getNextId(),
 				jsonrpc: "2.0",
-				method: "eth_chainId",
-				params: [],
-				id: 3,
+				method: "wallet_invokeMethod",
+				params: {
+					scope: "eip155:137", // Target Polygon
+					request: {
+						method: "personal_sign",
+						params: ["0x48656c6c6f20576f726c64", hardcodedEthAccount],
+					},
+				},
 			};
+			addDappLog("sent", JSON.stringify(invokeRequest, null, 2));
+			await dappClientRef.current.sendRequest(invokeRequest);
+		} catch (error) {
+			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	};
 
-			const messageString = JSON.stringify(chainIdRequest);
-			addDappLog("sent", messageString);
-			await dappClientRef.current.sendRequest(chainIdRequest);
+	const handleEvmTransaction = async () => {
+		if (!dappClientRef.current || !dappConnected) return;
+		try {
+			setResults("");
+			const invokeRequest = {
+				id: getNextId(),
+				jsonrpc: "2.0",
+				method: "wallet_invokeMethod",
+				params: {
+					scope: "eip155:1", // Target Ethereum
+					request: {
+						method: "eth_sendTransaction",
+						params: [
+							{
+								from: hardcodedEthAccount,
+								to: hardcodedEthAccount,
+								value: "0x0",
+							},
+						],
+					},
+				},
+			};
+			addDappLog("sent", JSON.stringify(invokeRequest, null, 2));
+			await dappClientRef.current.sendRequest(invokeRequest);
+		} catch (error) {
+			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	};
+
+	const handleSolanaSignMessage = async () => {
+		if (!dappClientRef.current || !dappConnected) return;
+		try {
+			setResults("");
+			const invokeRequest = {
+				id: getNextId(),
+				jsonrpc: "2.0",
+				method: "wallet_invokeMethod",
+				params: {
+					scope: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+					request: {
+						method: "signMessage",
+						params: {
+							account: { address: hardcodedSolanaAccount },
+							message: "SGVsbG8sIHdvcmxkIQ==", // "Hello, world!" in Base64
+						},
+					},
+				},
+			};
+			addDappLog("sent", JSON.stringify(invokeRequest, null, 2));
+			await dappClientRef.current.sendRequest(invokeRequest);
 		} catch (error) {
 			addDappLog("system", `Send error: ${error instanceof Error ? error.message : "Unknown error"}`);
 		}
@@ -490,32 +539,39 @@ export default function MetaMaskMobileDemo() {
 
 					{/* DApp Actions */}
 					<div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
-						<h4 className="font-semibold mb-4 text-gray-900 dark:text-white">DApp Actions</h4>
-
+						<h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Multi-Chain Test Actions</h4>
 						<div className="space-y-3">
 							<button
 								type="button"
-								onClick={handleGetSessionInfo}
+								onClick={handleGetEthBalance}
 								disabled={!dappConnected}
 								className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
 							>
-								Get Session Info (Read)
+								Get ETH Balance (Read)
 							</button>
 							<button
 								type="button"
-								onClick={handlePersonalSign}
+								onClick={handleEvmPersonalSign}
 								disabled={!dappConnected}
 								className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
 							>
-								Personal Sign (Write)
+								Personal Sign on Polygon (Sign)
 							</button>
 							<button
 								type="button"
-								onClick={handleGetChainId}
+								onClick={handleEvmTransaction}
 								disabled={!dappConnected}
-								className="w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+								className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
 							>
-								Get Chain ID (Read)
+								Send ETH Transaction (Write)
+							</button>
+							<button
+								type="button"
+								onClick={handleSolanaSignMessage}
+								disabled={!dappConnected}
+								className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+							>
+								Sign Message on Solana (Sign)
 							</button>
 						</div>
 
