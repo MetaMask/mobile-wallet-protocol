@@ -16,7 +16,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup src/index.ts --format cjs,esm --dts",
+		"build": "tsup src/index.ts --format cjs,esm --dts --splitting",
 		"changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-dapp-client",
 		"changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-dapp-client"
 	},
