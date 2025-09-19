@@ -3,6 +3,7 @@
 import { type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { useEffect, useRef, useState } from "react";
+import { base64Encode, compareEncodingSizes, compressString } from "@/lib/encoding-utils";
 import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
@@ -156,7 +157,7 @@ export default function MetaMaskMobileDemo() {
 					sessionRequest: request, // The original session request from the SDK.
 					metadata: {
 						dapp: {
-							name: "MetaMask Mobile App Demo",
+							name: "MM Demo",
 							url: "http://localhost:3000/metamask-mobile-demo",
 						},
 						sdk: {
@@ -169,14 +170,40 @@ export default function MetaMaskMobileDemo() {
 				// 2. Serialize the object to a JSON string.
 				const jsonPayload = JSON.stringify(connectionRequest);
 
-				// 3. URL-encode the JSON payload to make it safe for a URL.
-				const encodedPayload = encodeURIComponent(jsonPayload);
+				// Compare different encoding methods
+				const encodingSizes = compareEncodingSizes(jsonPayload);
 
-				// 4. Construct the full deep link URL. The mobile app will parse this.
-				const deepLinkUrl = `metamask://connect/mwp?p=${encodedPayload}`;
+				console.log("=== Payload Size Comparison ===");
+				console.log("Original JSON length:", encodingSizes.original);
+				console.log("URI encoded length:", encodingSizes.uriEncoded);
+				console.log("Base64 encoded length:", encodingSizes.base64);
+				console.log("Compressed + Base64 length:", encodingSizes.compressed);
+				console.log(`Base64 is ${encodingSizes.stats.base64Reduction.toFixed(2)}% smaller than URI encoding`);
+				console.log(`Compressed + Base64 is ${encodingSizes.stats.compressionReduction.toFixed(2)}% smaller than URI encoding`);
+				console.log("===============================");
+
+				// Log the comparison to the UI as well
+				addDappLog(
+					"system",
+					`Payload sizes - JSON: ${encodingSizes.original}, URI: ${encodingSizes.uriEncoded}, Base64: ${encodingSizes.base64}, Compressed: ${encodingSizes.compressed}`,
+				);
+				addDappLog("system", `Size reductions - Base64: ${encodingSizes.stats.base64Reduction.toFixed(1)}%, Compressed: ${encodingSizes.stats.compressionReduction.toFixed(1)}%`);
+
+				// 4. Construct the full deep link URL using base64 encoding
+				// Using base64 encoded payload instead of URI encoded
+				const base64Payload = base64Encode(jsonPayload);
+				const uriEncodedPayload = encodeURIComponent(jsonPayload);
+				const deepLinkUrl = `metamask://connect/mwp?p=${uriEncodedPayload}`;
+
+				// Also show what the compressed URL would look like
+				const compressedPayload = compressString(jsonPayload);
+				const compressedDeepLinkUrl = `metamask://connect/mwp?p=${compressedPayload}&c=1`; // c=1 indicates compressed
+
+				console.log("Standard deep link length:", deepLinkUrl.length);
+				console.log("Compressed deep link length:", compressedDeepLinkUrl.length);
 
 				setQrCodeData(deepLinkUrl);
-				addDappLog("system", "QR code generated with deep link. Ready for wallet to scan.");
+				addDappLog("system", "QR code generated with base64 encoded deep link. Ready for wallet to scan.");
 
 				// Start session timer
 				startSessionTimer(request.expiresAt);
@@ -225,11 +252,7 @@ export default function MetaMaskMobileDemo() {
 						await dappClientRef.current.sendRequest(createSessionRequest);
 						addDappLog("system", "Session creation request sent. Waiting for wallet approval...");
 					} catch (error) {
-						addDappLog(
-							"system",
-							`Failed to send session creation request: ${error instanceof Error ? error.message : "Unknown error"
-							}`,
-						);
+						addDappLog("system", `Failed to send session creation request: ${error instanceof Error ? error.message : "Unknown error"}`);
 					}
 				};
 
@@ -290,11 +313,7 @@ export default function MetaMaskMobileDemo() {
 				}
 			} catch (error) {
 				setDappStatus("Ready to connect");
-				addDappLog(
-					"system",
-					`DApp client initialized successfully (session resume failed: ${error instanceof Error ? error.message : "Unknown error"
-					})`,
-				);
+				addDappLog("system", `DApp client initialized successfully (session resume failed: ${error instanceof Error ? error.message : "Unknown error"})`);
 			}
 		} catch (error) {
 			addDappLog("system", `Failed to initialize dApp: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -341,8 +360,8 @@ export default function MetaMaskMobileDemo() {
 
 	const getNextId = () => requestId.current++;
 
-	const hardcodedEthAccount = "0x842bab7c3546c5c6cd01bf2dbe02ecd567cf26ba";
-	const hardcodedSolanaAccount = "xURqPthzptGAYqDWDvmkUvuC4we2rFcrkiXFjXyfGXR";
+	const hardcodedEthAccount = "0xf24f5b308aff046e3ad63716873e12996b2c3e86";
+	const hardcodedSolanaAccount = "Bk5xbEytpSXBxN5ouiGWYxJTvxxTk7Hq6W8yghd12g2z";
 
 	const handleGetEthBalance = async () => {
 		if (!dappClientRef.current || !dappConnected) return;
@@ -376,7 +395,7 @@ export default function MetaMaskMobileDemo() {
 				jsonrpc: "2.0",
 				method: "wallet_invokeMethod",
 				params: {
-					scope: "eip155:137", // Target Polygon
+					scope: "eip155:1",
 					request: {
 						method: "personal_sign",
 						params: ["0x48656c6c6f20576f726c64", hardcodedEthAccount],
@@ -399,7 +418,7 @@ export default function MetaMaskMobileDemo() {
 				jsonrpc: "2.0",
 				method: "wallet_invokeMethod",
 				params: {
-					scope: "eip155:1", // Target Ethereum
+					scope: "eip155:137", // Target Polygon
 					request: {
 						method: "eth_sendTransaction",
 						params: [
@@ -512,7 +531,9 @@ export default function MetaMaskMobileDemo() {
 										<QRCodeDisplay data={qrCodeData} />
 									</div>
 									<div className="mt-4">
-										<p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{isSessionExpired ? "This QR code has expired." : "Scan with your mobile wallet or use the link below."}</p>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+											{isSessionExpired ? "This QR code has expired." : "Scan with your mobile wallet or use the link below."}
+										</p>
 										{!isSessionExpired ? (
 											<a
 												href={qrCodeData}

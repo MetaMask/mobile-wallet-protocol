@@ -3819,6 +3819,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/pako@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "@types/pako@npm:2.0.4"
+  checksum: 7e7b090c27cdbed4a8c21f7dfa466ad1c6b5c29afbcaaa24b35e83803d2b6b6cd552060060d8832058cf3809787baaab47a6a974b69d75a2a2dc59d21b607ee8
+  languageName: node
+  linkType: hard
+
 "@types/qrcode@npm:^1.5.5":
   version: 1.5.5
   resolution: "@types/qrcode@npm:1.5.5"
@@ -10311,6 +10318,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pako@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "pako@npm:2.1.0"
+  checksum: 71666548644c9a4d056bcaba849ca6fd7242c6cf1af0646d3346f3079a1c7f4a66ffec6f7369ee0dc88f61926c10d6ab05da3e1fca44b83551839e89edd75a3e
+  languageName: node
+  linkType: hard
+
 "parent-module@npm:^1.0.0":
   version: 1.0.1
   resolution: "parent-module@npm:1.0.1"
@@ -13336,6 +13350,7 @@ __metadata:
     "@metamask/mobile-wallet-protocol-wallet-client": "workspace:^"
     "@tailwindcss/postcss": ^4
     "@types/node": ^20
+    "@types/pako": ^2.0.4
     "@types/qrcode": ^1.5.5
     "@types/react": ^19
     "@types/react-dom": ^19
@@ -13343,6 +13358,7 @@ __metadata:
     eslint: ^9
     eslint-config-next: 15.4.1
     next: 15.4.1
+    pako: ^2.1.0
     qrcode: ^1.5.4
     react: 19.1.0
     react-dom: 19.1.0
