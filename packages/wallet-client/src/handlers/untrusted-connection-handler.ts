@@ -38,6 +38,7 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this._sendHandshakeOffer(request.channel, otp, deadline);
 		await this._waitForHandshakeAck(deadline);
 		await this._finalizeConnection(request.channel);
+		if (request.initialMessage) this.context.handleMessage(request.initialMessage);
 	}
 
 	/**

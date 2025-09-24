@@ -37,6 +37,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		await this._sendHandshakeOffer(request.channel);
 		await this._waitForHandshakeAck(Date.now() + this.handshakeTimeoutMs);
 		await this._finalizeConnection(request.channel);
+		if (request.initialMessage) this.context.handleMessage(request.initialMessage);
 	}
 
 	/**

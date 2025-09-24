@@ -1,4 +1,4 @@
-import { ClientState, type Session, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, type Message, type Session, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import * as t from "vitest";
 import { vi } from "vitest";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
@@ -26,6 +26,7 @@ function createMockWalletHandlerContext(): IConnectionHandlerContext {
 		once: vi.fn(),
 		off: vi.fn(),
 		sendMessage: vi.fn(),
+		handleMessage: vi.fn(),
 	};
 }
 
@@ -163,5 +164,24 @@ t.describe("TrustedConnectionHandler", () => {
 		const sendMessageCallTime = sendMessageSpy.mock.invocationCallOrder[0];
 		const onceCallTime = onceSpy.mock.invocationCallOrder[0];
 		t.expect(sendMessageCallTime).toBeLessThan(onceCallTime);
+	});
+
+	t.test("should process a valid initialMessage after finalizing connection", async () => {
+		const initialMessage: Message = { type: "message", payload: { method: "eth_requestAccounts" } };
+		mockRequest.initialMessage = initialMessage;
+		const handleMessageSpy = vi.spyOn(context, "handleMessage");
+
+		await handler.execute(mockSession, mockRequest);
+
+		t.expect(context.emit).toHaveBeenCalledWith("connected");
+		t.expect(handleMessageSpy).toHaveBeenCalledWith(initialMessage);
+
+		// Verify that 'connected' is emitted before 'handleMessage' is called.
+		const connectedCallOrder = (context.emit as t.Mock).mock.invocationCallOrder.find((order, i) => {
+			return (context.emit as t.Mock).mock.calls[i][0] === "connected";
+		});
+		const handleMessageCallOrder = handleMessageSpy.mock.invocationCallOrder[0];
+
+		t.expect(connectedCallOrder).toBeLessThan(handleMessageCallOrder);
 	});
 });

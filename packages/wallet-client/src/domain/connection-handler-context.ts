@@ -22,4 +22,5 @@ export interface IConnectionHandlerContext {
 
 	// Actions
 	sendMessage(channel: string, message: ProtocolMessage): Promise<void>;
+	handleMessage(message: ProtocolMessage): void;
 }
