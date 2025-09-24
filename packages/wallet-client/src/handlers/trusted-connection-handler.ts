@@ -101,7 +101,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 *
 	 * @param message - The initial message to process
 	 */
-	private async _processInitialMessage(message?: Message): Promise<void> {
+	private _processInitialMessage(message?: Message): void {
 		if (!message) return;
 		setTimeout(() => this.context.handleMessage(message), 0); // setTimeout used to ensure processing after the connection is finalized
 	}
