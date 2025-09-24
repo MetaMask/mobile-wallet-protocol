@@ -7,6 +7,7 @@ import {
 	type IKeyManager,
 	type ISessionStore,
 	type ITransport,
+	type Message,
 	type ProtocolMessage,
 	type Session,
 	SessionError,
@@ -39,6 +40,8 @@ export interface DappClientOptions {
 export interface DappConnectOptions {
 	/** The connection mode: 'trusted' for same-device flows, 'untrusted' for high-security OTP flows. */
 	mode?: ConnectionMode;
+	/** An optional unencrypted payload to be sent as the first message upon connection. */
+	initialPayload?: unknown;
 }
 
 /**
@@ -105,8 +108,8 @@ export class DappClient extends BaseClient {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
 		this.state = ClientState.CONNECTING;
 
-		const { mode = "untrusted" } = options;
-		const { pendingSession, request } = this._createPendingSessionAndRequest(mode);
+		const { mode = "untrusted", initialPayload } = options;
+		const { pendingSession, request } = this._createPendingSessionAndRequest(mode, initialPayload);
 		this.session = pendingSession;
 		this.emit("session_request", request);
 
@@ -137,6 +140,7 @@ export class DappClient extends BaseClient {
 		try {
 			await handler.execute(pendingSession, request);
 		} catch (error) {
+			this.emit("error", error);
 			await this.disconnect();
 			throw error;
 		}
@@ -176,7 +180,7 @@ export class DappClient extends BaseClient {
 	 * @param mode - The connection mode to use for this session
 	 * @returns An object containing the pending session and session request
 	 */
-	private _createPendingSessionAndRequest(mode: ConnectionMode): { pendingSession: Session; request: SessionRequest } {
+	private _createPendingSessionAndRequest(mode: ConnectionMode, initialPayload?: unknown): { pendingSession: Session; request: SessionRequest } {
 		const id = uuid();
 		const keyPair = this.keymanager.generateKeyPair();
 
@@ -189,12 +193,15 @@ export class DappClient extends BaseClient {
 			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
 		};
 
+		const message: Message | undefined = initialPayload ? { type: "message", payload: initialPayload } : undefined;
+
 		const request: SessionRequest = {
 			id,
 			mode,
 			channel: `handshake:${id}`,
 			publicKeyB64: bytesToBase64(keyPair.publicKey),
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
+			initialMessage: message,
 		};
 
 		return { pendingSession, request };

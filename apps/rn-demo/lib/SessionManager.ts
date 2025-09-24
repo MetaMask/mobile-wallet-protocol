@@ -66,6 +66,9 @@ export class SessionManager extends EventEmitter {
 
 		this.emit("system-log", { sessionId: sessionRequest.id, message: `Incoming connection request (mode: ${sessionRequest.mode})` });
 
+		// Set up message listeners BEFORE connecting to capture the initial message
+		this.setupClientListeners(client, sessionRequest.id);
+
 		// Listen for the OTP event just for this connection attempt.
 		client.once("display_otp", (otp: string, deadline: number) => {
 			this.emit("otp_display_request", { otp, deadline });
@@ -78,7 +81,6 @@ export class SessionManager extends EventEmitter {
 		this.emit("handshake_complete");
 
 		this.clients.set(sessionRequest.id, client);
-		this.setupClientListeners(client, sessionRequest.id);
 		console.log(`SessionManager: New session ${sessionRequest.id} connected.`);
 		this.emit("system-log", { sessionId: sessionRequest.id, message: "New session created" });
 		this.emit("sessions-changed");

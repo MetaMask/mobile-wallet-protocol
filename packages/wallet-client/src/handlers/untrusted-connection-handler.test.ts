@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import { ClientState, type Session, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, type Message, type Session, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import * as t from "vitest";
 import { vi } from "vitest";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
@@ -27,6 +27,7 @@ function createMockWalletHandlerContext(): IConnectionHandlerContext {
 		once: vi.fn(),
 		off: vi.fn(),
 		sendMessage: vi.fn(),
+		handleMessage: vi.fn(),
 	};
 }
 
@@ -166,5 +167,33 @@ t.describe("UntrustedConnectionHandler", () => {
 
 		// Verify that the handler was waiting for the acknowledgment
 		t.expect(context.once).toHaveBeenCalledWith("handshake_ack_received", t.expect.any(Function));
+	});
+
+	t.test("should process a valid initialMessage after finalizing connection", async () => {
+		const initialMessage: Message = { type: "message", payload: { method: "eth_requestAccounts" } };
+		mockRequest.initialMessage = initialMessage;
+		const handleMessageSpy = vi.spyOn(context, "handleMessage");
+
+		await handler.execute(mockSession, mockRequest);
+
+		// Verify 'connected' was emitted
+		t.expect(context.emit).toHaveBeenCalledWith("connected");
+
+		// Initially, handleMessage should not have been called yet (it's in setTimeout)
+		t.expect(handleMessageSpy).not.toHaveBeenCalled();
+
+		// Wait for the next tick to allow setTimeout to execute
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Now handleMessage should have been called
+		t.expect(handleMessageSpy).toHaveBeenCalledWith(initialMessage);
+
+		// Verify that 'connected' is emitted before 'handleMessage' is called.
+		const connectedCallOrder = (context.emit as t.Mock).mock.invocationCallOrder.find((_order, i) => {
+			return (context.emit as t.Mock).mock.calls[i][0] === "connected";
+		});
+		const handleMessageCallOrder = handleMessageSpy.mock.invocationCallOrder[0];
+
+		t.expect(connectedCallOrder).toBeLessThan(handleMessageCallOrder);
 	});
 });

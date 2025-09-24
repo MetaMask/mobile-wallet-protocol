@@ -116,10 +116,14 @@ export default function UntrustedDemo() {
 
 			// Disconnect and reconnect to generate new session
 			await dappClient.disconnect();
-			addDappLog("system", "Generating new QR code...");
+			addDappLog("system", "Generating new QR code with initial payload...");
+
+			// Define the initial message to be sent
+			const initialPayload = "Hello from new QR Code";
+			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// Start new connection, which will trigger 'session-request' and start a new timer
-			dappClient.connect().catch((error) => {
+			dappClient.connect({ initialPayload }).catch((error) => {
 				console.error("New QR code generation failed:", error);
 				addDappLog("system", `New QR code generation failed: ${error.message}`);
 			});
@@ -192,7 +196,7 @@ export default function UntrustedDemo() {
 				addDappLog("system", `Session request generated: ${request.id}`);
 				setSessionRequest(request);
 
-				// Generate QR code data with the full session request for external wallets
+				// Generate QR code data with the raw session request JSON
 				const qrData = JSON.stringify(request);
 				setQrCodeData(qrData);
 				addDappLog("system", "QR code generated. Ready for wallet to scan.");
@@ -264,10 +268,14 @@ export default function UntrustedDemo() {
 
 		try {
 			setDappStatus("Connecting...");
-			addDappLog("system", "Starting connection process...");
+			addDappLog("system", "Starting connection process with initial payload...");
+
+			// Define the initial message to be sent
+			const initialPayload = "Hello from Untrusted Demo!";
+			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// This will trigger the session-request event and generate QR code
-			dappClient.connect().catch((error) => {
+			dappClient.connect({ initialPayload }).catch((error) => {
 				addDappLog("system", `Connection failed: ${error.message}`);
 				setDappStatus("Connection failed");
 			});
