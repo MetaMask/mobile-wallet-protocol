@@ -1,4 +1,4 @@
-import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, ErrorCode, type HandshakeOfferPayload, type Message, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { bytesToBase64 } from "@metamask/utils";
 import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
@@ -38,7 +38,7 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this._sendHandshakeOffer(request.channel, otp, deadline);
 		await this._waitForHandshakeAck(deadline);
 		await this._finalizeConnection(request.channel);
-		if (request.initialMessage) this.context.handleMessage(request.initialMessage);
+		this._processInitialMessage(request.initialMessage);
 	}
 
 	/**
@@ -109,5 +109,15 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this.context.transport.clear(handshakeChannel);
 		this.context.state = ClientState.CONNECTED;
 		this.context.emit("connected");
+	}
+
+	/**
+	 * Processes the initial message after the connection is finalized.
+	 *
+	 * @param message - The initial message to process
+	 */
+	private async _processInitialMessage(message?: Message): Promise<void> {
+		if (!message) return;
+		setTimeout(() => this.context.handleMessage(message), 0); // setTimeout used to ensure processing after the connection is finalized
 	}
 }
