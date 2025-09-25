@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0]
 
-### Uncategorized
+### Added
 
-- Feat initial message ([#47](https://github.com/MetaMask/mobile-wallet-protocol/pull/47))
-- fix: issue with react-app applications and code bundling, splitting ([#46](https://github.com/MetaMask/mobile-wallet-protocol/pull/46))
-- feat: Expose base client state ([#43](https://github.com/MetaMask/mobile-wallet-protocol/pull/43))
+- Added initial message to the session request ([#47](https://github.com/MetaMask/mobile-wallet-protocol/pull/47))
+- Exposing base client state ([#43](https://github.com/MetaMask/mobile-wallet-protocol/pull/43))
+
+### Changed
+
+- Added splitting when packages are built with tsup ([#46](https://github.com/MetaMask/mobile-wallet-protocol/pull/46))
 
 ## [0.1.1]
 
