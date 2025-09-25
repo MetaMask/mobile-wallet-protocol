@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Feat initial message ([#47](https://github.com/MetaMask/mobile-wallet-protocol/pull/47))
+- fix: issue with react-app applications and code bundling, splitting ([#46](https://github.com/MetaMask/mobile-wallet-protocol/pull/46))
+- fix: Error code ([#42](https://github.com/MetaMask/mobile-wallet-protocol/pull/42))
+
 ## [0.1.1]
 
 ### Changed
