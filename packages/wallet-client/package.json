@@ -1,40 +1,40 @@
 {
-	"name": "@metamask/mobile-wallet-protocol-wallet-client",
-	"version": "0.1.1",
-	"homepage": "https://github.com/MetaMask/mobile-wallet-protocol/tree/main/packages/wallet-client#readme",
-	"bugs": {
-		"url": "https://github.com/MetaMask/mobile-wallet-protocol/issues"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/MetaMask/mobile-wallet-protocol.git"
-	},
-	"license": "MIT",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"files": [
-		"dist"
-	],
-	"scripts": {
-		"build": "tsup src/index.ts --format cjs,esm --dts --splitting",
-		"changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-wallet-client",
-		"changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-wallet-client"
-	},
-	"publishConfig": {
-		"access": "public",
-		"registry": "https://registry.npmjs.org/"
-	},
-	"dependencies": {
-		"@metamask/mobile-wallet-protocol-core": "workspace:^",
-		"@metamask/utils": "^9.1.0",
-		"uuid": "^11.1.0"
-	},
-	"devDependencies": {
-		"@metamask/auto-changelog": "^5.0.2",
-		"@types/uuid": "^10.0.0",
-		"@types/ws": "^8.18.1",
-		"prettier": "^3.3.3",
-		"tsup": "^8.5.0",
-		"ws": "^8.18.2"
-	}
+  "name": "@metamask/mobile-wallet-protocol-wallet-client",
+  "version": "0.2.0",
+  "homepage": "https://github.com/MetaMask/mobile-wallet-protocol/tree/main/packages/wallet-client#readme",
+  "bugs": {
+    "url": "https://github.com/MetaMask/mobile-wallet-protocol/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetaMask/mobile-wallet-protocol.git"
+  },
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --splitting",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-wallet-client",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-wallet-client"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@metamask/mobile-wallet-protocol-core": "workspace:^",
+    "@metamask/utils": "^9.1.0",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@metamask/auto-changelog": "^5.0.2",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "prettier": "^3.3.3",
+    "tsup": "^8.5.0",
+    "ws": "^8.18.2"
+  }
 }
