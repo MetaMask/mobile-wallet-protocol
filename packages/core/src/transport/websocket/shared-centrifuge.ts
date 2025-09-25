@@ -1,6 +1,5 @@
 import {
 	Centrifuge,
-	type ErrorContext,
 	type HistoryOptions,
 	type HistoryResult,
 	type Options,
@@ -13,8 +12,11 @@ import {
 	type UnsubscribedContext,
 } from "centrifuge";
 import EventEmitter from "eventemitter3";
-import { ErrorCode, TransportError } from "../../domain/errors";
 
+/**
+ * Interface for Centrifuge subscriptions used by SharedCentrifuge.
+ * Provides a consistent API that matches the centrifuge-js Subscription interface.
+ */
 export interface ISubscription extends EventEmitter {
 	readonly channel: string;
 	readonly state: string;
@@ -25,9 +27,15 @@ export interface ISubscription extends EventEmitter {
 	history(options: HistoryOptions): Promise<HistoryResult>;
 }
 
+/**
+ * Proxy wrapper around Centrifuge Subscription that forwards events.
+ * Allows SharedCentrifuge to provide a consistent interface while hiding
+ * the complexity of the underlying subscription management.
+ */
 class SubscriptionProxy extends EventEmitter implements ISubscription {
 	constructor(public readonly realSub: Subscription) {
 		super();
+		// Forward all subscription events to listeners of this proxy
 		this.realSub.on("publication", (ctx: PublicationContext) => this.emit("publication", ctx));
 		this.realSub.on("subscribed", (ctx: SubscribedContext) => this.emit("subscribed", ctx));
 		this.realSub.on("unsubscribed", (ctx: UnsubscribedContext) => this.emit("unsubscribed", ctx));
@@ -54,18 +62,33 @@ class SubscriptionProxy extends EventEmitter implements ISubscription {
 	}
 }
 
+/**
+ * SharedCentrifuge manages a single Centrifuge WebSocket connection that can be shared
+ * across multiple instances. It handles reference counting for both connections and subscriptions,
+ * ensuring resources are cleaned up when no longer needed.
+ *
+ * Key concepts:
+ * - One Centrifuge connection per WebSocket URL, shared across all SharedCentrifuge instances
+ * - Subscriptions are reference-counted: multiple instances can subscribe to the same channel
+ * - Each instance tracks its own subscriptions and can disconnect independently
+ * - The underlying connection stays alive until all instances for that URL disconnect
+ */
 export class SharedCentrifuge extends EventEmitter {
-	private static instances: Map<string, Centrifuge> = new Map();
-	private static refCounts: Map<string, number> = new Map();
-	private static subRefs: Map<string, Map<string, { count: number; sub: Subscription }>> = new Map();
-	private static eventProxies: Map<string, EventEmitter> = new Map();
-	private static eventListenersSetup: Set<string> = new Set();
+	/**
+	 * Global state shared across all SharedCentrifuge instances per URL.
+	 * Contains the actual Centrifuge client, reference counts, and subscription tracking.
+	 */
+	private static globalstate: Map<string, {
+		centrifuge: Centrifuge;
+		refCount: number;
+		subscriptions: Map<string, { count: number; sub: Subscription }>;
+		eventListenersAttached: boolean;
+	}> = new Map();
 
 	private readonly url: string;
-	private readonly real: Centrifuge;
-	private readonly eventProxy: EventEmitter;
-	private myChannels: Set<string> = new Set();
-	private myState: "disconnected" | "connecting" | "connected" = "disconnected";
+	private channels: Set<string> = new Set();
+	private disconnected: boolean = false;
+
 	// biome-ignore lint/suspicious/noExplicitAny: for generic event listeners
 	private eventListeners: Map<string, (...args: any[]) => void> = new Map();
 
@@ -73,199 +96,194 @@ export class SharedCentrifuge extends EventEmitter {
 		super();
 		this.url = url;
 
-		if (!SharedCentrifuge.instances.has(url)) {
-			const real = new Centrifuge(url, opts);
-			SharedCentrifuge.instances.set(url, real);
-			SharedCentrifuge.refCounts.set(url, 0);
-			SharedCentrifuge.subRefs.set(url, new Map());
-			SharedCentrifuge.eventProxies.set(url, new EventEmitter());
+		// Initialize shared state for this URL if it doesn't exist
+		if (!SharedCentrifuge.globalstate.has(url)) {
+			const centrifuge = new Centrifuge(url, opts);
+			SharedCentrifuge.globalstate.set(url, {
+				centrifuge,
+				refCount: 0,
+				subscriptions: new Map(),
+				eventListenersAttached: false, // Not used anymore, kept for future extension
+			});
 		}
-		const realInstance = SharedCentrifuge.instances.get(url);
-		const eventProxy = SharedCentrifuge.eventProxies.get(url);
-		if (!realInstance || !eventProxy) {
-			throw new Error("Failed to get or create Centrifuge instance");
-		}
-		this.real = realInstance;
-		this.eventProxy = eventProxy;
 
-		const count = SharedCentrifuge.refCounts.get(this.url) ?? 0;
-		SharedCentrifuge.refCounts.set(this.url, count + 1);
-
-		// Set up global event listeners only once per URL
-		if (!SharedCentrifuge.eventListenersSetup.has(url)) {
-			this.setupGlobalEventListeners();
-			SharedCentrifuge.eventListenersSetup.add(url);
-		}
+		const shared = SharedCentrifuge.globalstate.get(url);
+		if (!shared) throw new Error("No shared state found");
+		shared.refCount++;
 
 		this.attachEventListeners();
-
-		// Sync initial state with real client
-		if (this.real.state === "connected") {
-			this.myState = "connected";
-			// Emit connected event for instances joining an already-connected client
-			setImmediate(() => this.emit("connected"));
-		} else if (this.real.state === "connecting") {
-			this.myState = "connecting";
-		}
 	}
 
-	private setupGlobalEventListeners(): void {
-		const events = ["connecting", "connected", "disconnected", "error"];
-		events.forEach((event) => {
-			// biome-ignore lint/suspicious/noExplicitAny: context type varies per event
-			const listener = (ctx?: any): void => {
-				// Forward events through the event proxy
-				this.eventProxy.emit(event, ctx);
-			};
-			// biome-ignore lint/suspicious/noExplicitAny: event string is correct
-			this.real.on(event as any, listener);
-		});
-	}
-
+	/**
+	 * Attach event listeners for this specific instance.
+	 */
 	private attachEventListeners(): void {
 		if (this.eventListeners.size > 0) return;
+
+		const shared = SharedCentrifuge.globalstate.get(this.url)!;
 		const events = ["connecting", "connected", "disconnected", "error"];
+
 		events.forEach((event) => {
 			// biome-ignore lint/suspicious/noExplicitAny: context type varies per event
 			const listener = (ctx?: any): void => {
-				// Update local state based on events
-				if (event === "connecting") this.myState = "connecting";
-				else if (event === "connected") this.myState = "connected";
-				else if (event === "disconnected" && this.myState !== "disconnected") {
-					// Only update to disconnected if we haven't already marked ourselves as disconnected
-					this.myState = "disconnected";
+				// Don't emit events if this instance has been disconnected
+				if (!this.disconnected) {
+					this.emit(event, ctx);
 				}
-				this.emit(event, ctx);
 			};
 			this.eventListeners.set(event, listener);
-			// Listen to the event proxy instead of the real client
-			this.eventProxy.on(event, listener);
+			shared.centrifuge.on(event as any, listener);
 		});
+	}
+
+	/** Get the underlying Centrifuge instance (for testing purposes). */
+	get real(): Centrifuge | undefined {
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		return shared?.centrifuge;
 	}
 
 	private detachEventListeners(): void {
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return;
+
 		for (const [event, listener] of this.eventListeners) {
-			// Remove listener from event proxy
-			this.eventProxy.off(event, listener);
+			shared.centrifuge.off(event as any, listener);
 		}
 		this.eventListeners.clear();
 	}
 
+	/** Get the current connection state. Returns "disconnected" if this instance has been disconnected. */
 	get state(): string {
-		return this.myState;
+		if (this.disconnected) return "disconnected";
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		return shared?.centrifuge.state ?? "disconnected";
 	}
 
+	/** Connect to the Centrifuge server. */
 	connect(): void {
-		if (this.myState === "disconnected") {
-			// Check if real client is already connected
-			if (this.real.state === "connected") {
-				this.myState = "connected";
-				setImmediate(() => this.emit("connected"));
-			} else if (this.real.state === "connecting") {
-				this.myState = "connecting";
-				// The event proxy will emit the connected event when ready
-			} else {
-				this.myState = "connecting";
-				this.real.connect();
-			}
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return;
+
+		// If already connected, emit connected event immediately
+		if (shared.centrifuge.state === "connected") {
+			setImmediate(() => this.emit("connected"));
+		} else if (shared.centrifuge.state === "connecting") {
+			// Already connecting, event will be emitted when connection completes
+		} else {
+			shared.centrifuge.connect();
 		}
 	}
 
+	/** Disconnect from the Centrifuge server. */
 	disconnect(): Promise<void> {
-		// Mark this instance as disconnected immediately
-		this.myState = "disconnected";
+		if (this.disconnected) return Promise.resolve();
 
-		// Emit disconnected event BEFORE detaching listeners
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return Promise.resolve();
+
+		// Mark this instance as disconnected
+		this.disconnected = true;
+
+		// Emit disconnected event immediately for this instance
 		setImmediate(() => this.emit("disconnected"));
 
-		// Clean up after emitting the event
+		// Clean up this instance's resources
 		setImmediate(() => {
 			this.detachEventListeners();
 		});
 
-		for (const channel of this.myChannels) {
+		// Clean up subscriptions for this instance
+		for (const channel of this.channels) {
 			this.decrementChannelRef(channel);
 		}
-		this.myChannels.clear();
+		this.channels.clear();
 
-		const currentCount = SharedCentrifuge.refCounts.get(this.url);
-		if (currentCount === undefined) return Promise.resolve();
+		// Decrement reference count
+		shared.refCount--;
 
-		const count = currentCount - 1;
-		SharedCentrifuge.refCounts.set(this.url, count);
-
-		if (count === 0) {
+		// If this was the last instance, clean up the shared Centrifuge
+		if (shared.refCount === 0) {
 			return new Promise((resolve) => {
-				this.real.once("disconnected", () => {
-					SharedCentrifuge.instances.delete(this.url);
-					SharedCentrifuge.refCounts.delete(this.url);
-					SharedCentrifuge.subRefs.delete(this.url);
-					SharedCentrifuge.eventProxies.delete(this.url);
-					SharedCentrifuge.eventListenersSetup.delete(this.url);
+				shared.centrifuge.once("disconnected", () => {
+					SharedCentrifuge.globalstate.delete(this.url);
 					resolve();
 				});
-				this.real.disconnect();
+				shared.centrifuge.disconnect();
 			});
 		}
+
 		return Promise.resolve();
 	}
 
-	reconnect(): Promise<void> {
-		this.real.disconnect();
-		return new Promise((resolve, reject) => {
-			this.real.once("connected", () => resolve());
-			this.real.once("error", (ctx: ErrorContext) => reject(new TransportError(ErrorCode.TRANSPORT_RECONNECT_FAILED, ctx.error.message)));
-			this.real.connect();
-		});
-	}
 
+	/** Create or get an existing subscription to a channel. */
 	newSubscription(channel: string, opts: Partial<SubscriptionOptions> = {}): ISubscription {
-		const subMap = SharedCentrifuge.subRefs.get(this.url);
-		if (!subMap) throw new Error("Subscription map not initialized");
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) throw new Error("No shared state found");
 
-		if (!subMap.has(channel)) {
-			const realSub = this.real.newSubscription(channel, opts);
-			subMap.set(channel, { count: 1, sub: realSub });
+		const subs = shared.subscriptions;
+
+		if (!subs.has(channel)) {
+			const realSub = shared.centrifuge.newSubscription(channel, opts);
+			subs.set(channel, { count: 1, sub: realSub });
 		} else {
-			const subInfo = subMap.get(channel);
-			if (subInfo) subInfo.count++;
+			const subInfo = subs.get(channel)!;
+			subInfo.count++;
 		}
-		this.myChannels.add(channel);
-		const subInfo = subMap.get(channel);
+
+		this.channels.add(channel);
+		const subInfo = subs.get(channel);
 		if (!subInfo) throw new Error(`Failed to create or get subscription for channel ${channel}`);
 		return new SubscriptionProxy(subInfo.sub);
 	}
 
+	/** Get an existing subscription to a channel if it exists. */
 	getSubscription(channel: string): ISubscription | undefined {
-		const subInfo = SharedCentrifuge.subRefs.get(this.url)?.get(channel);
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return undefined;
+
+		const subInfo = shared.subscriptions.get(channel);
 		return subInfo ? new SubscriptionProxy(subInfo.sub) : undefined;
 	}
 
+	/** Remove a subscription, cleaning up if no instances are using it. */
 	removeSubscription(sub: ISubscription): void {
 		if (!sub || !sub.channel) return;
 		this.decrementChannelRef(sub.channel);
-		this.myChannels.delete(sub.channel);
+		this.channels.delete(sub.channel);
 	}
 
+	/** Decrement the reference count for a channel subscription. */
 	private decrementChannelRef(channel: string): void {
-		const subMap = SharedCentrifuge.subRefs.get(this.url);
-		if (!subMap || !subMap.has(channel)) return;
-		const subInfo = subMap.get(channel);
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return;
+
+		const subs = shared.subscriptions;
+		const subInfo = subs.get(channel);
 		if (!subInfo) return;
+
 		subInfo.count--;
 		if (subInfo.count === 0) {
-			this.real.removeSubscription(subInfo.sub);
-			subMap.delete(channel);
+			shared.centrifuge.removeSubscription(subInfo.sub);
+			subs.delete(channel);
 		}
 	}
 
+	/** Publish data to a channel. */
 	// biome-ignore lint/suspicious/noExplicitAny: to match centrifuge-js interface
 	async publish(channel: string, data: any): Promise<void> {
-		await this.real.publish(channel, data);
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return;
+
+		await shared.centrifuge.publish(channel, data);
 	}
 
+	/** Get all current subscriptions as proxied objects. */
 	subscriptions(): Record<string, ISubscription> {
-		const subs = this.real.subscriptions();
+		const shared = SharedCentrifuge.globalstate.get(this.url);
+		if (!shared) return {};
+
+		const subs = shared.centrifuge.subscriptions();
 		const proxiedSubs: Record<string, ISubscription> = {};
 		for (const channel in subs) {
 			proxiedSubs[channel] = new SubscriptionProxy(subs[channel]);

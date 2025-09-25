@@ -138,38 +138,4 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		// @ts-expect-error - accessing private property for test
 		t.expect(clientA.real.getSubscription(channel)).toBeNull();
 	});
-
-	t.test("reconnect() should force a physical reconnection for all shared instances", async () => {
-		const clientA = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
-		instances.push(clientA);
-
-		const clientB = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
-		instances.push(clientB);
-
-		// Set up listeners before connecting
-		const connectedPromiseA = waitFor(clientA, "connected");
-		const connectedPromiseB = waitFor(clientB, "connected");
-
-		clientA.connect();
-		await connectedPromiseA;
-		await connectedPromiseB;
-
-		// Set up listeners for disconnect/reconnect cycle
-		const disconnectPromiseA = waitFor(clientA, "disconnected");
-		const disconnectPromiseB = waitFor(clientB, "disconnected");
-		const reconnectPromiseA = waitFor(clientA, "connected");
-		const reconnectPromiseB = waitFor(clientB, "connected");
-
-		// Trigger reconnect on client A
-		clientA.reconnect();
-
-		// Both clients should observe the full disconnect/reconnect cycle
-		await Promise.all([disconnectPromiseA, disconnectPromiseB]);
-		t.expect(["connecting", "disconnected"]).toContain(clientA.state);
-		t.expect(["connecting", "disconnected"]).toContain(clientB.state);
-
-		await Promise.all([reconnectPromiseA, reconnectPromiseB]);
-		t.expect(clientA.state).toBe("connected");
-		t.expect(clientB.state).toBe("connected");
-	});
 });
