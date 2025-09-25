@@ -1,4 +1,3 @@
-// Path: packages/core/src/transport/websocket/shared-centrifuge.integration.test.ts
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -48,7 +47,6 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		instances.push(clientB);
 
 		// Both clients should share the same underlying 'real' client
-		// @ts-expect-error - accessing private property for test
 		t.expect(clientA.real).toBe(clientB.real);
 
 		// Set up listeners before connecting
@@ -66,8 +64,7 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		await clientA.disconnect();
 		t.expect(clientA.state).toBe("disconnected");
 		t.expect(clientB.state).toBe("connected");
-		// @ts-expect-error - accessing private property for test
-		t.expect(clientB.real.state).toBe("connected");
+		t.expect(clientB.real?.state).toBe("connected");
 
 		// Disconnect B, the real connection should now close
 		const realDisconnectPromise = waitFor(clientB, "disconnected");
@@ -123,20 +120,17 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		subB.subscribe();
 
 		await new Promise((resolve) => subB.once("subscribed", resolve));
-		// @ts-expect-error - accessing private property for test
-		t.expect(clientA.real.getSubscription(channel)).not.toBeNull();
+		t.expect(clientA.real?.getSubscription(channel)).not.toBeNull();
 
 		// Client A removes its subscription, but the real one should remain for B
 		clientA.removeSubscription(subA);
-		// @ts-expect-error - accessing private property for test
-		t.expect(clientA.real.getSubscription(channel)).not.toBeNull();
+		t.expect(clientA.real?.getSubscription(channel)).not.toBeNull();
 
 		// Client B removes its subscription, which should now remove the real one
 		clientB.removeSubscription(subB);
 		// Wait a moment for the async removal to process
 		await new Promise((resolve) => setTimeout(resolve, 50));
-		// @ts-expect-error - accessing private property for test
-		t.expect(clientA.real.getSubscription(channel)).toBeNull();
+		t.expect(clientA.real?.getSubscription(channel)).toBeNull();
 	});
 
 	t.test("should maintain correct reference count when same instance subscribes to same channel multiple times", async () => {
@@ -155,15 +149,13 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		const sub3 = client.newSubscription(channel);
 
 		// All should wrap the same underlying subscription but be different proxy instances
-		// @ts-expect-error - accessing private property for test
 		t.expect((sub1 as any).realSub).toBe((sub2 as any).realSub);
-		// @ts-expect-error - accessing private property for test
 		t.expect((sub2 as any).realSub).toBe((sub3 as any).realSub);
 
 		// Check that the global reference count is still 1
 		// @ts-expect-error - accessing private property for test
-		const shared = SharedCentrifuge.globalstate.get(WEBSOCKET_URL);
-		t.expect(shared?.subscriptions.get(channel)?.count).toBe(1);
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(1);
 	});
 
 	t.test("should handle concurrent subscriptions from multiple instances", async () => {
@@ -203,8 +195,8 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 
 		// Global reference count should be 3
 		// @ts-expect-error - accessing private property for test
-		const shared = SharedCentrifuge.globalstate.get(WEBSOCKET_URL);
-		t.expect(shared?.subscriptions.get(channel)?.count).toBe(3);
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(3);
 	});
 
 	// Skip options mismatch test due to test environment cleanup issues
@@ -241,7 +233,8 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		]);
 
 		// Global state should be cleaned up
-		t.expect(SharedCentrifuge.globalstate.has(WEBSOCKET_URL)).toBe(false);
+		// @ts-expect-error - accessing private property for test
+		t.expect(SharedCentrifuge.contexts.has(WEBSOCKET_URL)).toBe(false);
 	});
 
 	t.test("should handle rapid create/destroy cycles without memory leaks", async () => {
@@ -262,7 +255,8 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		}
 
 		// Global state should be cleaned up after all instances are gone
-		t.expect(SharedCentrifuge.globalstate.has(WEBSOCKET_URL)).toBe(false);
+		// @ts-expect-error - accessing private property for test
+		t.expect(SharedCentrifuge.contexts.has(WEBSOCKET_URL)).toBe(false);
 	});
 
 	t.test("should properly decrement reference count when subscription proxy unsubscribe is called directly", async () => {
@@ -287,24 +281,24 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 
 		// Verify both are subscribed and reference count is 2
 		// @ts-expect-error - accessing private property for test
-		const shared = SharedCentrifuge.globalstate.get(WEBSOCKET_URL);
-		t.expect(shared?.subscriptions.get(channel)?.count).toBe(2);
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(2);
 
 		// Client A calls unsubscribe directly on its subscription proxy
 		subA.unsubscribe();
 
 		// Reference count should now be 1 (client B still subscribed)
-		t.expect(shared?.subscriptions.get(channel)?.count).toBe(1);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(1);
 
 		// The underlying subscription should still exist
-		t.expect(shared?.centrifuge.getSubscription(channel)).not.toBeNull();
+		t.expect(context?.centrifuge.getSubscription(channel)).not.toBeNull();
 
 		// Client B calls unsubscribe directly on its subscription proxy
 		subB.unsubscribe();
 
 		// Reference count should now be 0 and underlying subscription cleaned up
 		await new Promise((resolve) => setTimeout(resolve, 50)); // Allow async cleanup
-		t.expect(shared?.subscriptions.get(channel)).toBeUndefined();
-		t.expect(shared?.centrifuge.getSubscription(channel)).toBeNull();
+		t.expect(context?.subscriptions.get(channel)).toBeUndefined();
+		t.expect(context?.centrifuge.getSubscription(channel)).toBeNull();
 	});
 });
