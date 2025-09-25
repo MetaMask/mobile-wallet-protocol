@@ -33,7 +33,7 @@ export interface ISubscription extends EventEmitter {
  * the complexity of the underlying subscription management.
  */
 class SubscriptionProxy extends EventEmitter implements ISubscription {
-	constructor(public readonly realSub: Subscription) {
+	constructor(public readonly realSub: Subscription, private readonly parent: SharedCentrifuge) {
 		super();
 		// Forward all subscription events to listeners of this proxy
 		this.realSub.on("publication", (ctx: PublicationContext) => this.emit("publication", ctx));
@@ -52,6 +52,8 @@ class SubscriptionProxy extends EventEmitter implements ISubscription {
 	}
 	unsubscribe(): void {
 		this.realSub.unsubscribe();
+		// Notify the parent to decrement the reference count
+		this.parent.removeSubscription(this);
 	}
 	// biome-ignore lint/suspicious/noExplicitAny: to match centrifuge-js interface
 	async publish(data: any): Promise<PublishResult> {
@@ -83,6 +85,7 @@ export class SharedCentrifuge extends EventEmitter {
 		refCount: number;
 		subscriptions: Map<string, { count: number; sub: Subscription }>;
 		eventListenersAttached: boolean;
+		options: Partial<Options>;
 	}> = new Map();
 
 	private readonly url: string;
@@ -104,7 +107,12 @@ export class SharedCentrifuge extends EventEmitter {
 				refCount: 0,
 				subscriptions: new Map(),
 				eventListenersAttached: false, // Not used anymore, kept for future extension
+				options: opts,
 			});
+		} else {
+			// Validate options match for existing shared state
+			const shared = SharedCentrifuge.globalstate.get(url)!;
+			this.validateOptions(shared.options, opts);
 		}
 
 		const shared = SharedCentrifuge.globalstate.get(url);
@@ -112,6 +120,23 @@ export class SharedCentrifuge extends EventEmitter {
 		shared.refCount++;
 
 		this.attachEventListeners();
+	}
+
+	/**
+	 * Validate that provided options match the existing shared state's options.
+	 */
+	private validateOptions(existingOpts: Partial<Options>, newOpts: Partial<Options>): void {
+		const criticalKeys: (keyof Options)[] = ['token', 'websocket', 'minReconnectDelay', 'maxReconnectDelay'];
+
+		for (const key of criticalKeys) {
+			const existing = existingOpts[key];
+			const incoming = newOpts[key];
+
+			// Only warn if both values are defined and different
+			if (existing !== undefined && incoming !== undefined && existing !== incoming) {
+				console.warn(`SharedCentrifuge: Option '${key}' mismatch for URL ${this.url}. Using existing value: ${existing}, ignoring new value: ${incoming}`);
+			}
+		}
 	}
 
 	/**
@@ -185,12 +210,10 @@ export class SharedCentrifuge extends EventEmitter {
 		this.disconnected = true;
 
 		// Emit disconnected event immediately for this instance
-		setImmediate(() => this.emit("disconnected"));
+		this.emit("disconnected");
 
-		// Clean up this instance's resources
-		setImmediate(() => {
-			this.detachEventListeners();
-		});
+		// Clean up this instance's resources synchronously to prevent leaks
+		this.detachEventListeners();
 
 		// Clean up subscriptions for this instance
 		for (const channel of this.channels) {
@@ -223,18 +246,21 @@ export class SharedCentrifuge extends EventEmitter {
 
 		const subs = shared.subscriptions;
 
-		if (!subs.has(channel)) {
-			const realSub = shared.centrifuge.newSubscription(channel, opts);
-			subs.set(channel, { count: 1, sub: realSub });
-		} else {
-			const subInfo = subs.get(channel)!;
-			subInfo.count++;
+		// Only increment global reference count if this instance hasn't subscribed to this channel before
+		if (!this.channels.has(channel)) {
+			if (!subs.has(channel)) {
+				const realSub = shared.centrifuge.newSubscription(channel, opts);
+				subs.set(channel, { count: 1, sub: realSub });
+			} else {
+				const subInfo = subs.get(channel)!;
+				subInfo.count++;
+			}
 		}
 
 		this.channels.add(channel);
 		const subInfo = subs.get(channel);
 		if (!subInfo) throw new Error(`Failed to create or get subscription for channel ${channel}`);
-		return new SubscriptionProxy(subInfo.sub);
+		return new SubscriptionProxy(subInfo.sub, this);
 	}
 
 	/** Get an existing subscription to a channel if it exists. */
@@ -243,7 +269,7 @@ export class SharedCentrifuge extends EventEmitter {
 		if (!shared) return undefined;
 
 		const subInfo = shared.subscriptions.get(channel);
-		return subInfo ? new SubscriptionProxy(subInfo.sub) : undefined;
+		return subInfo ? new SubscriptionProxy(subInfo.sub, this) : undefined;
 	}
 
 	/** Remove a subscription, cleaning up if no instances are using it. */
@@ -286,7 +312,7 @@ export class SharedCentrifuge extends EventEmitter {
 		const subs = shared.centrifuge.subscriptions();
 		const proxiedSubs: Record<string, ISubscription> = {};
 		for (const channel in subs) {
-			proxiedSubs[channel] = new SubscriptionProxy(subs[channel]);
+			proxiedSubs[channel] = new SubscriptionProxy(subs[channel], this);
 		}
 		return proxiedSubs;
 	}

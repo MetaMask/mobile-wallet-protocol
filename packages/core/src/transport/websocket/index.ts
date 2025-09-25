@@ -1,4 +1,4 @@
-import type { Options, PublicationContext, SubscribedContext } from "centrifuge";
+import type { Options, PublicationContext } from "centrifuge";
 import EventEmitter from "eventemitter3";
 import { ErrorCode, TransportError } from "../../domain/errors";
 import type { IKVStore } from "../../domain/kv-store";
@@ -158,10 +158,11 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 		// Set up listeners - these need to be set up for every WebSocketTransport instance
 		// even if the subscription already exists
-		sub.on("subscribed", (ctx: SubscribedContext) => {
-			if (!ctx.recovered) {
-				this._fetchHistory(sub, channel);
-			}
+		sub.on("subscribed", () => {
+			// Always fetch history when this WebSocketTransport instance subscribes,
+			// regardless of whether the underlying subscription was recovered.
+			// Each instance needs to catch up on historical messages.
+			this._fetchHistory(sub, channel);
 			this._processQueue();
 		});
 

@@ -437,6 +437,57 @@ t.describe("WebSocketTransport", () => {
 			t.expect(error.message).toContain("Failed to parse incoming message");
 		});
 
+		t.test("should fetch history for new WebSocketTransport instances after shared subscription disconnects", async () => {
+			const channel = `session:${uuid()}`;
+			const kvstoreA = new InMemoryKVStore();
+			const kvstoreB = new InMemoryKVStore();
+
+			// Create first transport and publish some messages
+			const transportA = await WebSocketTransport.create({
+				kvstore: kvstoreA,
+				url: WEBSOCKET_URL,
+				websocket: WebSocket,
+			});
+			await transportA.connect();
+			await transportA.subscribe(channel);
+
+			const payloads = ["history-1", "history-2", "history-3"];
+			for (const payload of payloads) {
+				await transportA.publish(channel, payload);
+			}
+
+			// Wait a bit for messages to be published
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			// Disconnect the first transport to ensure messages are in history
+			await transportA.disconnect();
+
+			// Create second transport with different kvstore (simulating different wallet instance)
+			const transportB = await WebSocketTransport.create({
+				kvstore: kvstoreB,
+				url: WEBSOCKET_URL,
+				websocket: WebSocket,
+			});
+
+			// Collect messages received by the second transport
+			const receivedMessages: string[] = [];
+			transportB.on("message", ({ data }) => {
+				receivedMessages.push(data);
+			});
+
+			await transportB.connect();
+			await transportB.subscribe(channel); // This should fetch history
+
+			// Wait for history to be fetched
+			await new Promise((resolve) => setTimeout(resolve, 200));
+
+			// Should have received the historical messages
+			t.expect(receivedMessages).toEqual(payloads);
+
+			await transportB.disconnect();
+		});
+
+
 		t.test("should handle multiple transport instances with independent per-channel nonces", async () => {
 			// Create two different channels to simulate wallet connecting to multiple dApps
 			const channelA = `session:${uuid()}`;
