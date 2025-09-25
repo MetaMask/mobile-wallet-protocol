@@ -156,12 +156,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	public subscribe(channel: string): Promise<void> {
 		const sub = this.centrifuge.newSubscription(channel, { recoverable: true, positioned: true });
 
-		// Set up listeners - these need to be set up for every WebSocketTransport instance
-		// even if the subscription already exists
 		sub.on("subscribed", () => {
-			// Always fetch history when this WebSocketTransport instance subscribes,
-			// regardless of whether the underlying subscription was recovered.
-			// Each instance needs to catch up on historical messages.
 			this._fetchHistory(sub, channel);
 			this._processQueue();
 		});
