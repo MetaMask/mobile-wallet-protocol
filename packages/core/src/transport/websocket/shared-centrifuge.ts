@@ -72,10 +72,10 @@ class SubscriptionProxy extends EventEmitter implements ISubscription {
  * Context contains all the shared state for a single Centrifuge connection.
  */
 type Context = {
-	centrifuge: Centrifuge;
 	refcount: number;
-	subscriptions: Map<string, { count: number; sub: Subscription }>;
 	options: Partial<Options>;
+	centrifuge: Centrifuge;
+	subscriptions: Map<string, { count: number; sub: Subscription }>;
 };
 
 /**
@@ -114,10 +114,10 @@ export class SharedCentrifuge extends EventEmitter {
 		if (!SharedCentrifuge.contexts.has(url)) {
 			const centrifuge = new Centrifuge(url, opts);
 			SharedCentrifuge.contexts.set(url, {
-				centrifuge,
 				refcount: 0,
-				subscriptions: new Map(),
 				options: opts,
+				centrifuge,
+				subscriptions: new Map(),
 			});
 		} else {
 			const context = SharedCentrifuge.contexts.get(url);
