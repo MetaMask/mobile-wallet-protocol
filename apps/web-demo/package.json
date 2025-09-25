@@ -13,7 +13,7 @@
 		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
 		"@types/qrcode": "^1.5.5",
 		"eciesjs": "^0.4.15",
-		"next": "15.4.1",
+		"next": "15.4.7",
 		"qrcode": "^1.5.4",
 		"react": "19.1.0",
 		"react-dom": "19.1.0"
