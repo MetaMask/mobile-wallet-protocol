@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
