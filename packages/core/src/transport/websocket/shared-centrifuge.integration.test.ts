@@ -169,21 +169,13 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		instances.push(clientC);
 
 		// Set up listeners before connecting
-		const connectedPromises = [
-			waitFor(clientA, "connected"),
-			waitFor(clientB, "connected"),
-			waitFor(clientC, "connected")
-		];
+		const connectedPromises = [waitFor(clientA, "connected"), waitFor(clientB, "connected"), waitFor(clientC, "connected")];
 
 		clientA.connect();
 		await Promise.all(connectedPromises);
 
 		// Subscribe concurrently
-		const [subA, subB, subC] = [
-			clientA.newSubscription(channel),
-			clientB.newSubscription(channel),
-			clientC.newSubscription(channel)
-		];
+		const [subA, subB, subC] = [clientA.newSubscription(channel), clientB.newSubscription(channel), clientC.newSubscription(channel)];
 
 		// All should be different proxy instances but point to the same underlying subscription
 		t.expect(subA).not.toBe(subB);
@@ -212,11 +204,7 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		// Don't add to instances array since we're testing cleanup
 
 		// Connect all clients
-		const connectedPromises = [
-			waitFor(clientA, "connected"),
-			waitFor(clientB, "connected"),
-			waitFor(clientC, "connected")
-		];
+		const connectedPromises = [waitFor(clientA, "connected"), waitFor(clientB, "connected"), waitFor(clientC, "connected")];
 
 		clientA.connect();
 		await Promise.all(connectedPromises);
@@ -227,11 +215,7 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		clientC.newSubscription(channel);
 
 		// Disconnect all clients
-		await Promise.all([
-			clientA.disconnect(),
-			clientB.disconnect(),
-			clientC.disconnect()
-		]);
+		await Promise.all([clientA.disconnect(), clientB.disconnect(), clientC.disconnect()]);
 
 		// Global state should be cleaned up
 		// @ts-expect-error - accessing private property for test
@@ -268,10 +252,7 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		instances.push(clientB);
 
 		// Set up listeners before connecting
-		const connectedPromises = [
-			waitFor(clientA, "connected"),
-			waitFor(clientB, "connected")
-		];
+		const connectedPromises = [waitFor(clientA, "connected"), waitFor(clientB, "connected")];
 
 		clientA.connect();
 		await Promise.all(connectedPromises);

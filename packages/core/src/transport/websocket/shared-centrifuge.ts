@@ -245,7 +245,7 @@ export class SharedCentrifuge extends EventEmitter {
 		return proxiedSubs;
 	}
 
-	/** 
+	/**
 	 * Get the underlying Centrifuge instance (for testing purposes).
 	 */
 	get real(): Centrifuge | undefined {

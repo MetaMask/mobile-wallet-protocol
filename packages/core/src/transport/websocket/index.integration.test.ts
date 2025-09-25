@@ -487,7 +487,6 @@ t.describe("WebSocketTransport", () => {
 			await transportB.disconnect();
 		});
 
-
 		t.test("should handle multiple transport instances with independent per-channel nonces", async () => {
 			// Create two different channels to simulate wallet connecting to multiple dApps
 			const channelA = `session:${uuid()}`;
