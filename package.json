@@ -1,6 +1,6 @@
 {
 	"name": "mobile-wallet-protocol",
-	"version": "8.0.0",
+	"version": "9.0.0",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -12,7 +12,7 @@
 		"url": "https://github.com/MetaMask/mobile-wallet-protocol.git"
 	},
 	"scripts": {
-		"release": "node scripts/create-release.mjs",
+		"release": "node scripts/create-release.mjs -i",
 		"build": "yarn workspaces foreach --topological --verbose run build",
 		"changelog:update": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:update",
 		"changelog:validate": "yarn workspaces foreach --no-private --parallel --interlaced --verbose run changelog:validate",

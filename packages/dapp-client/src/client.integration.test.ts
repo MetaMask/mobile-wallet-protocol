@@ -63,6 +63,7 @@ t.describe("DappClient Integration Tests", () => {
 
 			const request = await sessionRequestPromise;
 			t.expect(request.mode).toBe("untrusted");
+			t.expect(request.initialMessage).toBeUndefined();
 		});
 
 		t.test("should emit a 'session_request' with 'trusted' mode when specified", async () => {
@@ -74,6 +75,20 @@ t.describe("DappClient Integration Tests", () => {
 
 			const request = await sessionRequestPromise;
 			t.expect(request.mode).toBe("trusted");
+			t.expect(request.initialMessage).toBeUndefined();
+		});
+
+		t.test("should emit a 'session_request' with a valid initialPayload", async () => {
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
+
+			const initialPayload = { jsonrpc: "2.0", method: "eth_requestAccounts", params: [] };
+			dappClient.connect({ initialPayload }); // Don't await
+
+			const request = await sessionRequestPromise;
+			const expectedMessage = { type: "message", payload: initialPayload };
+			t.expect(request.initialMessage).toEqual(expectedMessage);
 		});
 	});
 

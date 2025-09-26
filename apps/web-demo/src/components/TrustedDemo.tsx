@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { KeyManager } from "@/lib/KeyManager";
 import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
-// const RELAY_URL = "ws://localhost:8000/connection/websocket";
-const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
+const RELAY_URL = "ws://localhost:8000/connection/websocket";
+// const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
 
 type LogEntry = {
 	id: string;
@@ -113,10 +113,14 @@ export default function TrustedDemo() {
 
 			// Disconnect and reconnect to generate new session
 			await dappClient.disconnect();
-			addDappLog("system", "Generating new QR code...");
+			addDappLog("system", "Generating new QR code with initial payload...");
+
+			// Define the initial message to be sent with the new QR code
+			const initialPayload = "Hello from new QR Code";
+			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// Start new connection, which will trigger 'session-request' and start a new timer
-			dappClient.connect({ mode: "trusted" }).catch((error) => {
+			dappClient.connect({ mode: "trusted", initialPayload }).catch((error) => {
 				console.error("New QR code generation failed:", error);
 				addDappLog("system", `New QR code generation failed: ${error.message}`);
 			});
@@ -184,29 +188,14 @@ export default function TrustedDemo() {
 
 			// Set up event listeners
 			dapp.on("session_request", (request: SessionRequest) => {
+				console.log("request", JSON.stringify(request));
 				addDappLog("system", `Session request generated: ${request.id}`);
 				setSessionRequest(request);
 
-				// 1. Create the higher-level ConnectionRequest object.
-				const connectionRequest = {
-					sessionRequest: request, // The original session request from the SDK.
-					dappMetadata: {
-						name: "Trusted Web Demo",
-						url: "http://localhost:3000/trusted-demo",
-					},
-				};
-
-				// 2. Serialize the object to a JSON string.
-				const jsonPayload = JSON.stringify(connectionRequest);
-
-				// 3. URL-encode the JSON payload to make it safe for a URL.
-				const encodedPayload = encodeURIComponent(jsonPayload);
-
-				// 4. Construct the full deep link URL. The mobile app will parse this.
-				const deepLinkUrl = `metamask://connect/mwp/${encodedPayload}`;
-
-				setQrCodeData(deepLinkUrl);
-				addDappLog("system", "QR code generated with deep link. Ready for wallet to scan.");
+				// Generate QR code data with the raw session request JSON
+				const qrData = JSON.stringify(request);
+				setQrCodeData(qrData);
+				addDappLog("system", "QR code generated. Ready for wallet to scan.");
 
 				// Start session timer
 				startSessionTimer(request.expiresAt);
@@ -268,10 +257,14 @@ export default function TrustedDemo() {
 
 		try {
 			setDappStatus("Connecting...");
-			addDappLog("system", "Starting connection process...");
+			addDappLog("system", "Starting connection process with initial payload...");
+
+			// Define the initial message to be sent
+			const initialPayload = "Hello from Trusted Demo!";
+			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// This will trigger the session-request event and generate QR code
-			dappClient.connect({ mode: "trusted" }).catch((error) => {
+			dappClient.connect({ mode: "trusted", initialPayload }).catch((error) => {
 				addDappLog("system", `Connection failed: ${error.message}`);
 				setDappStatus("Connection failed");
 			});

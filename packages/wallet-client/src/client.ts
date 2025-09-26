@@ -104,6 +104,7 @@ export class WalletClient extends BaseClient {
 			once: this.once.bind(this),
 			off: this.off.bind(this),
 			sendMessage: this.sendMessage.bind(this),
+			handleMessage: this.handleMessage.bind(this),
 		};
 
 		const handler: IConnectionHandler = request.mode === "trusted" ? new TrustedConnectionHandler(context) : new UntrustedConnectionHandler(context);
@@ -111,6 +112,7 @@ export class WalletClient extends BaseClient {
 		try {
 			await handler.execute(session, request);
 		} catch (error) {
+			this.emit("error", error);
 			await this.disconnect();
 			throw error;
 		}
