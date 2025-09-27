@@ -74,10 +74,7 @@ t.describe("TrustedConnectionHandler", () => {
 		t.expect(context.transport.connect).toHaveBeenCalledOnce();
 		t.expect(context.transport.subscribe).toHaveBeenCalledWith(mockRequest.channel);
 		t.expect(context.emit).not.toHaveBeenCalledWith("otp_required", t.expect.any(Object));
-		t.expect(context.sendMessage).not.toHaveBeenCalledWith(
-			t.expect.stringContaining("session:secure-channel"),
-			{ type: "handshake-ack" },
-		);
+		t.expect(context.sendMessage).not.toHaveBeenCalledWith(t.expect.stringContaining("session:secure-channel"), { type: "handshake-ack" });
 		t.expect(context.sessionstore.set).toHaveBeenCalledOnce();
 		t.expect(context.transport.clear).toHaveBeenCalledWith(mockRequest.channel);
 		t.expect(context.state).toBe("CONNECTED");

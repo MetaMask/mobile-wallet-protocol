@@ -118,10 +118,7 @@ t.describe("TrustedConnectionHandler", () => {
 		await handler.execute(mockSession, mockRequest);
 
 		t.expect(sendMessageSpy).toHaveBeenCalledOnce();
-		t.expect(sendMessageSpy).toHaveBeenCalledWith(
-			mockRequest.channel,
-			t.expect.objectContaining({ type: "handshake-offer" }),
-		);
+		t.expect(sendMessageSpy).toHaveBeenCalledWith(mockRequest.channel, t.expect.objectContaining({ type: "handshake-offer" }));
 	});
 
 	t.test("should process a valid initialMessage after finalizing connection", async () => {
