@@ -19,7 +19,6 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  */
 export class TrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
-	private timeoutId: NodeJS.Timeout | null = null;
 
 	constructor(context: IConnectionHandlerContext) {
 		this.context = context;
@@ -35,8 +34,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		const offer = await this._waitForHandshakeOffer(request.expiresAt);
 		const finalSession = this._createFinalSession(session, offer);
 		this.context.session = finalSession;
-		await this._acknowledgeHandshake(finalSession);
-		await this._finalizeConnection(session, request);
+		await this._finalizeConnection(finalSession, request);
 	}
 
 	/**
@@ -48,19 +46,19 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 */
 	private _waitForHandshakeOffer(requestExpiry: number): Promise<HandshakeOfferPayload> {
 		return new Promise((resolve, reject) => {
-			const timeoutDuration = requestExpiry + HANDSHAKE_TIMEOUT - Date.now();
-			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "The window to receive the handshake offer has expired."));
+			if (requestExpiry < Date.now()) {
+				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Session request expired before wallet could connect"));
 			}
 
-			this.timeoutId = setTimeout(() => {
+			const timeoutDuration = requestExpiry + HANDSHAKE_TIMEOUT - Date.now();
+
+			const timeoutId = setTimeout(() => {
 				this.context.off("handshake_offer_received", onOfferReceived);
 				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Did not receive handshake offer from wallet in time."));
 			}, timeoutDuration);
 
 			const onOfferReceived = (payload: HandshakeOfferPayload) => {
-				if (this.timeoutId) clearTimeout(this.timeoutId);
-				this.timeoutId = null;
+				clearTimeout(timeoutId);
 				resolve(payload);
 			};
 
@@ -81,15 +79,6 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 			channel: `session:${offer.channelId}`,
 			theirPublicKey: base64ToBytes(offer.publicKeyB64),
 		};
-	}
-
-	/**
-	 * Subscribes to the secure session channel and sends handshake acknowledgment.
-	 *
-	 * @param session - The finalized session object
-	 */
-	private async _acknowledgeHandshake(session: Session): Promise<void> {
-		await this.context.sendMessage(session.channel, { type: "handshake-ack" });
 	}
 
 	/**

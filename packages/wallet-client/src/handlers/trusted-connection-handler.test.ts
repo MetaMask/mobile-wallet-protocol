@@ -54,13 +54,6 @@ t.describe("TrustedConnectionHandler", () => {
 			expiresAt: Date.now() + 1000,
 			publicKeyB64: "mock-public-key",
 		};
-
-		context.once = t.vi.fn((event, callback) => {
-			if (event === "handshake_ack_received") {
-				setTimeout(() => callback(), 10);
-			}
-			return context;
-		});
 	});
 
 	t.test("should execute the full trusted flow without emitting an OTP", async () => {
@@ -103,41 +96,6 @@ t.describe("TrustedConnectionHandler", () => {
 		t.expect((payload as { deadline?: number }).deadline).toBeUndefined();
 	});
 
-	t.test("should wait for handshake acknowledgment within timeout", async () => {
-		await handler.execute(mockSession, mockRequest);
-
-		t.expect(context.once).toHaveBeenCalledWith("handshake_ack_received", t.expect.any(Function));
-	});
-
-	t.test(
-		"should throw if handshake acknowledgment times out",
-		async () => {
-			// Mock a context that never receives the acknowledgment
-			context.once = t.vi.fn(); // Don't resolve the acknowledgment
-
-			// Mock Date.now to simulate timeout during the timeout check
-			const originalDateNow = Date.now;
-			let callCount = 0;
-			Date.now = t.vi.fn(() => {
-				callCount++;
-				if (callCount === 1) {
-					// First call during timeout calculation
-					return originalDateNow();
-				} else {
-					// Subsequent calls during timeout check - make it seem like time has passed
-					return originalDateNow() + 70000; // 70 seconds passed
-				}
-			});
-
-			try {
-				await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow("Handshake timed out before it could begin");
-			} finally {
-				Date.now = originalDateNow;
-			}
-		},
-		10000,
-	);
-
 	t.test("should subscribe to both handshake and session channels", async () => {
 		const transportSubscribeSpy = t.vi.spyOn(context.transport, "subscribe");
 
@@ -154,16 +112,16 @@ t.describe("TrustedConnectionHandler", () => {
 		t.expect(context.session).toBe(mockSession);
 	});
 
-	t.test("should send handshake offer before waiting for acknowledgment", async () => {
+	t.test("should send handshake offer", async () => {
 		const sendMessageSpy = t.vi.spyOn(context, "sendMessage");
-		const onceSpy = t.vi.spyOn(context, "once");
 
 		await handler.execute(mockSession, mockRequest);
 
-		// sendMessage should be called before once (which sets up the ack listener)
-		const sendMessageCallTime = sendMessageSpy.mock.invocationCallOrder[0];
-		const onceCallTime = onceSpy.mock.invocationCallOrder[0];
-		t.expect(sendMessageCallTime).toBeLessThan(onceCallTime);
+		t.expect(sendMessageSpy).toHaveBeenCalledOnce();
+		t.expect(sendMessageSpy).toHaveBeenCalledWith(
+			mockRequest.channel,
+			t.expect.objectContaining({ type: "handshake-offer" }),
+		);
 	});
 
 	t.test("should process a valid initialMessage after finalizing connection", async () => {

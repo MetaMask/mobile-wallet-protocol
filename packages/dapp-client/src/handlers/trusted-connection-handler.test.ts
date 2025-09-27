@@ -58,22 +58,26 @@ t.describe("TrustedConnectionHandler", () => {
 			channelId: "secure-channel",
 			publicKeyB64: "cHVia2V5",
 		}; // No OTP for trusted flow
+	});
 
+	t.test("should execute the full trusted flow successfully", async () => {
+		// Mock the handshake offer being received
 		context.once = t.vi.fn((event, callback) => {
 			if (event === "handshake_offer_received") {
 				setTimeout(() => callback(mockOffer), 10);
 			}
 			return context;
 		});
-	});
 
-	t.test("should execute the full trusted flow successfully", async () => {
 		await handler.execute(mockSession, mockRequest);
 
 		t.expect(context.transport.connect).toHaveBeenCalledOnce();
 		t.expect(context.transport.subscribe).toHaveBeenCalledWith(mockRequest.channel);
 		t.expect(context.emit).not.toHaveBeenCalledWith("otp_required", t.expect.any(Object));
-		t.expect(context.sendMessage).toHaveBeenCalledWith(t.expect.stringContaining("session:secure-channel"), { type: "handshake-ack" });
+		t.expect(context.sendMessage).not.toHaveBeenCalledWith(
+			t.expect.stringContaining("session:secure-channel"),
+			{ type: "handshake-ack" },
+		);
 		t.expect(context.sessionstore.set).toHaveBeenCalledOnce();
 		t.expect(context.transport.clear).toHaveBeenCalledWith(mockRequest.channel);
 		t.expect(context.state).toBe("CONNECTED");
@@ -81,10 +85,27 @@ t.describe("TrustedConnectionHandler", () => {
 	});
 
 	t.test("should throw if the handshake offer is not received in time", async () => {
-		mockRequest.expiresAt = Date.now() + 5; // Very short expiry
+		vi.useFakeTimers();
+
+		// Set expiry time to be far enough in the future to avoid immediate rejection
+		mockRequest.expiresAt = Date.now() + 100000; // 100 seconds
 		context.once = t.vi.fn(); // Do not resolve the handshake offer
 
-		await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow(/Did not receive handshake offer/);
+		const executePromise = handler.execute(mockSession, mockRequest);
+
+		// Catch the promise to prevent unhandled rejection
+		executePromise.catch(() => {
+			// Expected rejection, do nothing
+		});
+
+		// Advance timers beyond the HANDSHAKE_TIMEOUT (assuming 60s + 100s buffer)
+		await vi.advanceTimersByTimeAsync(170000);
+
+		await t.expect(executePromise).rejects.toThrow(/Did not receive handshake offer/);
+
+		// Clear all timers before restoring real timers
+		vi.clearAllTimers();
+		vi.useRealTimers();
 	});
 
 	t.test("should throw if session request has already expired", async () => {
@@ -94,6 +115,13 @@ t.describe("TrustedConnectionHandler", () => {
 	});
 
 	t.test("should properly update session with wallet details", async () => {
+		// Mock the handshake offer being received
+		context.once = t.vi.fn((event, callback) => {
+			if (event === "handshake_offer_received") {
+				setTimeout(() => callback(mockOffer), 10);
+			}
+			return context;
+		});
 		await handler.execute(mockSession, mockRequest);
 
 		t.expect(context.session).toEqual(
@@ -105,7 +133,14 @@ t.describe("TrustedConnectionHandler", () => {
 		);
 	});
 
-	t.test("should subscribe to secure session channel before acknowledging", async () => {
+	t.test("should subscribe to secure session channel", async () => {
+		// Mock the handshake offer being received
+		context.once = t.vi.fn((event, callback) => {
+			if (event === "handshake_offer_received") {
+				setTimeout(() => callback(mockOffer), 10);
+			}
+			return context;
+		});
 		const transportSubscribeSpy = t.vi.spyOn(context.transport, "subscribe");
 
 		await handler.execute(mockSession, mockRequest);
