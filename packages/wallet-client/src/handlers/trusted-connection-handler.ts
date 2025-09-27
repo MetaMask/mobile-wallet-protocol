@@ -9,9 +9,8 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  * This handler implements a simplified connection sequence for same-device
  * or trusted contexts:
  * 1. Connects to transport and subscribes to both handshake and session channels
- * 2. Sends handshake offer without OTP directly to dApp
- * 3. Waits for dApp acknowledgment within timeout period
- * 4. Finalizes connection by persisting session and cleaning up
+ * 2. Sends handshake offer without OTP directly to dApp (in a fire-and-forget manner)
+ * 3. Finalizes connection by persisting session and cleaning up
  *
  * This flow prioritizes user experience over maximum security, making it
  * ideal for same-device scenarios or pre-trusted contexts where the user
@@ -19,7 +18,6 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  */
 export class TrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
-	private readonly handshakeTimeoutMs = 60 * 1000; // 1 minute
 
 	constructor(context: IConnectionHandlerContext) {
 		this.context = context;
@@ -30,12 +28,11 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * This method is fully self-contained and handles the connection process.
 	 */
 	public async execute(session: Session, request: SessionRequest): Promise<void> {
+		this.context.session = session;
 		await this.context.transport.connect();
 		await this.context.transport.subscribe(request.channel); // handshake channel
 		await this.context.transport.subscribe(session.channel); // secure channel
-		this.context.session = session;
 		await this._sendHandshakeOffer(request.channel);
-		await this._waitForHandshakeAck(Date.now() + this.handshakeTimeoutMs);
 		await this._finalizeConnection(request.channel);
 		this._processInitialMessage(request.initialMessage);
 	}
@@ -52,34 +49,6 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 			channelId: this.context.session.channel.replace("session:", ""),
 		};
 		await this.context.sendMessage(channel, { type: "handshake-offer", payload: handshakePayload });
-	}
-
-	/**
-	 * Waits for a `handshake-ack` message from the dApp.
-	 *
-	 * @param deadline - The timestamp when the acknowledgment must be received
-	 * @returns A promise that resolves when the ack is received
-	 * @throws {SessionError} If the ack is not received before the deadline
-	 */
-	private _waitForHandshakeAck(deadline: number): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const timeoutDuration = deadline - Date.now();
-			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Handshake timed out before it could begin."));
-			}
-
-			const timeoutId = setTimeout(() => {
-				this.context.off("handshake_ack_received", onAckReceived);
-				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "DApp did not acknowledge the handshake in time."));
-			}, timeoutDuration);
-
-			const onAckReceived = () => {
-				clearTimeout(timeoutId);
-				resolve();
-			};
-
-			this.context.once("handshake_ack_received", onAckReceived);
-		});
 	}
 
 	/**

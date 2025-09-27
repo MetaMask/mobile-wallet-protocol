@@ -1,5 +1,6 @@
 import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
+import { HANDSHAKE_TIMEOUT } from "../client";
 import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
@@ -35,7 +36,7 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 		const finalSession = this._createFinalSession(session, offer);
 		this.context.session = finalSession;
 		await this._acknowledgeHandshake(finalSession);
-		await this._finalizeConnection(request.channel);
+		await this._finalizeConnection(session, request);
 	}
 
 	/**
@@ -47,9 +48,9 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 */
 	private _waitForHandshakeOffer(requestExpiry: number): Promise<HandshakeOfferPayload> {
 		return new Promise((resolve, reject) => {
-			const timeoutDuration = requestExpiry - Date.now();
+			const timeoutDuration = requestExpiry + HANDSHAKE_TIMEOUT - Date.now();
 			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Session request expired before wallet could connect."));
+				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "The window to receive the handshake offer has expired."));
 			}
 
 			this.timeoutId = setTimeout(() => {
@@ -88,7 +89,6 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * @param session - The finalized session object
 	 */
 	private async _acknowledgeHandshake(session: Session): Promise<void> {
-		await this.context.transport.subscribe(session.channel);
 		await this.context.sendMessage(session.channel, { type: "handshake-ack" });
 	}
 
@@ -96,12 +96,14 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * Completes the connection by persisting the session, cleaning up the
 	 * temporary handshake channel, and transitioning to the `CONNECTED` state.
 	 *
-	 * @param handshakeChannel - The temporary channel used for the initial handshake
+	 * @param session - The finalized session object
+	 * @param request - The session request object
 	 */
-	private async _finalizeConnection(handshakeChannel: string): Promise<void> {
+	private async _finalizeConnection(session: Session, request: SessionRequest): Promise<void> {
 		if (!this.context.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE);
 		await this.context.sessionstore.set(this.context.session);
-		await this.context.transport.clear(handshakeChannel);
+		await this.context.transport.subscribe(session.channel);
+		await this.context.transport.clear(request.channel);
 		this.context.state = ClientState.CONNECTED;
 		this.context.emit("connected");
 	}
