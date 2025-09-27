@@ -5,17 +5,20 @@ import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
 /**
- * Handles the trusted connection flow for dApps.
+ * Handles the trusted connection flow for dApps, designed to work asynchronously
+ * with a wallet that connects optimistically.
  *
- * This handler implements a simplified connection sequence for same-device
- * or trusted contexts:
- * 1. Connects to transport and subscribes to handshake channel
- * 2. Waits for wallet to send handshake offer
- * 3. Immediately updates session and sends acknowledgment
- * 4. Finalizes connection by persisting session and cleaning up
+ * This handler accommodates the mobile scenario where the dApp is suspended
+ * when the user is sent to the wallet.
  *
- * This flow prioritizes user experience over maximum security, making it
- * ideal for same-device scenarios or pre-trusted contexts.
+ * The flow is as follows:
+ * 1. After the user returns to the dApp, it connects to the transport layer.
+ * 2. It waits for the `handshake-offer` from the wallet, which is retrieved from the
+ *    relay server's history. This wait includes an extended timeout to account for
+ *    the time the dApp was suspended.
+ * 3. Upon receiving the offer, it finalizes the session details.
+ * 4. It does NOT send a `handshake-ack`, as the wallet is not waiting for one.
+ * 5. It transitions to a `CONNECTED` state, ready for communication.
  */
 export class TrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
@@ -38,11 +41,16 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	}
 
 	/**
-	 * Waits for a `handshake-offer` message from the wallet on the handshake channel.
+	 * Waits for a `handshake-offer` message from the wallet.
 	 *
-	 * @param requestExpiry - The timestamp when the session request expires
-	 * @returns A promise that resolves with the `HandshakeOfferPayload`
-	 * @throws {SessionError} If the offer is not received before the request expires
+	 * This method uses a dual-timeout strategy. The total wait time is the sum of the
+	 * `SessionRequest` TTL (the time the user has to scan the QR code) and the
+	 * `HANDSHAKE_TIMEOUT` (a grace period for the dApp to resume from suspension
+	 * and process the historical message from the relay).
+	 *
+	 * @param requestExpiry - The timestamp when the session request expires.
+	 * @returns A promise that resolves with the `HandshakeOfferPayload`.
+	 * @throws {SessionError} If the offer is not received before the combined timeout expires.
 	 */
 	private _waitForHandshakeOffer(requestExpiry: number): Promise<HandshakeOfferPayload> {
 		return new Promise((resolve, reject) => {

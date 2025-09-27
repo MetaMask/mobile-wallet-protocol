@@ -4,17 +4,20 @@ import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
 /**
- * Handles the trusted connection flow for wallets.
+ * Handles the trusted connection flow for wallets in an optimistic, non-blocking manner.
  *
- * This handler implements a simplified connection sequence for same-device
- * or trusted contexts:
- * 1. Connects to transport and subscribes to both handshake and session channels
- * 2. Sends handshake offer without OTP directly to dApp (in a fire-and-forget manner)
- * 3. Finalizes connection by persisting session and cleaning up
+ * This handler is designed for scenarios like mobile, where the
+ * dApp may be suspended by the OS immediately after sending its request.
  *
- * This flow prioritizes user experience over maximum security, making it
- * ideal for same-device scenarios or pre-trusted contexts where the user
- * has already established trust through other means.
+ * The flow is as follows:
+ * 1. Immediately create and persist the session upon receiving the request.
+ * 2. Connect to the transport and subscribe to the necessary channels.
+ * 3. Send the `handshake-offer` to the dApp in a "fire-and-forget" manner.
+ * 4. The `execute` method resolves immediately, allowing the wallet to consider itself
+ *    `CONNECTED` without waiting for a reply from the dApp.
+ *
+ * This asynchronous approach prevents the wallet from getting stuck waiting for a response
+ * from a dApp that may be frozen, ensuring a reliable connection on same-device platforms.
  */
 export class TrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
