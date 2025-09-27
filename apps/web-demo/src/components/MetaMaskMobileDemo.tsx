@@ -77,6 +77,50 @@ export default function MetaMaskMobileDemo() {
 		setSessionTimeLeft(0);
 	};
 
+	// Helper function to create session request and connect with initial payload
+	const connectWithSessionRequest = async (onError: (error: Error) => void) => {
+		if (!dappClientRef.current) {
+			onError(new Error("DApp client not initialized"));
+			return;
+		}
+
+		try {
+			// Create the session creation request to send as initial payload
+			const createSessionRequest = {
+				jsonrpc: "2.0",
+				method: "wallet_createSession",
+				params: {
+					optionalScopes: {
+						"eip155:1": {
+							methods: [],
+							notifications: [],
+						},
+						"eip155:137": {
+							methods: [],
+							notifications: [],
+						},
+						"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
+							methods: [],
+							notifications: [],
+						},
+					},
+				},
+				id: requestId.current++, // Use and increment the request ID
+			};
+
+			const messageString = JSON.stringify(createSessionRequest, null, 2);
+			addDappLog("sent", messageString);
+
+			// Start new connection, which will trigger 'session-request' and start a new timer
+			await dappClientRef.current.connect({
+				mode: "trusted",
+				initialPayload: createSessionRequest
+			});
+		} catch (error) {
+			onError(error instanceof Error ? error : new Error("Unknown error"));
+		}
+	};
+
 	const handleGenerateNewQrCode = async () => {
 		if (!dappClientRef.current) return;
 
@@ -89,10 +133,10 @@ export default function MetaMaskMobileDemo() {
 			await dappClientRef.current.disconnect();
 			addDappLog("system", "Generating new QR code...");
 
-			// Start new connection, which will trigger 'session-request' and start a new timer
-			dappClientRef.current.connect({ mode: "trusted" }).catch((error) => {
+			await connectWithSessionRequest((error) => {
 				console.error("New QR code generation failed:", error);
 				addDappLog("system", `New QR code generation failed: ${error.message}`);
+				setDappStatus("Connection failed");
 			});
 		} catch (error) {
 			addDappLog("system", `Failed to generate new QR code: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -150,7 +194,7 @@ export default function MetaMaskMobileDemo() {
 
 			// Set up event listeners
 			dapp.on("session_request", (request: SessionRequest) => {
-				addDappLog("system", `Session request generated: ${request.id}`);
+				addDappLog("system", `Session request generated: ${JSON.stringify(request)}`);
 
 				// 1. Create the higher-level ConnectionRequest object.
 				const connectionRequest = {
@@ -210,53 +254,10 @@ export default function MetaMaskMobileDemo() {
 			});
 
 			dapp.on("connected", () => {
-				addDappLog("system", "DApp connected to wallet! Requesting session authorization...");
+				addDappLog("system", "DApp connected to wallet! Session creation request sent as initial payload. Waiting for wallet approval...");
 				setDappConnected(true);
 				setDappStatus("Connected");
 				clearSessionTimer();
-
-				// REMOVE the old `sendInitialMessage` function and its call.
-				// REPLACE IT with a direct call to create a multi-chain session.
-
-				const handleCreateSession = async () => {
-					if (!dappClientRef.current) {
-						addDappLog("system", "DApp client not initialized.");
-						return;
-					}
-					try {
-						// Use the new minimal format to request all available methods
-						const createSessionRequest = {
-							jsonrpc: "2.0",
-							method: "wallet_createSession",
-							params: {
-								optionalScopes: {
-									"eip155:1": {
-										methods: [],
-										notifications: [],
-									},
-									"eip155:137": {
-										methods: [],
-										notifications: [],
-									},
-									"solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
-										methods: [],
-										notifications: [],
-									},
-								},
-							},
-							id: requestId.current++, // Use and increment the request ID
-						};
-
-						const messageString = JSON.stringify(createSessionRequest, null, 2);
-						addDappLog("sent", messageString);
-						await dappClientRef.current.sendRequest(createSessionRequest);
-						addDappLog("system", "Session creation request sent. Waiting for wallet approval...");
-					} catch (error) {
-						addDappLog("system", `Failed to send session creation request: ${error instanceof Error ? error.message : "Unknown error"}`);
-					}
-				};
-
-				handleCreateSession();
 			});
 
 			dapp.on("disconnected", () => {
@@ -331,13 +332,10 @@ export default function MetaMaskMobileDemo() {
 			setDappStatus("Connecting...");
 			addDappLog("system", "Starting connection process...");
 
-			// This will trigger the session-request event and generate QR code
-			if (dappClientRef.current) {
-				dappClientRef.current.connect({ mode: "trusted" }).catch((error) => {
-					addDappLog("system", `Connection failed: ${error.message}`);
-					setDappStatus("Connection failed");
-				});
-			}
+			await connectWithSessionRequest((error) => {
+				addDappLog("system", `Connection failed: ${error.message}`);
+				setDappStatus("Connection failed");
+			});
 		} catch (error) {
 			addDappLog("system", `Connection error: ${error instanceof Error ? error.message : "Unknown error"}`);
 			setDappStatus("Connection failed");
