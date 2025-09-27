@@ -111,9 +111,9 @@ sequenceDiagram
 
 ---
 
-### Trusted Flow (Passwordless)
+### Trusted Flow (Passwordless And Optimistic)
 
-This is the streamlined flow for trusted environments, providing the best user experience when security requirements allow.
+This is the streamlined flow for trusted environments, providing the best user experience when security requirements allow. It uses an optimistic, non-blocking connection model designed to work reliably on same-device platforms where the dApp may be suspended by the OS.
 
 #### Trusted Flow Diagram
 
@@ -130,70 +130,56 @@ sequenceDiagram
     rect rgb(235, 245, 255)
         User->>DAppUI: Clicks "Connect" button
         DAppUI->>DappClient: connect({ mode: 'trusted' })
-        note over DappClient: - Changes state to CONNECTING<br/>- Generates session ID & KeyPair
-        DappClient->>DappClient: Creates 'SessionRequest' with mode='trusted'
+        note over DappClient: - Changes state to CONNECTING<br/>- Generates SessionRequest with a ~1 min timeout
         DappClient->>DAppUI: emit('session_request', SessionRequest)
-        note over DAppUI: SessionRequest contains dApp's publicKey,<br/>handshake channel ID, mode, and expiry.
         DAppUI->>DAppUI: Generate QR code or Deeplink
         DAppUI-->>User: Displays QR Code or triggers Deeplink
+        note over DappClient: DApp is now waiting for the handshake offer. If the user<br/>deep-links, the dApp's process may be frozen by the OS.
     end
 
-    %% == 2. Wallet Scans & Handshake ==
+    %% == 2. Wallet Scans & Optimistic Connection ==
     rect rgb(255, 245, 235)
         User->>WalletUI: Scans QR code or follows Deeplink
         WalletUI->>WalletClient: connect({ sessionRequest })
         note over WalletClient: - Changes state to CONNECTING<br/>- Parses SessionRequest, sees mode='trusted'
-        WalletClient->>WalletClient: createSession(sessionRequest)
-        note over WalletClient: - Generates its own KeyPair<br/>- Creates a new, unique secure channel ID
-        WalletClient->>RelayServer: Subscribe to dApp's handshake channel
+        WalletClient->>WalletClient: createSession() & saves to storage
+        WalletClient->>RelayServer: Subscribe to new secure session channel
         RelayServer-->>WalletClient: OK
 
         WalletClient->>WalletClient: Encrypts HandshakeOfferPayload
-        note over WalletClient: Payload includes Wallet's publicKey and<br/>the new secure channel ID. **No OTP is generated.**
         WalletClient->>RelayServer: Publish('handshake-offer') to handshake channel
-        RelayServer->>DappClient: Forward('handshake-offer')
+        note over WalletClient: The connection promise resolves NOW.<br/>The wallet considers itself CONNECTED.
+        WalletClient->>WalletUI: emit('connected')
     end
 
-    %% == 3. Handshake Acknowledgement ==
+    %% == 3. DApp Finalizes Connection on Resume ==
     rect rgb(235, 255, 235)
-        DappClient->>DappClient: Decrypts 'handshake-offer'
-        note over DappClient: handleMessage() sees offer has no OTP.<br/>**OTP step is bypassed.**
-        DappClient->>DappClient: Updates session and sends 'handshake-ack'
+        User->>DAppUI: Switches back to the dApp
+        note over DAppUI: The dApp's process unfreezes.
+        DappClient->>RelayServer: Subscribes to handshake channel
+        RelayServer->>DappClient: Immediately delivers historical 'handshake-offer'
+        DappClient->>DappClient: Decrypts 'handshake-offer', finalizes session
         DappClient->>RelayServer: Subscribe to new secure session channel
         RelayServer-->>DappClient: OK
-        DappClient->>RelayServer: Publish('handshake-ack') to secure channel
-        RelayServer->>WalletClient: Forward('handshake-ack')
+        note over DappClient: The connection promise resolves.<br/>The dApp considers itself CONNECTED.<br/>**No handshake-ack is sent.**
+        DappClient->>DAppUI: emit('connected')
     end
 
-    %% == 4. Connection Finalized ==
-    rect rgb(240, 240, 240)
-        WalletClient->>WalletClient: Decrypts 'handshake-ack'
-        note over WalletClient: The connection promise resolves.
-        
-        par
-            WalletClient->>WalletClient: finalizeConnection()
-            WalletClient->>WalletUI: emit('connected')
-        and
-            DappClient->>DappClient: finalizeConnection()
-            DappClient->>DAppUI: emit('connected')
-        end
-        note over User: Both DApp and Wallet are now fully connected.
-    end
+    note over User: Both DApp and Wallet are now fully connected.
 ```
 
 #### Trusted Flow Phase Breakdown
 
 1.  **Phase 1: Session Initiation (DApp)**
     *   **Trigger:** The user clicks "Connect" in the dApp.
-    *   **Action:** The `DappClient` is called with `connect({ mode: 'trusted' })`. It generates a `SessionRequest` object containing its public key, a temporary handshake channel ID, and `mode: 'trusted'`.
-    *   **Result:** The dApp UI renders the `SessionRequest` as a QR code or uses it to construct a deep link.
+    *   **Action:** The `DappClient` is called with `connect({ mode: 'trusted' })`. It generates a `SessionRequest` with a specific time-to-live (e.g., 1 minutes) for the wallet to scan. The dApp then begins waiting for the wallet's response. If the user deep-links to the wallet, the dApp's process is typically frozen by the mobile OS at this stage.
 
-2.  **Phase 2: Handshake (Wallet)**
+2.  **Phase 2: Optimistic Connection (Wallet)**
     *   **Trigger:** The user scans the QR code or follows the deep link.
-    *   **Action:** The `WalletClient` parses the `SessionRequest` and detects `mode: 'trusted'`. It generates its own key pair and a new secure channel ID. **It does not generate or display an OTP.** It immediately sends an encrypted `handshake-offer` to the dApp containing its public key and the new secure channel ID.
-    *   **Result:** The dApp receives the offer. The user is not prompted for any input.
+    *   **Action:** The `WalletClient` parses the `SessionRequest`. It immediately creates the final secure session, saves it to its storage, and subscribes to the new secure communication channel. It sends an encrypted `handshake-offer` to the dApp's temporary handshake channel.
+    *   **Result:** The `WalletClient.connect()` promise resolves immediately after sending the offer. The wallet considers the connection established and is ready to receive messages. It does **not** wait for an acknowledgement.
 
-3.  **Phase 3: Finalization**
-    *   **Trigger:** The `DappClient` receives the `handshake-offer`.
-    *   **Action:** Because the flow is `trusted`, the `DappClient` bypasses the OTP verification step. It immediately sends an encrypted `handshake-ack` message back to the wallet on the new secure channel.
-    *   **Result:** The `WalletClient` receives the `handshake-ack`. Both clients save the completed session, discard the temporary handshake channel, and transition to the `CONNECTED` state.
+3.  **Phase 3: Finalization (DApp)**
+    *   **Trigger:** The user switches back to the dApp, causing the OS to resume its process.
+    *   **Action:** The `DappClient`'s transport connects to the relay server and subscribes to the handshake channel. The relay server immediately delivers the `handshake-offer` message from its history. The dApp processes the offer, finalizes the session details (wallet's public key, secure channel ID), and subscribes to the secure channel.
+    *   **Result:** The `DappClient.connect()` promise resolves. The dApp now considers itself connected. No `handshake-ack` is sent back to the wallet. Both clients are now fully connected and can communicate securely.

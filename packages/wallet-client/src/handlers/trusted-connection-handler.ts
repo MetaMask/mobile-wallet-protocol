@@ -4,22 +4,23 @@ import type { IConnectionHandler } from "../domain/connection-handler";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 
 /**
- * Handles the trusted connection flow for wallets.
+ * Handles the trusted connection flow for wallets in an optimistic, non-blocking manner.
  *
- * This handler implements a simplified connection sequence for same-device
- * or trusted contexts:
- * 1. Connects to transport and subscribes to both handshake and session channels
- * 2. Sends handshake offer without OTP directly to dApp
- * 3. Waits for dApp acknowledgment within timeout period
- * 4. Finalizes connection by persisting session and cleaning up
+ * This handler is designed for scenarios like mobile, where the
+ * dApp may be suspended by the OS immediately after sending its request.
  *
- * This flow prioritizes user experience over maximum security, making it
- * ideal for same-device scenarios or pre-trusted contexts where the user
- * has already established trust through other means.
+ * The flow is as follows:
+ * 1. Immediately create and persist the session upon receiving the request.
+ * 2. Connect to the transport and subscribe to the necessary channels.
+ * 3. Send the `handshake-offer` to the dApp in a "fire-and-forget" manner.
+ * 4. The `execute` method resolves immediately, allowing the wallet to consider itself
+ *    `CONNECTED` without waiting for a reply from the dApp.
+ *
+ * This asynchronous approach prevents the wallet from getting stuck waiting for a response
+ * from a dApp that may be frozen, ensuring a reliable connection on same-device platforms.
  */
 export class TrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
-	private readonly handshakeTimeoutMs = 60 * 1000; // 1 minute
 
 	constructor(context: IConnectionHandlerContext) {
 		this.context = context;
@@ -30,12 +31,11 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * This method is fully self-contained and handles the connection process.
 	 */
 	public async execute(session: Session, request: SessionRequest): Promise<void> {
+		this.context.session = session;
 		await this.context.transport.connect();
 		await this.context.transport.subscribe(request.channel); // handshake channel
 		await this.context.transport.subscribe(session.channel); // secure channel
-		this.context.session = session;
 		await this._sendHandshakeOffer(request.channel);
-		await this._waitForHandshakeAck(Date.now() + this.handshakeTimeoutMs);
 		await this._finalizeConnection(request.channel);
 		this._processInitialMessage(request.initialMessage);
 	}
@@ -52,34 +52,6 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 			channelId: this.context.session.channel.replace("session:", ""),
 		};
 		await this.context.sendMessage(channel, { type: "handshake-offer", payload: handshakePayload });
-	}
-
-	/**
-	 * Waits for a `handshake-ack` message from the dApp.
-	 *
-	 * @param deadline - The timestamp when the acknowledgment must be received
-	 * @returns A promise that resolves when the ack is received
-	 * @throws {SessionError} If the ack is not received before the deadline
-	 */
-	private _waitForHandshakeAck(deadline: number): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const timeoutDuration = deadline - Date.now();
-			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "Handshake timed out before it could begin."));
-			}
-
-			const timeoutId = setTimeout(() => {
-				this.context.off("handshake_ack_received", onAckReceived);
-				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "DApp did not acknowledge the handshake in time."));
-			}, timeoutDuration);
-
-			const onAckReceived = () => {
-				clearTimeout(timeoutId);
-				resolve();
-			};
-
-			this.context.once("handshake_ack_received", onAckReceived);
-		});
 	}
 
 	/**

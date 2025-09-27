@@ -76,3 +76,9 @@ graph TD
     DappClient --> Core
     WalletClient --> Core
 ```
+
+## Notes
+
+A key feature of the protocol, particularly in `trusted` mode, is its support for asynchronous/optimistic connections. 
+
+This is critical for same-device flows (e.g., a dApp in a mobile browser deep-linking to the wallet app). In this scenario, the mobile OS will freeze the dApp's process. The protocol is designed to handle this by allowing the wallet to establish its side of the connection optimistically, without waiting for a real-time reply from the frozen dApp. When the user returns, the dApp wakes up, processes the historical handshake message from the relay server, and finalizes the connection.

@@ -20,7 +20,8 @@ import type { IConnectionHandlerContext } from "./domain/connection-handler-cont
 import { TrustedConnectionHandler } from "./handlers/trusted-connection-handler";
 import { UntrustedConnectionHandler } from "./handlers/untrusted-connection-handler";
 
-const SESSION_REQUEST_TTL = 60 * 1000; // 60 seconds
+export const SESSION_REQUEST_TTL = 60 * 1000; // 60 seconds
+export const HANDSHAKE_TIMEOUT = 60 * 1000; // 60 seconds
 
 /**
  * Configuration options for the DappClient.
