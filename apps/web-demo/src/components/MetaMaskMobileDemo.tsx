@@ -9,6 +9,8 @@ import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 // const RELAY_URL = "ws://localhost:8000/connection/websocket";
 const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
+const HARDCODED_ETH_ACCOUNT = "0x2e404cdebe05098c066f9844aa990722749ed100";
+const HARDCODED_SOL_ACCOUNT = "8VMXFL3MN9z1Eg3WNBk4SECk3cKPn7hr7mUQqjwaYPev";
 
 type LogEntry = {
 	id: string;
@@ -358,9 +360,6 @@ export default function MetaMaskMobileDemo() {
 
 	const getNextId = () => requestId.current++;
 
-	const hardcodedEthAccount = "0xf24f5b308aff046e3ad63716873e12996b2c3e86";
-	const hardcodedSolanaAccount = "Bk5xbEytpSXBxN5ouiGWYxJTvxxTk7Hq6W8yghd12g2z";
-
 	const handleGetEthBalance = async () => {
 		if (!dappClientRef.current || !dappConnected) return;
 		try {
@@ -373,7 +372,7 @@ export default function MetaMaskMobileDemo() {
 					scope: "eip155:1",
 					request: {
 						method: "eth_getBalance",
-						params: [hardcodedEthAccount, "latest"],
+						params: [HARDCODED_ETH_ACCOUNT, "latest"],
 					},
 				},
 			};
@@ -396,7 +395,7 @@ export default function MetaMaskMobileDemo() {
 					scope: "eip155:1",
 					request: {
 						method: "personal_sign",
-						params: ["0x48656c6c6f20576f726c64", hardcodedEthAccount],
+						params: ["0x48656c6c6f20576f726c64", HARDCODED_ETH_ACCOUNT],
 					},
 				},
 			};
@@ -416,13 +415,13 @@ export default function MetaMaskMobileDemo() {
 				jsonrpc: "2.0",
 				method: "wallet_invokeMethod",
 				params: {
-					scope: "eip155:137", // Target Polygon
+					scope: "eip155:1", // Target Polygon
 					request: {
 						method: "eth_sendTransaction",
 						params: [
 							{
-								from: hardcodedEthAccount,
-								to: hardcodedEthAccount,
+								from: HARDCODED_ETH_ACCOUNT,
+								to: "0x4838B106FCe9647Bdf1E7877BF73cE8B0BAD5f97",
 								value: "0x0",
 							},
 						],
@@ -449,7 +448,7 @@ export default function MetaMaskMobileDemo() {
 					request: {
 						method: "signMessage",
 						params: {
-							account: { address: hardcodedSolanaAccount },
+							account: { address: HARDCODED_SOL_ACCOUNT },
 							message: "SGVsbG8sIHdvcmxkIQ==", // "Hello, world!" in Base64
 						},
 					},
