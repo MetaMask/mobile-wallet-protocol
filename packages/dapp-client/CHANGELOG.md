@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.1]
 
-### Uncategorized
+### Changed
 
-- Optimistic trusted flow ([#50](https://github.com/MetaMask/mobile-wallet-protocol/pull/50))
+- Wallet client is now doing optimistic connections on the trusted flow ([#50](https://github.com/MetaMask/mobile-wallet-protocol/pull/50))
 
 ## [0.2.0]
 
