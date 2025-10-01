@@ -7,6 +7,11 @@ import { WebSocketTransport } from ".";
 
 const WEBSOCKET_URL = "ws://localhost:8000/connection/websocket";
 
+const testModes = [
+	{ name: "Shared Centrifuge Client", useSharedConnection: true },
+	{ name: "Single Centrifuge Client", useSharedConnection: false },
+];
+
 /**
  * Simple in-memory KV store implementation for testing.
  */
@@ -34,13 +39,14 @@ const waitFor = (emitter: Emitter, event: string): Promise<any> => {
 	return new Promise((resolve) => emitter.once(event, resolve));
 };
 
-t.describe("WebSocketTransport", () => {
+t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnection }) => {
 	t.describe("Constructor and Initialization", () => {
 		t.test("should create an instance of WebSocketTransport", async () => {
 			const transport = await WebSocketTransport.create({
 				url: WEBSOCKET_URL,
 				kvstore: new InMemoryKVStore(),
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			t.expect(transport).toBeInstanceOf(WebSocketTransport);
 		});
@@ -50,6 +56,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: new InMemoryKVStore(),
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			t.expect((transport as any).state).toBe("disconnected");
 		});
@@ -65,6 +72,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 		});
 
@@ -140,6 +148,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await transport.connect();
 		});
@@ -166,6 +175,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: publisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await publisher.connect();
 			await publisher.subscribe(channel); // Publisher needs to subscribe before publishing
@@ -203,11 +213,13 @@ t.describe("WebSocketTransport", () => {
 				kvstore: publisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			subscriber = await WebSocketTransport.create({
 				kvstore: subscriberKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 
 			// Subscriber must be connected and subscribed to receive messages
@@ -326,11 +338,13 @@ t.describe("WebSocketTransport", () => {
 				kvstore: subscriberKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			rawPublisher = await WebSocketTransport.create({
 				kvstore: rawPublisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 
 			transports.push(subscriber, rawPublisher);
@@ -391,6 +405,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: subscriberKVStore, // Same storage
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(newSubscriber);
 
@@ -447,6 +462,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: kvstoreA,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await transportA.connect();
 			await transportA.subscribe(channel);
@@ -467,6 +483,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: kvstoreB,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 
 			// Collect messages received by the second transport
@@ -497,6 +514,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: rawPublisherKVStore, // Same kvstore as rawPublisher
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(publisher2);
 			await publisher2.connect();
@@ -507,6 +525,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: subscriber2KVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(subscriber2);
 			await subscriber2.connect();
@@ -547,6 +566,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: historicalPublisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(historicalPublisher);
 			await historicalPublisher.connect();
@@ -563,6 +583,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: subscriberKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(subscriber);
 
@@ -593,6 +614,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: publisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			transports.push(publisher);
 			await publisher.connect();
@@ -624,6 +646,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await transport.connect();
 		});
@@ -655,7 +678,7 @@ t.describe("WebSocketTransport", () => {
 			await transport.clear(channel);
 
 			// Verify subscription is removed
-			t.expect((transport as any).centrifuge.getSubscription(channel)).toBeUndefined();
+			t.expect((transport as any).centrifuge.getSubscription(channel)).toBeFalsy();
 
 			// Verify storage is cleared
 			t.expect(await kvstore.get(nonceKey)).toBeNull();
@@ -678,7 +701,7 @@ t.describe("WebSocketTransport", () => {
 			await transport.clear(channelA);
 
 			// Verify only channel A subscription is removed
-			t.expect((transport as any).centrifuge.getSubscription(channelA)).toBeUndefined();
+			t.expect((transport as any).centrifuge.getSubscription(channelA)).toBeFalsy();
 			t.expect((transport as any).centrifuge.getSubscription(channelB)).not.toBeUndefined();
 		});
 
@@ -703,6 +726,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: publisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await publisher.connect();
 
@@ -748,6 +772,7 @@ t.describe("WebSocketTransport", () => {
 				kvstore: publisherKVStore,
 				url: WEBSOCKET_URL,
 				websocket: WebSocket,
+				useSharedConnection,
 			});
 			await publisher.connect();
 
