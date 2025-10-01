@@ -39,7 +39,7 @@ class SubscriptionProxy implements ISubscription {
 	constructor(
 		public readonly realSub: Subscription,
 		private readonly parent: SharedCentrifuge,
-	) { }
+	) {}
 	get channel(): string {
 		return this.realSub.channel;
 	}
