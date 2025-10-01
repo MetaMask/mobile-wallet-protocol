@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
+import type { ClientEvents } from "centrifuge";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -7,7 +8,7 @@ import { SharedCentrifuge } from "./shared-centrifuge";
 const WEBSOCKET_URL = "ws://localhost:8000/connection/websocket";
 
 // Helper to wait for a specific event
-const waitFor = (emitter: SharedCentrifuge, event: string): Promise<unknown> => {
+const waitFor = (emitter: SharedCentrifuge, event: keyof ClientEvents): Promise<unknown> => {
 	return new Promise((resolve) => emitter.once(event, resolve));
 };
 
@@ -280,6 +281,95 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 
 		// Reference count should now be 0 and underlying subscription cleaned up
 		await new Promise((resolve) => setTimeout(resolve, 50)); // Allow async cleanup
+		t.expect(context?.subscriptions.get(channel)).toBeUndefined();
+		t.expect(context?.centrifuge.getSubscription(channel)).toBeNull();
+	});
+
+	t.test("should properly handle unsubscribe() called directly on subscription proxy", async () => {
+		const channel = `session:${uuid()}`;
+		const clientA = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+		instances.push(clientA);
+		const clientB = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+		instances.push(clientB);
+
+		// Set up listeners before connecting
+		const connectedPromises = [waitFor(clientA, "connected"), waitFor(clientB, "connected")];
+
+		clientA.connect();
+		await Promise.all(connectedPromises);
+
+		// Both clients subscribe to the same channel
+		const subA = clientA.newSubscription(channel);
+		const subB = clientB.newSubscription(channel);
+
+		subA.subscribe();
+		subB.subscribe();
+
+		await new Promise((resolve) => subB.once("subscribed", resolve));
+
+		// Verify both are subscribed and reference count is 2
+		// @ts-expect-error - accessing private property for test
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(2);
+
+		// Client A calls unsubscribe() directly on its subscription proxy
+		subA.unsubscribe();
+
+		// Wait a moment for the async operation to complete
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Reference count should now be 1 (only client B subscribed)
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(1);
+
+		// The underlying subscription should still exist because client B is still subscribed
+		t.expect(context?.centrifuge.getSubscription(channel)).not.toBeNull();
+
+		// Verify client B can still receive messages
+		const messagePromise = new Promise((resolve) => {
+			subB.once("publication", (ctx) => resolve(ctx.data));
+		});
+
+		await clientA.publish(channel, JSON.stringify({ test: "message" }));
+		const receivedData = await messagePromise;
+		t.expect(JSON.parse(receivedData as string)).toEqual({ test: "message" });
+
+		// Now client B unsubscribes
+		subB.unsubscribe();
+
+		// Wait a moment for cleanup
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Reference count should now be 0 and subscription should be cleaned up
+		t.expect(context?.subscriptions.get(channel)).toBeUndefined();
+		t.expect(context?.centrifuge.getSubscription(channel)).toBeNull();
+	});
+
+	t.test("should handle multiple unsubscribe calls on the same proxy gracefully", async () => {
+		const channel = `session:${uuid()}`;
+		const client = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+		instances.push(client);
+
+		const connectedPromise = waitFor(client, "connected");
+		client.connect();
+		await connectedPromise;
+
+		const sub = client.newSubscription(channel);
+		sub.subscribe();
+		await new Promise((resolve) => sub.once("subscribed", resolve));
+
+		// @ts-expect-error - accessing private property for test
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context?.subscriptions.get(channel)?.count).toBe(1);
+
+		// Call unsubscribe multiple times
+		sub.unsubscribe();
+		sub.unsubscribe();
+		sub.unsubscribe();
+
+		// Wait for cleanup
+		await new Promise((resolve) => setTimeout(resolve, 50));
+
+		// Should only decrement once, not three times (shouldn't go negative or cause errors)
 		t.expect(context?.subscriptions.get(channel)).toBeUndefined();
 		t.expect(context?.centrifuge.getSubscription(channel)).toBeNull();
 	});

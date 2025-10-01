@@ -193,6 +193,58 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 
 			await publisher.disconnect();
 		});
+
+		t.test("should not attach duplicate event listeners on repeated subscribe calls", async () => {
+			await transport.subscribe(channel);
+
+			// Set up a counter to track how many times the message handler is called
+			let messageCount = 0;
+			transport.on("message", () => {
+				messageCount++;
+			});
+
+			// Subscribe to the same channel again (should not attach new listeners)
+			await transport.subscribe(channel);
+
+			// Publish a single message using the publisher
+			const publisherKVStore = new InMemoryKVStore();
+			const publisher = await WebSocketTransport.create({
+				kvstore: publisherKVStore,
+				url: WEBSOCKET_URL,
+				websocket: WebSocket,
+				useSharedConnection,
+			});
+			await publisher.connect();
+			await publisher.subscribe(channel);
+
+			const payload = `test-message-${Date.now()}`;
+			const messagePromise = waitFor(transport, "message");
+
+			await publisher.publish(channel, payload);
+			await messagePromise;
+
+			// Wait a bit to ensure no duplicate messages arrive
+			await new Promise((resolve) => setTimeout(resolve, 200));
+
+			// Should only receive the message once, not twice
+			t.expect(messageCount).toBe(1);
+
+			await publisher.disconnect();
+		});
+
+		t.test("should not call _fetchHistory multiple times on repeated subscribe", async () => {
+			const fetchHistorySpy = t.vi.spyOn(transport as any, "_fetchHistory");
+
+			// First subscribe - should call _fetchHistory
+			await transport.subscribe(channel);
+			t.expect(fetchHistorySpy).toHaveBeenCalledTimes(1);
+
+			// Second subscribe to same channel - should NOT call _fetchHistory again
+			await transport.subscribe(channel);
+			t.expect(fetchHistorySpy).toHaveBeenCalledTimes(1); // Still 1, not 2
+
+			fetchHistorySpy.mockRestore();
+		});
 	});
 
 	t.describe("Message Publishing and Queuing", () => {

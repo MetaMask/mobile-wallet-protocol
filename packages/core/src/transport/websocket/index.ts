@@ -131,7 +131,8 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		return new Promise((resolve) => {
 			const subs = this.centrifuge.subscriptions();
 			for (const sub of Object.values(subs)) {
-				this.centrifuge.removeSubscription(sub as Subscription);
+				// biome-ignore lint/suspicious/noExplicitAny: this is ok
+				this.centrifuge.removeSubscription(sub as any);
 			}
 			this.centrifuge.once("disconnected", () => resolve());
 			this.centrifuge.disconnect();
@@ -162,29 +163,33 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 */
 	public subscribe(channel: string): Promise<void> {
 		let sub = this.centrifuge.getSubscription(channel);
+
 		if (!sub) {
 			sub = this.centrifuge.newSubscription(channel, { recoverable: true, positioned: true });
+
+			const _sub = sub; // Capture for closure
+			sub.on("subscribed", () => {
+				this._fetchHistory(_sub, channel);
+				this._processQueue();
+			});
+
+			sub.on("publication", (ctx: PublicationContext) => {
+				this._handleIncomingMessage(channel, ctx.data as string);
+			});
+
+			sub.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.TRANSPORT_SUBSCRIBE_FAILED, `Subscription error: ${ctx.error.message}`)));
 		}
-
-		sub.on("subscribed", () => {
-			this._fetchHistory(sub, channel);
-			this._processQueue();
-		});
-
-		sub.on("publication", (ctx: PublicationContext) => {
-			this._handleIncomingMessage(channel, ctx.data as string);
-		});
-
-		sub.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.TRANSPORT_SUBSCRIBE_FAILED, `Subscription error: ${ctx.error.message}`)));
 
 		// If already subscribed, resolve immediately
 		if (sub.state === "subscribed") {
 			return Promise.resolve();
 		}
 
+		// Subscribe and wait for confirmation
+		const subscription = sub; // Capture for promise
 		return new Promise((resolve) => {
-			sub.once("subscribed", () => resolve());
-			sub.subscribe();
+			subscription.once("subscribed", () => resolve());
+			subscription.subscribe();
 		});
 	}
 

@@ -4,14 +4,10 @@ import {
 	type HistoryOptions,
 	type HistoryResult,
 	type Options,
-	type PublicationContext,
 	type PublishResult,
-	type SubscribedContext,
 	type Subscription,
-	type SubscriptionErrorContext,
 	type SubscriptionEvents,
 	type SubscriptionOptions,
-	type UnsubscribedContext,
 } from "centrifuge";
 import EventEmitter from "eventemitter3";
 
@@ -37,18 +33,13 @@ export interface ISubscription {
  * Allows SharedCentrifuge to provide a consistent interface while hiding
  * the complexity of the underlying subscription management.
  */
-class SubscriptionProxy extends EventEmitter<SubscriptionEvents> implements ISubscription {
+class SubscriptionProxy implements ISubscription {
+	private hasUnsubscribed = false;
+
 	constructor(
 		public readonly realSub: Subscription,
 		private readonly parent: SharedCentrifuge,
-	) {
-		super();
-		// Forward all subscription events to listeners of this proxy
-		this.realSub.on("publication", (ctx: PublicationContext) => this.emit("publication", ctx));
-		this.realSub.on("subscribed", (ctx: SubscribedContext) => this.emit("subscribed", ctx));
-		this.realSub.on("unsubscribed", (ctx: UnsubscribedContext) => this.emit("unsubscribed", ctx));
-		this.realSub.on("error", (ctx: SubscriptionErrorContext) => this.emit("error", ctx));
-	}
+	) { }
 	get channel(): string {
 		return this.realSub.channel;
 	}
@@ -59,8 +50,11 @@ class SubscriptionProxy extends EventEmitter<SubscriptionEvents> implements ISub
 		this.realSub.subscribe();
 	}
 	unsubscribe(): void {
-		this.realSub.unsubscribe();
-		// Notify the parent to decrement the reference count
+		// Prevent multiple unsubscribe calls from decrementing the reference count multiple times
+		if (this.hasUnsubscribed) return;
+		this.hasUnsubscribed = true;
+		// Don't call realSub.unsubscribe() directly
+		// Instead, notify the parent to handle it properly with reference counting
 		this.parent.removeSubscription({ channel: this.channel });
 	}
 	// biome-ignore lint/suspicious/noExplicitAny: to match centrifuge-js interface
@@ -157,7 +151,8 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 
 		// If already connected, emit connected event immediately
 		if (context.centrifuge.state === "connected") {
-			setImmediate(() => this.emit("connected"));
+			// biome-ignore lint/suspicious/noExplicitAny: synthetic event doesn't have full context
+			setImmediate(() => this.emit("connected", {} as any));
 		} else if (context.centrifuge.state === "connecting") {
 			// Already connecting, event will be emitted when connection completes
 		} else {
@@ -175,7 +170,8 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 		if (!context) return Promise.resolve();
 
 		this.disconnected = true;
-		this.emit("disconnected", { reason: "client disconnect", reconnect: false });
+		// biome-ignore lint/suspicious/noExplicitAny: synthetic event doesn't have full context
+		this.emit("disconnected", {} as any);
 		this.detachEventListeners();
 		for (const channel of this.channels) this.decrementChannelRef(channel);
 		this.channels.clear();
@@ -292,6 +288,7 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 		events.forEach((event) => {
 			const listener = (ctx?: unknown): void => {
 				// Don't emit events if this instance has been disconnected
+				// biome-ignore lint/suspicious/noExplicitAny: event context type varies by event
 				if (!this.disconnected) this.emit(event as keyof ClientEvents, ctx as any);
 			};
 			this.eventListeners.set(event, listener);
@@ -312,6 +309,8 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 
 		subInfo.count--;
 		if (subInfo.count === 0) {
+			// Now actually unsubscribe from the real subscription
+			subInfo.sub.unsubscribe();
 			context.centrifuge.removeSubscription(subInfo.sub);
 			subs.delete(channel);
 		}
@@ -352,8 +351,8 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 	 * This decrements reference counts and removes subscriptions when they
 	 * reach zero references across all instances.
 	 */
-	removeSubscription(sub: { channel: string }): void {
-		if (!sub || !sub.channel) return;
+	removeSubscription(sub: ISubscription | Subscription | { channel: string }): void {
+		if (!sub || !("channel" in sub)) return;
 		this.decrementChannelRef(sub.channel);
 		this.channels.delete(sub.channel);
 	}
