@@ -10,10 +10,10 @@ Follow these steps to run the full end-to-end demo on your machine.
 
 ### Prerequisites
 
-*   **Node.js**: Use version 18.x or later.
-*   **Yarn**: This repository uses Yarn for package management.
-*   **Docker & Docker Compose**: Required to run the backend relay server.
-*   **Expo Go App**: To run the mobile wallet demo, you'll need the [Expo Go](https://expo.dev/go) app on your iOS or Android device.
+- **Node.js**: Use version 18.x or later.
+- **Yarn**: This repository uses Yarn for package management.
+- **Docker & Docker Compose**: Required to run the backend relay server.
+- **Expo Go App**: To run the mobile wallet demo, you'll need the [Expo Go](https://expo.dev/go) app on your iOS or Android device.
 
 ### 1. Installation
 
@@ -23,6 +23,12 @@ Clone the repository and install all dependencies using Yarn.
 git clone https://github.com/your-repo/mobile-wallet-protocol.git
 cd mobile-wallet-protocol
 yarn install
+```
+
+To use the demo apps locally you also have to build the packages.
+
+```bash
+yarn build
 ```
 
 ### 2. Run the Backend Relay Server

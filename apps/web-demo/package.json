@@ -11,9 +11,11 @@
 		"@metamask/mobile-wallet-protocol-core": "workspace:^",
 		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:^",
 		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
+		"@types/pako": "^2.0.4",
 		"@types/qrcode": "^1.5.5",
 		"eciesjs": "^0.4.15",
 		"next": "15.4.1",
+		"pako": "^2.1.0",
 		"qrcode": "^1.5.4",
 		"react": "19.1.0",
 		"react-dom": "19.1.0"

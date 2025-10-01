@@ -7,6 +7,7 @@ const demos = [
 	{ name: "Basic Demo", href: "/" },
 	{ name: "Trusted Demo", href: "/trusted-demo" },
 	{ name: "Untrusted Demo", href: "/untrusted-demo" },
+	{ name: "MetaMask Mobile App Demo", href: "/metamask-mobile-demo" },
 ];
 
 export default function Navigation() {
@@ -27,11 +28,10 @@ export default function Navigation() {
 									<Link
 										key={demo.href}
 										href={demo.href}
-										className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-											isActive
+										className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
 												? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200"
 												: "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700"
-										}`}
+											}`}
 									>
 										{demo.name}
 									</Link>
