@@ -1,5 +1,4 @@
-import type { Options, PublicationContext, Subscription } from "centrifuge";
-import { Centrifuge } from "centrifuge";
+import { Centrifuge, type Options, type PublicationContext, type Subscription } from "centrifuge";
 import EventEmitter from "eventemitter3";
 import { ErrorCode, TransportError } from "../../domain/errors";
 import type { IKVStore } from "../../domain/kv-store";
@@ -43,7 +42,7 @@ export type WebSocketTransportOptions = {
 	/**
 	 * This will cause the transport to use a single, shared WebSocket connection across all instances.
 	 * Useful when multiple instances of the transport are used in the same application.
-	 * @default true
+	 * @default false
 	 */
 	useSharedConnection?: boolean;
 };

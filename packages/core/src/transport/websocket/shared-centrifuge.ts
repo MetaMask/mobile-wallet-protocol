@@ -221,10 +221,15 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 	}
 
 	/**
-	 * Get an existing subscription to a channel if it exists.
-	 * Returns undefined if no subscription exists for the channel.
+	 * Get an existing subscription to a channel if this instance has subscribed to it.
+	 * Returns undefined if this instance hasn't subscribed to the channel yet.
 	 */
 	getSubscription(channel: string): ISubscription | undefined {
+		// Only return a subscription if this specific instance has subscribed to it
+		if (!this.channels.has(channel)) {
+			return undefined;
+		}
+
 		const context = SharedCentrifuge.contexts.get(this.url);
 		if (!context) return undefined;
 
@@ -243,16 +248,19 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 	}
 
 	/**
-	 * Get all current subscriptions as proxied objects.
+	 * Get all current subscriptions as proxied objects for this instance only.
 	 */
 	subscriptions(): Record<string, ISubscription> {
 		const context = SharedCentrifuge.contexts.get(this.url);
 		if (!context) return {};
 
-		const subs = context.centrifuge.subscriptions();
 		const proxiedSubs: Record<string, ISubscription> = {};
-		for (const channel in subs) {
-			proxiedSubs[channel] = new SubscriptionProxy(subs[channel], this);
+		// Only return subscriptions that this instance is subscribed to
+		for (const channel of this.channels) {
+			const subInfo = context.subscriptions.get(channel);
+			if (subInfo) {
+				proxiedSubs[channel] = new SubscriptionProxy(subInfo.sub, this);
+			}
 		}
 		return proxiedSubs;
 	}
