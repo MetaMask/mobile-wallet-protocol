@@ -1,9 +1,10 @@
-import { Centrifuge, type Options, type PublicationContext, type SubscribedContext, type Subscription } from "centrifuge";
+import { Centrifuge, type Options, type PublicationContext, type Subscription } from "centrifuge";
 import EventEmitter from "eventemitter3";
 import { ErrorCode, TransportError } from "../../domain/errors";
 import type { IKVStore } from "../../domain/kv-store";
 import type { ITransport } from "../../domain/transport";
 import { retry } from "../../utils/retry";
+import { type ISubscription, SharedCentrifuge } from "./shared-centrifuge";
 import { WebSocketTransportStorage } from "./store";
 
 /**
@@ -38,6 +39,12 @@ export type WebSocketTransportOptions = {
 	kvstore: IKVStore;
 	/** Optional WebSocket client to use. Mainly for testing or non-browser environments. */
 	websocket?: unknown;
+	/**
+	 * This will cause the transport to use a single, shared WebSocket connection across all instances.
+	 * Useful when multiple instances of the transport are used in the same application.
+	 * @default false
+	 */
+	useSharedConnection?: boolean;
 };
 
 type TransportState = "disconnected" | "connecting" | "connected";
@@ -55,7 +62,7 @@ const BASE_RETRY_DELAY = 100;
  * guarantees, and deduplication.
  */
 export class WebSocketTransport extends EventEmitter implements ITransport {
-	private readonly centrifuge: Centrifuge;
+	private readonly centrifuge: Centrifuge | SharedCentrifuge;
 	private readonly storage: WebSocketTransportStorage;
 	private readonly queue: QueuedItem[] = [];
 	private isProcessingQueue = false;
@@ -84,7 +91,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			opts.websocket = options.websocket;
 		}
 
-		this.centrifuge = new Centrifuge(options.url, opts);
+		this.centrifuge = options.useSharedConnection ? new SharedCentrifuge(options.url, opts) : new Centrifuge(options.url, opts);
 
 		this.centrifuge.on("connecting", () => this.setState("connecting"));
 		this.centrifuge.on("connected", () => {
@@ -123,7 +130,8 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 		return new Promise((resolve) => {
 			const subs = this.centrifuge.subscriptions();
 			for (const sub of Object.values(subs)) {
-				this.centrifuge.removeSubscription(sub);
+				// biome-ignore lint/suspicious/noExplicitAny: this is ok
+				this.centrifuge.removeSubscription(sub as any);
 			}
 			this.centrifuge.once("disconnected", () => resolve());
 			this.centrifuge.disconnect();
@@ -153,28 +161,34 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 * Subscribes to a channel and fetches historical messages and sends any queued messages.
 	 */
 	public subscribe(channel: string): Promise<void> {
-		if (this.centrifuge.getSubscription(channel)) {
+		let sub = this.centrifuge.getSubscription(channel);
+
+		if (!sub) {
+			sub = this.centrifuge.newSubscription(channel, { recoverable: true, positioned: true });
+
+			const _sub = sub; // Capture for closure
+			sub.on("subscribed", () => {
+				this._fetchHistory(_sub, channel);
+				this._processQueue();
+			});
+
+			sub.on("publication", (ctx: PublicationContext) => {
+				this._handleIncomingMessage(channel, ctx.data as string);
+			});
+
+			sub.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.TRANSPORT_SUBSCRIBE_FAILED, `Subscription error: ${ctx.error.message}`)));
+		}
+
+		// If already subscribed, resolve immediately
+		if (sub.state === "subscribed") {
 			return Promise.resolve();
 		}
 
-		const sub = this.centrifuge.newSubscription(channel, { recoverable: true, positioned: true });
-
-		sub.on("subscribed", (ctx: SubscribedContext) => {
-			if (!ctx.recovered) {
-				this._fetchHistory(sub, channel);
-			}
-			this._processQueue();
-		});
-
-		sub.on("publication", (ctx: PublicationContext) => {
-			this._handleIncomingMessage(channel, ctx.data as string);
-		});
-
-		sub.on("error", (ctx) => this.emit("error", new TransportError(ErrorCode.TRANSPORT_SUBSCRIBE_FAILED, `Subscription error: ${ctx.error.message}`)));
-
+		// Subscribe and wait for confirmation
+		const subscription = sub; // Capture for promise
 		return new Promise((resolve) => {
-			sub.once("subscribed", () => resolve());
-			sub.subscribe();
+			subscription.once("subscribed", () => resolve());
+			subscription.subscribe();
 		});
 	}
 
@@ -195,7 +209,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	public async clear(channel: string): Promise<void> {
 		await this.storage.clear(channel);
 		const sub = this.centrifuge.getSubscription(channel);
-		if (sub) this.centrifuge.removeSubscription(sub);
+		if (sub) this.centrifuge.removeSubscription(sub as Subscription);
 	}
 
 	/**
@@ -241,7 +255,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	/**
 	 * Fetches historical messages for a channel to ensure no data is missed on first subscribe.
 	 */
-	private async _fetchHistory(sub: Subscription, channel: string): Promise<void> {
+	private async _fetchHistory(sub: ISubscription, channel: string): Promise<void> {
 		try {
 			const history = await sub.history({ limit: HISTORY_FETCH_LIMIT });
 			for (const pub of history.publications) {
