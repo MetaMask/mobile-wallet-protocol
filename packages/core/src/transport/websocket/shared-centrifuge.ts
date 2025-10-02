@@ -53,8 +53,8 @@ class SubscriptionProxy implements ISubscription {
 		// Prevent multiple unsubscribe calls from decrementing the reference count multiple times
 		if (this.hasUnsubscribed) return;
 		this.hasUnsubscribed = true;
-		// Don't call realSub.unsubscribe() directly
-		// Instead, notify the parent to handle it properly with reference counting
+		// Don't call realSub.unsubscribe() directly, instead
+		// use the parent to handle it properly with reference counting
 		this.parent.removeSubscription({ channel: this.channel });
 	}
 	// biome-ignore lint/suspicious/noExplicitAny: to match centrifuge-js interface
