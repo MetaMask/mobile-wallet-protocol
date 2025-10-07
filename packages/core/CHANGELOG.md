@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0]
 
-### Uncategorized
+### Added
 
-- Feat: Shared ws connection ([#49](https://github.com/MetaMask/mobile-wallet-protocol/pull/49))
+- Added feature to share the underlying ws connection in the WebsocketTransport ([#49](https://github.com/MetaMask/mobile-wallet-protocol/pull/49))
 
 ## [0.2.0]
 
