@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Feat: Shared ws connection ([#49](https://github.com/MetaMask/mobile-wallet-protocol/pull/49))
+
 ## [0.2.0]
 
 ### Added
