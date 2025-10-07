@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Added
+
+- Added feature to share the underlying ws connection in the WebsocketTransport ([#49](https://github.com/MetaMask/mobile-wallet-protocol/pull/49))
+
 ## [0.2.0]
 
 ### Added
@@ -44,7 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package ([#35](https://github.com/MetaMask/mobile-wallet-protocol/pull/35))
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.0...HEAD
+[0.3.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.2.0...@metamask/mobile-wallet-protocol-core@0.3.0
 [0.2.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.1...@metamask/mobile-wallet-protocol-core@0.2.0
 [0.1.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.0...@metamask/mobile-wallet-protocol-core@0.1.1
 [0.1.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.0.6...@metamask/mobile-wallet-protocol-core@0.1.0
