@@ -242,13 +242,13 @@ export default function MetaMaskMobileDemo() {
 				const deepLinkUrl = `metamask://connect/mwp?p=${uriEncodedPayload}`;
 
 				// Also show what the compressed URL would look like
-				const compressedPayload = compressString(jsonPayload);
+				const compressedPayload = encodeURIComponent(compressString(jsonPayload));
 				const compressedDeepLinkUrl = `metamask://connect/mwp?p=${compressedPayload}&c=1`; // c=1 indicates compressed
 
 				console.log("Standard deep link length:", deepLinkUrl.length);
 				console.log("Compressed deep link length:", compressedDeepLinkUrl.length);
 
-				setQrCodeData(deepLinkUrl);
+				setQrCodeData(compressedDeepLinkUrl);
 				addDappLog("system", "QR code generated with base64 encoded deep link. Ready for wallet to scan.");
 
 				// Start session timer
