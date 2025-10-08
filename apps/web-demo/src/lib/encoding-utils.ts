@@ -37,7 +37,7 @@ export function base64Decode(str: string): string {
  * Returns a base64-encoded compressed string
  */
 export function compressString(str: string): string {
-	const compressed = pako.deflateRaw(str);
+	const compressed = pako.deflate(str);
 	// Convert Uint8Array to string for base64 encoding
 	const binaryString = String.fromCharCode.apply(null, Array.from(compressed));
 	return base64Encode(binaryString);
@@ -53,7 +53,7 @@ export function decompressString(compressedBase64: string): string {
 	for (let i = 0; i < binaryString.length; i++) {
 		compressed[i] = binaryString.charCodeAt(i);
 	}
-	const decompressed = pako.inflateRaw(compressed);
+	const decompressed = pako.inflate(compressed);
 	return new TextDecoder().decode(decompressed);
 }
 
