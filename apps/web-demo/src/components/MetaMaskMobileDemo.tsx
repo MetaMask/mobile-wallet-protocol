@@ -248,7 +248,7 @@ export default function MetaMaskMobileDemo() {
 				console.log("Standard deep link length:", deepLinkUrl.length);
 				console.log("Compressed deep link length:", compressedDeepLinkUrl.length);
 
-				setQrCodeData(deepLinkUrl);
+				setQrCodeData(compressedDeepLinkUrl);
 				addDappLog("system", "QR code generated with base64 encoded deep link. Ready for wallet to scan.");
 
 				// Start session timer
