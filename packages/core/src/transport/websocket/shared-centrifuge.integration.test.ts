@@ -373,4 +373,126 @@ t.describe("SharedCentrifuge Integration Tests", () => {
 		t.expect(context?.subscriptions.get(channel)).toBeUndefined();
 		t.expect(context?.centrifuge.getSubscription(channel)).toBeNull();
 	});
+
+	t.test("should handle multiple simultaneous reconnect calls from different instances without connection storms", async () => {
+		const channel = `session:${uuid()}`;
+		const numClients = 5;
+		const clients: SharedCentrifuge[] = [];
+
+		// Create multiple clients (simulating multiple wallet connections)
+		for (let i = 0; i < numClients; i++) {
+			const client = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+			clients.push(client);
+			instances.push(client);
+		}
+
+		// Connect all clients
+		const connectPromises = clients.map((client) => {
+			const promise = waitFor(client, "connected");
+			client.connect();
+			return promise;
+		});
+		await Promise.all(connectPromises);
+
+		// Subscribe all clients to the same channel
+		const subscriptions = clients.map((client) => {
+			const sub = client.newSubscription(channel);
+			sub.subscribe();
+			return sub;
+		});
+		await Promise.all(subscriptions.map((sub) => new Promise((resolve) => sub.once("subscribed", resolve))));
+
+		// Verify all clients are connected and subscribed
+		clients.forEach((client) => {
+			t.expect(client.state).toBe("connected");
+		});
+
+		// Access the shared context to verify there's only ONE underlying connection
+		// @ts-expect-error - accessing private property for test
+		const context = SharedCentrifuge.contexts.get(WEBSOCKET_URL);
+		t.expect(context).toBeDefined();
+		t.expect(context?.refcount).toBe(numClients);
+
+		// Test multiple reconnect cycles (simulating app going to background/foreground repeatedly)
+		for (let cycle = 0; cycle < 3; cycle++) {
+			// Call reconnect on ALL clients simultaneously (this is where the bug would manifest)
+			const reconnectPromises = clients.map((client) => client.reconnect());
+
+			// All reconnects should succeed and return the same promise (idempotent behavior)
+			await Promise.all(reconnectPromises);
+
+			// Verify all clients are still connected
+			clients.forEach((client) => {
+				t.expect(client.state).toBe("connected");
+			});
+
+			// Verify messages can still be sent and received after reconnect
+			const messagePromise = new Promise((resolve) => {
+				subscriptions[0].once("publication", (ctx) => resolve(ctx.data));
+			});
+
+			const testPayload = { test: `message-after-reconnect-cycle-${cycle}` };
+			await clients[0].publish(channel, JSON.stringify(testPayload));
+
+			const received = await messagePromise;
+			t.expect(JSON.parse(received as string)).toEqual(testPayload);
+
+			// Wait a bit between cycles (simulating time between app suspensions)
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+
+		// Final verification: send one more message to ensure everything still works
+		const finalMessagePromise = new Promise((resolve) => {
+			subscriptions[numClients - 1].once("publication", (ctx) => resolve(ctx.data));
+		});
+
+		const finalPayload = { test: "final-message-after-all-reconnects" };
+		await clients[numClients - 1].publish(channel, JSON.stringify(finalPayload));
+
+		const finalReceived = await finalMessagePromise;
+		t.expect(JSON.parse(finalReceived as string)).toEqual(finalPayload);
+	});
+
+	t.test("should handle rapid successive reconnects without causing race conditions", async () => {
+		const channel = `session:${uuid()}`;
+		const client1 = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+		const client2 = new SharedCentrifuge(WEBSOCKET_URL, { websocket: WebSocket });
+		instances.push(client1, client2);
+
+		// Connect both clients
+		const connectedPromise1 = waitFor(client1, "connected");
+		const connectedPromise2 = waitFor(client2, "connected");
+		client1.connect();
+		await Promise.all([connectedPromise1, connectedPromise2]);
+
+		// Subscribe both to the same channel
+		const sub1 = client1.newSubscription(channel);
+		const sub2 = client2.newSubscription(channel);
+		sub1.subscribe();
+		sub2.subscribe();
+		await Promise.all([new Promise((resolve) => sub1.once("subscribed", resolve)), new Promise((resolve) => sub2.once("subscribed", resolve))]);
+
+		// Fire off many reconnects in rapid succession from both clients
+		const rapidReconnects: Promise<void>[] = [];
+		for (let i = 0; i < 10; i++) {
+			rapidReconnects.push(client1.reconnect());
+			rapidReconnects.push(client2.reconnect());
+		}
+
+		// All should complete successfully
+		await Promise.all(rapidReconnects);
+
+		// Verify both clients are still connected
+		t.expect(client1.state).toBe("connected");
+		t.expect(client2.state).toBe("connected");
+
+		// Verify messaging still works
+		const messagePromise = new Promise((resolve) => {
+			sub2.once("publication", (ctx) => resolve(ctx.data));
+		});
+
+		await client1.publish(channel, JSON.stringify({ test: "after-rapid-reconnects" }));
+		const received = await messagePromise;
+		t.expect(JSON.parse(received as string)).toEqual({ test: "after-rapid-reconnects" });
+	});
 });
