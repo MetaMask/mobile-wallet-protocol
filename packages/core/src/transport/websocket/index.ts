@@ -144,6 +144,12 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 * existing subscription objects in memory, allowing for automatic recovery.
 	 */
 	public reconnect(): Promise<void> {
+		// Check if we are using the SharedCentrifuge and if it has our smart reconnect method.
+		if (this.centrifuge instanceof SharedCentrifuge && "reconnect" in this.centrifuge) {
+			return this.centrifuge.reconnect();
+		}
+
+		// Fallback to the original behavior for non-shared connections.
 		if (this.state === "connecting") {
 			return new Promise((resolve) => this.centrifuge.once("connected", () => resolve()));
 		}
