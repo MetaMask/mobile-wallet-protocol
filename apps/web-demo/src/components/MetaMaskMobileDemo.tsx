@@ -9,8 +9,8 @@ import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 // const RELAY_URL = "ws://localhost:8000/connection/websocket";
 const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
-const HARDCODED_ETH_ACCOUNT = "0x2e404cdebe05098c066f9844aa990722749ed100";
-const HARDCODED_SOL_ACCOUNT = "8VMXFL3MN9z1Eg3WNBk4SECk3cKPn7hr7mUQqjwaYPev";
+const HARDCODED_ETH_ACCOUNT = "0x3984fd31734648921f9455c71c8a78fa711312bd";
+const HARDCODED_SOL_ACCOUNT = "A2k25kuXLKtcorM1C8BvbQYohUrADLqRobBQARY6CtX3";
 
 type LogEntry = {
 	id: string;
@@ -116,7 +116,7 @@ export default function MetaMaskMobileDemo() {
 			// Start new connection, which will trigger 'session-request' and start a new timer
 			await dappClientRef.current.connect({
 				mode: "trusted",
-				initialPayload: createSessionRequest
+				initialPayload: createSessionRequest,
 			});
 		} catch (error) {
 			onError(error instanceof Error ? error : new Error("Unknown error"));
@@ -613,14 +613,15 @@ export default function MetaMaskMobileDemo() {
 									{dappLogs.map((log) => (
 										<div
 											key={log.id}
-											className={`p-2 rounded text-xs ${log.type === "sent"
-												? "bg-blue-100 dark:bg-blue-900"
-												: log.type === "received"
-													? "bg-green-100 dark:bg-green-900"
-													: log.type === "notification"
-														? "bg-yellow-100 dark:bg-yellow-900"
-														: "bg-gray-200 dark:bg-gray-700"
-												}`}
+											className={`p-2 rounded text-xs ${
+												log.type === "sent"
+													? "bg-blue-100 dark:bg-blue-900"
+													: log.type === "received"
+														? "bg-green-100 dark:bg-green-900"
+														: log.type === "notification"
+															? "bg-yellow-100 dark:bg-yellow-900"
+															: "bg-gray-200 dark:bg-gray-700"
+											}`}
 										>
 											<div className="flex justify-between items-start mb-1">
 												<span className="font-medium uppercase">{log.type}</span>
