@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- Fix rapid reconnect issue for shared clients ([#55](https://github.com/MetaMask/mobile-wallet-protocol/pull/55))
+
 ## [0.3.0]
 
 ### Added
