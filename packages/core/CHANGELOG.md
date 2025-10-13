@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1]
+
+### Fixed
+
+- Fixed rapid reconnect issue for shared clients ([#55](https://github.com/MetaMask/mobile-wallet-protocol/pull/55))
+
 ## [0.3.0]
 
 ### Added
@@ -50,7 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package ([#35](https://github.com/MetaMask/mobile-wallet-protocol/pull/35))
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.0...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.1...HEAD
+[0.3.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.0...@metamask/mobile-wallet-protocol-core@0.3.1
 [0.3.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.2.0...@metamask/mobile-wallet-protocol-core@0.3.0
 [0.2.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.1...@metamask/mobile-wallet-protocol-core@0.2.0
 [0.1.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.0...@metamask/mobile-wallet-protocol-core@0.1.1
