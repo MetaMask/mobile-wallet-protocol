@@ -1,18 +1,18 @@
-import * as pako from 'pako';
+import * as pako from "pako";
 
 /**
  * Cross-platform base64 encoding
  * Works in browser, Node.js, and React Native environments
  */
 export function base64Encode(str: string): string {
-	if (typeof btoa !== 'undefined') {
+	if (typeof btoa !== "undefined") {
 		// Browser and React Native with polyfills
 		return btoa(str);
-	} else if (typeof Buffer !== 'undefined') {
+	} else if (typeof Buffer !== "undefined") {
 		// Node.js
-		return Buffer.from(str).toString('base64');
+		return Buffer.from(str).toString("base64");
 	} else {
-		throw new Error('No base64 encoding method available');
+		throw new Error("No base64 encoding method available");
 	}
 }
 
@@ -21,14 +21,14 @@ export function base64Encode(str: string): string {
  * Works in browser, Node.js, and React Native environments
  */
 export function base64Decode(str: string): string {
-	if (typeof atob !== 'undefined') {
+	if (typeof atob !== "undefined") {
 		// Browser and React Native with polyfills
 		return atob(str);
-	} else if (typeof Buffer !== 'undefined') {
+	} else if (typeof Buffer !== "undefined") {
 		// Node.js
-		return Buffer.from(str, 'base64').toString();
+		return Buffer.from(str, "base64").toString();
 	} else {
-		throw new Error('No base64 decoding method available');
+		throw new Error("No base64 decoding method available");
 	}
 }
 

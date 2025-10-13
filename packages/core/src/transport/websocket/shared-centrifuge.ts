@@ -86,6 +86,7 @@ type Context = {
 	options: Partial<Options>;
 	centrifuge: Centrifuge;
 	subscriptions: Map<string, { count: number; sub: Subscription }>;
+	reconnectPromise: Promise<void> | null;
 };
 
 /**
@@ -128,6 +129,7 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 				options: opts,
 				centrifuge,
 				subscriptions: new Map(),
+				reconnectPromise: null,
 			});
 		} else {
 			const context = SharedCentrifuge.contexts.get(url);
@@ -189,6 +191,50 @@ export class SharedCentrifuge extends EventEmitter<ClientEvents> {
 		}
 
 		return Promise.resolve();
+	}
+
+	/**
+	 * Disconnect and immediately reconnect the underlying Centrifuge client.
+	 * This method is idempotent: if a reconnect is already in progress,
+	 * subsequent calls will return the promise for the ongoing operation.
+	 * This ensures that multiple simultaneous reconnect calls don't cause
+	 * race conditions or connection storms.
+	 */
+	reconnect(): Promise<void> {
+		const context = SharedCentrifuge.contexts.get(this.url);
+		if (!context) {
+			return Promise.resolve();
+		}
+
+		// If a reconnect is already in progress, return the existing promise.
+		if (context.reconnectPromise) {
+			return context.reconnectPromise;
+		}
+
+		// This is the first call, so start the reconnect process.
+		context.reconnectPromise = (async () => {
+			try {
+				// Only disconnect if we are not already disconnected.
+				if (context.centrifuge.state !== "disconnected") {
+					await new Promise<void>((resolve) => {
+						context.centrifuge.once("disconnected", () => resolve());
+						context.centrifuge.disconnect();
+					});
+				}
+
+				// Now connect and wait for the connection to be established.
+				await new Promise<void>((resolve, reject) => {
+					context.centrifuge.once("connected", () => resolve());
+					context.centrifuge.once("error", (ctx) => reject(ctx.error));
+					context.centrifuge.connect();
+				});
+			} finally {
+				// Clear the promise to allow future reconnects.
+				context.reconnectPromise = null;
+			}
+		})();
+
+		return context.reconnectPromise;
 	}
 
 	/**
