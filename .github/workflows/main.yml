@@ -34,8 +34,6 @@ jobs:
     steps:
       - id: is-release
         uses: MetaMask/action-is-release@v1
-        with:
-          commit-starts-with: 'Release [version]'
 
   publish-release:
     name: Publish release
