@@ -9,8 +9,10 @@ import { LocalStorageKVStore } from "@/lib/localStorage-kvstore";
 
 // const RELAY_URL = "ws://localhost:8000/connection/websocket";
 const RELAY_URL = "wss://mm-sdk-relay.api.cx.metamask.io/connection/websocket";
-const HARDCODED_ETH_ACCOUNT = "0x3984fd31734648921f9455c71c8a78fa711312bd";
-const HARDCODED_SOL_ACCOUNT = "A2k25kuXLKtcorM1C8BvbQYohUrADLqRobBQARY6CtX3";
+// const HARDCODED_ETH_ACCOUNT = "0x3984fd31734648921f9455c71c8a78fa711312bd";
+// const HARDCODED_SOL_ACCOUNT = "A2k25kuXLKtcorM1C8BvbQYohUrADLqRobBQARY6CtX3";
+const HARDCODED_ETH_ACCOUNT = "0x5808ba642972710794b9ea93d7c1a401c50fe48c";
+const HARDCODED_SOL_ACCOUNT = "EEivRh9T4GTLEJprEaKQyjSQzW13JRb5D7jSpvPQ8296";
 
 type LogEntry = {
 	id: string;
