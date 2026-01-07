@@ -1,7 +1,14 @@
+import chalk from "chalk";
 import {
 	CentrifugeClient,
 	type ConnectionResult,
 } from "../client/centrifuge-client.js";
+import {
+	createConnectionProgressBar,
+	startProgressBar,
+	stopProgressBar,
+	updateProgressBar,
+} from "../utils/progress.js";
 import { sleep } from "../utils/timing.js";
 import type { ScenarioOptions, ScenarioResult } from "./types.js";
 
@@ -17,7 +24,10 @@ export async function runSteadyState(
 ): Promise<ScenarioResult> {
 	const { target, connections, durationSec, rampUpSec } = options;
 
-	console.log(`[steady-state] Ramping up to ${connections} connections over ${rampUpSec}s...`);
+	console.log(
+		`${chalk.cyan("[steady-state]")} Ramping up to ${chalk.bold(connections)} connections over ${rampUpSec}s...`,
+	);
+	console.log("");
 
 	const clients: CentrifugeClient[] = [];
 	const connectionResults: ConnectionResult[] = [];
@@ -27,6 +37,10 @@ export async function runSteadyState(
 
 	const rampUpStart = performance.now();
 	const connectionDelay = (rampUpSec * 1000) / connections;
+
+	// Create progress bar
+	const progressBar = createConnectionProgressBar("[steady-state]");
+	startProgressBar(progressBar, connections);
 
 	// Ramp up phase - fire connections in parallel with pacing
 	const connectPromises: Promise<void>[] = [];
@@ -41,9 +55,7 @@ export async function runSteadyState(
 			const immediate = connectionResults.filter((r) => r.outcome === "immediate").length;
 			const recovered = connectionResults.filter((r) => r.outcome === "recovered").length;
 			const failed = connectionResults.filter((r) => r.outcome === "failed").length;
-			process.stdout.write(
-				`\r[steady-state] Ramp: ${connectionResults.length}/${connections} (✓ ${immediate} ↻ ${recovered} ✗ ${failed})`,
-			);
+			updateProgressBar(progressBar, connectionResults.length, { immediate, recovered, failed });
 		});
 		connectPromises.push(connectPromise);
 
@@ -55,22 +67,23 @@ export async function runSteadyState(
 
 	// Wait for all connections to complete
 	await Promise.all(connectPromises);
+	stopProgressBar(progressBar);
 
 	const rampUpTime = performance.now() - rampUpStart;
 	const successfulConnections = connectionResults.filter((r) => r.success).length;
 
 	console.log("");
 	console.log(
-		`[steady-state] Ramp complete: ${successfulConnections}/${connections} connected in ${Math.round(rampUpTime)}ms`,
+		`${chalk.cyan("[steady-state]")} Ramp complete: ${chalk.green(successfulConnections)}/${connections} connected in ${Math.round(rampUpTime)}ms`,
 	);
 
 	if (successfulConnections === 0) {
-		console.log("[steady-state] No successful connections, skipping hold phase");
+		console.log(chalk.red("[steady-state] No successful connections, skipping hold phase"));
 		return buildResult(connectionResults, connections, rampUpTime, 0, 0, 0, 0);
 	}
 
 	// Hold phase - keep connections open and monitor
-	console.log(`[steady-state] Holding for ${durationSec}s...`);
+	console.log(`${chalk.cyan("[steady-state]")} Holding for ${chalk.bold(durationSec)}s...`);
 
 	const holdStart = performance.now();
 	const holdEndTime = holdStart + durationSec * 1000;
@@ -96,8 +109,10 @@ export async function runSteadyState(
 		// Log status periodically
 		if (performance.now() - lastLogTime >= logInterval) {
 			const elapsed = Math.round((performance.now() - holdStart) / 1000);
+			const activeColor = currentActive === successfulConnections ? chalk.green : chalk.yellow;
+			const disconnectColor = currentDisconnectCount === 0 ? chalk.green : chalk.red;
 			console.log(
-				`[steady-state] [${elapsed}s] Active: ${currentActive}/${successfulConnections} | Disconnected: ${currentDisconnectCount} (peak: ${peakDisconnects}) | Reconnects: ${reconnectsDuringHold}`,
+				`${chalk.cyan("[steady-state]")} ${chalk.dim(`[${elapsed}s]`)} Active: ${activeColor(currentActive)}/${successfulConnections} | Disconnected: ${disconnectColor(currentDisconnectCount)} (peak: ${peakDisconnects}) | Reconnects: ${reconnectsDuringHold}`,
 			);
 			lastLogTime = performance.now();
 		}
@@ -111,12 +126,14 @@ export async function runSteadyState(
 	const finalActive = clients.filter((c) => c.isConnected()).length;
 	const finalDisconnects = successfulConnections - finalActive;
 
+	const activeColor = finalActive === successfulConnections ? chalk.green : chalk.yellow;
+	const disconnectColor = finalDisconnects === 0 ? chalk.green : chalk.red;
 	console.log(
-		`[steady-state] Hold complete: ${finalActive}/${successfulConnections} active | Final disconnects: ${finalDisconnects} | Peak: ${peakDisconnects} | Reconnects: ${reconnectsDuringHold}`,
+		`${chalk.cyan("[steady-state]")} Hold complete: ${activeColor(finalActive)}/${successfulConnections} active | Final disconnects: ${disconnectColor(finalDisconnects)} | Peak: ${peakDisconnects} | Reconnects: ${reconnectsDuringHold}`,
 	);
 
 	// Disconnect all clients
-	console.log("[steady-state] Disconnecting clients...");
+	console.log(`${chalk.cyan("[steady-state]")} Disconnecting clients...`);
 	for (const client of clients) {
 		client.disconnect();
 	}

@@ -4,17 +4,19 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"load-test:run": "tsx src/cli/run.ts",
-		"load-test:infra:create": "tsx src/cli/infra.ts create",
-		"load-test:infra:list": "tsx src/cli/infra.ts list",
-		"load-test:infra:destroy": "tsx src/cli/infra.ts destroy",
-		"load-test:infra:update": "tsx src/cli/infra.ts update",
-		"load-test:infra:exec": "tsx src/cli/infra.ts exec",
-		"load-test:infra:collect": "tsx src/cli/infra.ts collect",
-		"load-test:results:aggregate": "tsx src/cli/results.ts"
+		"start": "tsx src/cli/run.ts",
+		"infra:create": "tsx src/cli/infra.ts create",
+		"infra:list": "tsx src/cli/infra.ts list",
+		"infra:destroy": "tsx src/cli/infra.ts destroy",
+		"infra:update": "tsx src/cli/infra.ts update",
+		"infra:exec": "tsx src/cli/infra.ts exec",
+		"infra:collect": "tsx src/cli/infra.ts collect",
+		"results:aggregate": "tsx src/cli/results.ts"
 	},
 	"dependencies": {
 		"centrifuge": "^5.3.5",
+		"chalk": "^5.6.2",
+		"cli-progress": "^3.12.0",
 		"commander": "^13.1.0",
 		"dotenv": "^16.5.0",
 		"ssh2": "^1.16.0",
@@ -22,6 +24,7 @@
 		"ws": "^8.18.3"
 	},
 	"devDependencies": {
+		"@types/cli-progress": "^3.11.6",
 		"@types/node": "^24.0.3",
 		"@types/ssh2": "^1.15.4",
 		"@types/ws": "^8.18.1",

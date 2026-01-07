@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import chalk from "chalk";
 import { Command } from "commander";
 import { printResults } from "../output/formatter.js";
 import type { TestResults } from "../output/types.js";
@@ -97,7 +98,7 @@ function buildTestResults(
 const program = new Command();
 
 program
-	.name("load-test:run")
+	.name("start")
 	.description("Run load tests against a Centrifugo relay server")
 	.version("0.0.1")
 	.requiredOption("--target <url>", "WebSocket URL of the relay server")
@@ -121,8 +122,8 @@ program
 	.action(async (cli: CliOptions) => {
 		// Validate scenario name
 		if (!isValidScenarioName(cli.scenario)) {
-			console.error(`[load-test] Unknown scenario: ${cli.scenario}`);
-			console.error("[load-test] Available scenarios: connection-storm, steady-state");
+			console.error(chalk.red(`[load-test] Unknown scenario: ${cli.scenario}`));
+			console.error(chalk.yellow("[load-test] Available scenarios: connection-storm, steady-state"));
 			process.exit(1);
 		}
 
@@ -130,15 +131,18 @@ program
 		const options = parseOptions(cli);
 
 		// Print configuration
-		console.log("[load-test] Load Test Runner");
-		console.log("[load-test] Configuration:");
-		console.log(`  Target:      ${options.target}`);
-		console.log(`  Scenario:    ${cli.scenario}`);
-		console.log(`  Connections: ${options.connections}`);
+		console.log(chalk.bold.blue("╔══════════════════════════════════════╗"));
+		console.log(chalk.bold.blue("║       LOAD TEST RUNNER               ║"));
+		console.log(chalk.bold.blue("╚══════════════════════════════════════╝"));
+		console.log("");
+		console.log(chalk.bold("Configuration:"));
+		console.log(`  Target:      ${chalk.dim(options.target)}`);
+		console.log(`  Scenario:    ${chalk.cyan(cli.scenario)}`);
+		console.log(`  Connections: ${chalk.bold(options.connections)}`);
 		console.log(`  Duration:    ${options.durationSec}s`);
 		console.log(`  Ramp-up:     ${options.rampUpSec}s`);
 		if (cli.output) {
-			console.log(`  Output:      ${cli.output}`);
+			console.log(`  Output:      ${chalk.dim(cli.output)}`);
 		}
 		console.log("");
 
@@ -157,7 +161,7 @@ program
 		}
 
 		console.log("");
-		console.log("[load-test] Done");
+		console.log(chalk.green("✓ Done"));
 	});
 
 program.parse();

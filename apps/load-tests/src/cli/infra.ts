@@ -4,7 +4,7 @@ import { Command } from "commander";
 const program = new Command();
 
 program
-	.name("load-test:infra")
+	.name("infra")
 	.description("Manage DigitalOcean infrastructure for distributed load testing")
 	.version("0.0.1");
 
@@ -16,7 +16,7 @@ program
 	.option("--size <size>", "Droplet size", "s-2vcpu-4gb")
 	.option("--name-prefix <prefix>", "Prefix for droplet names", "load-test")
 	.action((options) => {
-		console.log("[load-test:infra] Create droplets");
+		console.log("[infra] Create droplets");
 		console.log(`  Count:  ${options.count}`);
 		console.log(`  Region: ${options.region}`);
 		console.log(`  Size:   ${options.size}`);
@@ -28,7 +28,7 @@ program
 	.command("list")
 	.description("List current load test droplets")
 	.action(() => {
-		console.log("[load-test:infra] No droplets found");
+		console.log("[infra] No droplets found");
 		// TODO: Implement droplet listing
 	});
 
@@ -36,7 +36,7 @@ program
 	.command("destroy")
 	.description("Destroy all load test droplets")
 	.action(() => {
-		console.log("[load-test:infra] No droplets to destroy");
+		console.log("[infra] No droplets to destroy");
 		// TODO: Implement droplet destruction
 	});
 
@@ -44,7 +44,7 @@ program
 	.command("update")
 	.description("Update code on all droplets (git pull && yarn build)")
 	.action(() => {
-		console.log("[load-test:infra] No droplets to update");
+		console.log("[infra] No droplets to update");
 		// TODO: Implement droplet update
 	});
 
@@ -53,7 +53,7 @@ program
 	.description("Execute a command on all droplets")
 	.requiredOption("--command <cmd>", "Command to execute")
 	.action((options) => {
-		console.log("[load-test:infra] No droplets to execute command on");
+		console.log("[infra] No droplets to execute command on");
 		console.log(`  Command: ${options.command}`);
 		// TODO: Implement command execution
 	});
@@ -63,7 +63,7 @@ program
 	.description("Collect results from all droplets")
 	.requiredOption("--output <dir>", "Directory to store collected results")
 	.action((options) => {
-		console.log("[load-test:infra] No droplets to collect from");
+		console.log("[infra] No droplets to collect from");
 		console.log(`  Output: ${options.output}`);
 		// TODO: Implement results collection
 	});

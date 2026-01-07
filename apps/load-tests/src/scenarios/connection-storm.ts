@@ -1,7 +1,14 @@
+import chalk from "chalk";
 import {
 	CentrifugeClient,
 	type ConnectionResult,
 } from "../client/centrifuge-client.js";
+import {
+	createConnectionProgressBar,
+	startProgressBar,
+	stopProgressBar,
+	updateProgressBar,
+} from "../utils/progress.js";
 import { sleep } from "../utils/timing.js";
 import type { ScenarioOptions, ScenarioResult } from "./types.js";
 
@@ -18,10 +25,10 @@ export async function runConnectionStorm(
 	// Calculate pacing: spread connection starts over ramp-up period
 	const connectionDelay = rampUpSec > 0 ? (rampUpSec * 1000) / connections : 0;
 
-	console.log(`[connection-storm] Connecting ${connections} client(s) to ${target}`);
+	console.log(`${chalk.cyan("[connection-storm]")} Connecting ${chalk.bold(connections)} client(s) to ${chalk.dim(target)}`);
 	if (connectionDelay > 0) {
 		console.log(
-			`[connection-storm] Pacing: ${(1000 / connectionDelay).toFixed(1)} conn/sec over ${rampUpSec}s`,
+			`${chalk.cyan("[connection-storm]")} Pacing: ${chalk.bold((1000 / connectionDelay).toFixed(1))} conn/sec over ${rampUpSec}s`,
 		);
 	}
 	console.log("");
@@ -29,6 +36,10 @@ export async function runConnectionStorm(
 	const startTime = performance.now();
 	const clients: CentrifugeClient[] = [];
 	const connectionResults: ConnectionResult[] = [];
+
+	// Create progress bar
+	const progressBar = createConnectionProgressBar("[connection-storm]");
+	startProgressBar(progressBar, connections);
 
 	// Create and connect all clients with pacing
 	const connectPromises: Promise<void>[] = [];
@@ -43,9 +54,7 @@ export async function runConnectionStorm(
 				const immediate = connectionResults.filter((r) => r.outcome === "immediate").length;
 				const recovered = connectionResults.filter((r) => r.outcome === "recovered").length;
 				const failed = connectionResults.filter((r) => r.outcome === "failed").length;
-				process.stdout.write(
-					`\r[connection-storm] Progress: ${connectionResults.length}/${connections} (✓ ${immediate} ↻ ${recovered} ✗ ${failed})`,
-				);
+				updateProgressBar(progressBar, connectionResults.length, { immediate, recovered, failed });
 			}),
 		);
 
@@ -56,9 +65,10 @@ export async function runConnectionStorm(
 	}
 
 	await Promise.all(connectPromises);
+	stopProgressBar(progressBar);
+
 	const totalTime = performance.now() - startTime;
 
-	console.log("");
 	console.log("");
 
 	const immediate = connectionResults.filter((r) => r.outcome === "immediate");
@@ -75,15 +85,15 @@ export async function runConnectionStorm(
 			const err = f.error ?? "Unknown error";
 			errorCounts.set(err, (errorCounts.get(err) ?? 0) + 1);
 		}
-		console.log("Errors:");
+		console.log(chalk.red("Errors:"));
 		for (const [err, count] of errorCounts) {
-			console.log(`  ${count}x: ${err}`);
+			console.log(chalk.red(`  ${count}x: ${err}`));
 		}
 		console.log("");
 	}
 
 	// Disconnect all clients
-	console.log("[connection-storm] Disconnecting clients...");
+	console.log(`${chalk.cyan("[connection-storm]")} Disconnecting clients...`);
 	for (const client of clients) {
 		client.disconnect();
 	}
