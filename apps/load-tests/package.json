@@ -1,0 +1,30 @@
+{
+	"name": "@metamask/mobile-wallet-protocol-load-tests",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"load-test:run": "tsx src/runner/index.ts",
+		"load-test:infra:create": "tsx src/infra/index.ts create",
+		"load-test:infra:list": "tsx src/infra/index.ts list",
+		"load-test:infra:destroy": "tsx src/infra/index.ts destroy",
+		"load-test:infra:update": "tsx src/infra/index.ts update",
+		"load-test:infra:exec": "tsx src/infra/index.ts exec",
+		"load-test:infra:collect": "tsx src/infra/index.ts collect",
+		"load-test:results:aggregate": "tsx src/results/aggregate.ts"
+	},
+	"dependencies": {
+		"centrifuge": "^5.3.5",
+		"commander": "^13.1.0",
+		"dotenv": "^16.5.0",
+		"ssh2": "^1.16.0",
+		"tsx": "^4.20.3",
+		"ws": "^8.18.3"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.3",
+		"@types/ssh2": "^1.15.4",
+		"@types/ws": "^8.18.1",
+		"typescript": "^5.8.3"
+	}
+}
