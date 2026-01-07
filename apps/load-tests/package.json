@@ -4,14 +4,14 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"load-test:run": "tsx src/runner/index.ts",
-		"load-test:infra:create": "tsx src/infra/index.ts create",
-		"load-test:infra:list": "tsx src/infra/index.ts list",
-		"load-test:infra:destroy": "tsx src/infra/index.ts destroy",
-		"load-test:infra:update": "tsx src/infra/index.ts update",
-		"load-test:infra:exec": "tsx src/infra/index.ts exec",
-		"load-test:infra:collect": "tsx src/infra/index.ts collect",
-		"load-test:results:aggregate": "tsx src/results/aggregate.ts"
+		"load-test:run": "tsx src/cli/run.ts",
+		"load-test:infra:create": "tsx src/cli/infra.ts create",
+		"load-test:infra:list": "tsx src/cli/infra.ts list",
+		"load-test:infra:destroy": "tsx src/cli/infra.ts destroy",
+		"load-test:infra:update": "tsx src/cli/infra.ts update",
+		"load-test:infra:exec": "tsx src/cli/infra.ts exec",
+		"load-test:infra:collect": "tsx src/cli/infra.ts collect",
+		"load-test:results:aggregate": "tsx src/cli/results.ts"
 	},
 	"dependencies": {
 		"centrifuge": "^5.3.5",
