@@ -1,0 +1,112 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
+      scenario:
+        description: "Test scenario"
+        required: true
+        type: choice
+        options:
+          - connection-storm
+          - steady-state
+      connections:
+        description: "Number of connections"
+        required: false
+        type: string
+        default: "100"
+      duration:
+        description: "Test duration in seconds (for steady-state)"
+        required: false
+        type: string
+        default: "60"
+      rampUp:
+        description: "Ramp-up time in seconds"
+        required: false
+        type: string
+        default: "10"
+
+jobs:
+  load-test:
+    name: Run Load Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate inputs
+        run: |
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Scenario: ${{ github.event.inputs.scenario }}"
+          echo "Connections: ${{ github.event.inputs.connections }}"
+          echo "Duration: ${{ github.event.inputs.duration }}"
+          echo "Ramp-up: ${{ github.event.inputs.rampUp }}"
+
+      - name: Require manual approval for production
+        if: github.event.inputs.environment == 'prod'
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: "aphex"
+          minimum-approvals: 1
+          issue-title: "Approve production load test"
+          issue-body: |
+            Production load test requested:
+            - Environment: ${{ github.event.inputs.environment }}
+            - Scenario: ${{ github.event.inputs.scenario }}
+            - Connections: ${{ github.event.inputs.connections }}
+            - Duration: ${{ github.event.inputs.duration }}s
+            - Ramp-up: ${{ github.event.inputs.rampUp }}s
+            
+            **⚠️ WARNING: This will run load tests against PRODUCTION**
+            
+            Please review and approve if this is intentional.
+
+      - name: Run load test
+        env:
+          RELAY_URL_DEV: ${{ secrets.RELAY_URL_DEV }}
+          RELAY_URL_UAT: ${{ secrets.RELAY_URL_UAT }}
+          RELAY_URL_PROD: ${{ secrets.RELAY_URL_PROD }}
+        run: |
+          cd apps/load-tests
+          yarn start \
+            --environment "${{ github.event.inputs.environment }}" \
+            --scenario "${{ github.event.inputs.scenario }}" \
+            --connections "${{ github.event.inputs.connections }}" \
+            --duration "${{ github.event.inputs.duration }}" \
+            --ramp-up "${{ github.event.inputs.rampUp }}" \
+            --output "results/load-test-$(date +%Y%m%d-%H%M%S).json"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ github.event.inputs.environment }}-${{ github.run_number }}
+          path: apps/load-tests/results/*.json
+          retention-days: 30
+
+      - name: Display results summary
+        if: always()
+        run: |
+          echo "## Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Scenario: ${{ github.event.inputs.scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Results uploaded as artifact" >> $GITHUB_STEP_SUMMARY

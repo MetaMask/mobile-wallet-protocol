@@ -6,6 +6,14 @@ export interface TestResults {
 	scenario: string;
 	timestamp: string;
 	target: string;
+	/** Environment name (dev, uat, prod) */
+	environment?: string;
+	/** Git commit SHA if available */
+	gitSha?: string;
+	/** Type of runner (local, docker, aws) */
+	runnerType?: string;
+	/** Container or task ID if running in containerized environment */
+	containerId?: string;
 	config: {
 		connections: number;
 		durationSec: number;

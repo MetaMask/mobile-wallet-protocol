@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.yarn/
+
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test results
+results/
+*.json
+!package.json
+!tsconfig.json
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Documentation
+README.md
+*.md
+
+# CI/CD
+.github/
+
+# Infrastructure state
+.infrastructure/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
