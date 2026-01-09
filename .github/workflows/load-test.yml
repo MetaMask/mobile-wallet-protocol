@@ -38,7 +38,7 @@ jobs:
   load-test:
     name: Run Load Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -64,7 +64,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
-          approvers: "aphex"
+          approvers: "chakra-guy,adonesky1,jiexi,ffmcgee725,wenfix"
           minimum-approvals: 1
           issue-title: "Approve production load test"
           issue-body: |
@@ -74,9 +74,9 @@ jobs:
             - Connections: ${{ github.event.inputs.connections }}
             - Duration: ${{ github.event.inputs.duration }}s
             - Ramp-up: ${{ github.event.inputs.rampUp }}s
-            
+
             **⚠️ WARNING: This will run load tests against PRODUCTION**
-            
+
             Please review and approve if this is intentional.
 
       - name: Run load test
