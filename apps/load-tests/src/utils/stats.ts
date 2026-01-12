@@ -19,9 +19,11 @@ export interface ConnectTimeStats {
 export function calculateConnectTimeStats(times: number[]): ConnectTimeStats | null {
 	if (times.length === 0) return null;
 	const sorted = [...times].sort((a, b) => a - b);
+	// Since array is sorted ascending, min is first element, max is last
+	// Avoid spread operator to prevent stack overflow with large arrays (>65K elements)
 	return {
-		min: Math.round(Math.min(...sorted)),
-		max: Math.round(Math.max(...sorted)),
+		min: Math.round(sorted[0]),
+		max: Math.round(sorted[sorted.length - 1]),
 		avg: Math.round(sorted.reduce((a, b) => a + b, 0) / sorted.length),
 		p50: Math.round(sorted[Math.floor((sorted.length - 1) * 0.5)] ?? 0),
 		p95: Math.round(sorted[Math.floor((sorted.length - 1) * 0.95)] ?? 0),
