@@ -13,6 +13,31 @@ const program = new Command();
 program.name("infra").description("Manage DigitalOcean infrastructure for distributed load testing").version("0.0.1");
 
 /**
+ * Validate a git branch name to prevent shell injection.
+ * Allows alphanumeric, hyphens, underscores, slashes, and dots.
+ */
+function validateBranchName(branch: string): void {
+	if (!/^[\w.\-/]+$/.test(branch)) {
+		throw new Error(`Invalid branch name: "${branch}". Only alphanumeric, hyphens, underscores, slashes, and dots are allowed.`);
+	}
+}
+
+/**
+ * Escape a string for use in shell single quotes.
+ * Replaces ' with '\'' (end quote, escaped quote, start quote).
+ */
+function escapeShellSingleQuote(str: string): string {
+	return str.replace(/'/g, "'\\''");
+}
+
+/**
+ * Escape regex special characters in a string.
+ */
+function escapeRegex(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Format a relative time string (e.g., "2h ago")
  */
 function formatRelativeTime(dateStr: string): string {
@@ -105,6 +130,11 @@ program
 			const config = loadInfraConfig();
 			const count = Number.parseInt(options.count, 10);
 
+			// Validate branch name to prevent shell injection
+			if (!options.skipSetup) {
+				validateBranchName(options.branch);
+			}
+
 			console.log(chalk.cyan(`[infra create] Creating ${count} droplet(s) (${DROPLET_REGION}, ${DROPLET_SIZE})...`));
 			if (!options.skipSetup) {
 				console.log(chalk.dim(`[infra create] Branch: ${options.branch}`));
@@ -113,9 +143,10 @@ program
 
 			// Get existing droplets to determine next number
 			const existing = await listDropletsByPrefix(config.digitalOceanToken, options.namePrefix);
+			const escapedPrefix = escapeRegex(options.namePrefix);
 			const existingNumbers = existing
 				.map((d) => {
-					const match = d.name.match(new RegExp(`^${options.namePrefix}-(\\d+)$`));
+					const match = d.name.match(new RegExp(`^${escapedPrefix}-(\\d+)$`));
 					return match ? Number.parseInt(match[1], 10) : 0;
 				})
 				.filter((n) => n > 0);
@@ -280,6 +311,10 @@ program
 	.action(async (options: { namePrefix: string; branch: string }) => {
 		try {
 			const config = loadInfraConfig();
+
+			// Validate branch name to prevent shell injection
+			validateBranchName(options.branch);
+
 			const droplets = await listDropletsByPrefix(config.digitalOceanToken, options.namePrefix);
 
 			if (droplets.length === 0) {
@@ -291,7 +326,7 @@ program
 			console.log(chalk.dim(`[infra update] Branch: ${options.branch}`));
 			console.log("");
 
-			// Build the update command
+			// Build the update command (branch already validated above)
 			const updateCommand = `cd /app && git fetch && git checkout ${options.branch} && git pull && yarn install && yarn build`;
 
 			const results = await execOnDroplets(droplets, updateCommand, config.sshPrivateKeyPath);
@@ -391,13 +426,23 @@ program
 			const timeoutSec = Number.parseInt(options.timeout, 10);
 			const intervalSec = Number.parseInt(options.interval, 10);
 
+			// Validate numeric inputs to prevent infinite loop with NaN
+			if (Number.isNaN(timeoutSec) || timeoutSec <= 0) {
+				throw new Error(`Invalid timeout value: "${options.timeout}". Must be a positive number.`);
+			}
+			if (Number.isNaN(intervalSec) || intervalSec <= 0) {
+				throw new Error(`Invalid interval value: "${options.interval}". Must be a positive number.`);
+			}
+
 			console.log(chalk.cyan(`[infra wait] Waiting for ${options.file} on ${droplets.length} droplet(s)...`));
 			console.log(chalk.dim(`[infra wait] Timeout: ${timeoutSec}s, Poll interval: ${intervalSec}s`));
 			console.log("");
 
 			const startTime = Date.now();
 			const completed = new Set<string>();
-			const checkCommand = `test -f '${options.file}' && echo 'EXISTS' || echo 'NOT_FOUND'`;
+			// Escape single quotes in file path to prevent shell injection
+			const escapedFile = escapeShellSingleQuote(options.file);
+			const checkCommand = `test -f '${escapedFile}' && echo 'EXISTS' || echo 'NOT_FOUND'`;
 
 			while (completed.size < droplets.length) {
 				const elapsed = (Date.now() - startTime) / 1000;

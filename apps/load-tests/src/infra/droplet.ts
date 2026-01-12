@@ -26,10 +26,23 @@ export type ProgressCallback = (
 ) => void;
 
 /**
+ * Validate a git branch name to prevent shell injection.
+ * Allows alphanumeric, hyphens, underscores, slashes, and dots.
+ */
+function validateBranchName(branch: string): void {
+	if (!/^[\w.\-/]+$/.test(branch)) {
+		throw new Error(`Invalid branch name: "${branch}". Only alphanumeric, hyphens, underscores, slashes, and dots are allowed.`);
+	}
+}
+
+/**
  * Generate the setup script for a droplet.
  * Downloads Node.js directly from nodejs.org and installs to /usr/local.
  */
 export function generateSetupScript(branch: string): string {
+	// Validate branch name to prevent shell injection
+	validateBranchName(branch);
+
 	return `#!/bin/bash
 set -e
 
