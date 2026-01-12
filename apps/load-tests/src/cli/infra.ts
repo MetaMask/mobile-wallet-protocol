@@ -6,7 +6,7 @@ import { loadInfraConfig } from "../infra/config.js";
 import { createDroplet, deleteDroplet, listDropletsByPrefix, waitForDropletActive } from "../infra/digitalocean.js";
 import { type DropletSetupStatus, formatStatus, setupDroplet } from "../infra/droplet.js";
 import { execOnDroplets, printExecResults, saveExecLogs } from "../infra/exec.js";
-import { DROPLET_IMAGE, DROPLET_REGION, DROPLET_SIZE, type DropletInfo } from "../infra/types.js";
+import { DROPLET_HOURLY_COST, DROPLET_IMAGE, DROPLET_REGION, DROPLET_SIZE, type DropletInfo } from "../infra/types.js";
 
 const program = new Command();
 
@@ -67,7 +67,7 @@ program
 			printDropletTable(droplets);
 
 			// Calculate hourly cost
-			const hourlyCost = droplets.length * 0.018; // $0.018/hr for s-2vcpu-2gb
+			const hourlyCost = droplets.length * DROPLET_HOURLY_COST;
 			console.log("");
 			console.log(chalk.dim(`  Total: ${droplets.length} droplets (~$${hourlyCost.toFixed(3)}/hr)`));
 		} catch (error) {
@@ -130,21 +130,24 @@ program
 			}
 			printDropletStatuses();
 
-			// Create droplets via API
+			// Create droplets via API (limit concurrency to 5 to avoid rate limits)
 			const createdDroplets: DropletInfo[] = [];
-			const createPromises = dropletNames.map(async (name) => {
-				const droplet = await createDroplet(config.digitalOceanToken, {
-					name,
-					region: DROPLET_REGION,
-					size: DROPLET_SIZE,
-					image: DROPLET_IMAGE,
-					sshKeyFingerprint: config.sshKeyFingerprint,
+			const CONCURRENCY_LIMIT = 5;
+			for (let i = 0; i < dropletNames.length; i += CONCURRENCY_LIMIT) {
+				const batch = dropletNames.slice(i, i + CONCURRENCY_LIMIT);
+				const createPromises = batch.map(async (name) => {
+					const droplet = await createDroplet(config.digitalOceanToken, {
+						name,
+						region: DROPLET_REGION,
+						size: DROPLET_SIZE,
+						image: DROPLET_IMAGE,
+						sshKeyFingerprint: config.sshKeyFingerprint,
+					});
+					createdDroplets.push(droplet);
+					updateDropletStatus(name, "waiting_for_active");
 				});
-				createdDroplets.push(droplet);
-				updateDropletStatus(name, "waiting_for_active");
-			});
-
-			await Promise.all(createPromises);
+				await Promise.all(createPromises);
+			}
 
 			console.log("");
 			console.log(chalk.cyan("[infra create] Waiting for droplets to be active..."));

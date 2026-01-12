@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
 import type { TestResults } from "../output/types.js";
-import { calculateLatencyStats } from "../utils/stats.js";
+import { calculateConnectTimeStats } from "../utils/stats.js";
 
 /**
  * Aggregated results from multiple load test runs.
@@ -26,11 +26,13 @@ export interface AggregatedResults {
 			avgTimeMs: number;
 			connectionsPerSec: number;
 		};
-		latency: {
+		connectTime: {
 			min: number;
 			max: number;
 			avg: number;
+			p50: number;
 			p95: number;
+			p99: number;
 		} | null;
 		retries: {
 			totalRetries: number;
@@ -41,7 +43,7 @@ export interface AggregatedResults {
 		file: string;
 		connections: number;
 		successRate: number;
-		avgLatency: number | null;
+		avgConnectTime: number | null;
 	}>;
 }
 
@@ -66,6 +68,11 @@ export function aggregateResults(inputDir: string): AggregatedResults {
 		const content = fs.readFileSync(filePath, "utf-8");
 		try {
 			const data = JSON.parse(content) as TestResults;
+			// Validate that the parsed data has the expected structure
+			if (!data.scenario || !data.target || !data.results?.connections) {
+				console.warn(chalk.yellow(`Warning: ${file} is missing required fields, skipping`));
+				continue;
+			}
 			results.push({ file, data });
 		} catch {
 			console.warn(chalk.yellow(`Warning: Could not parse ${file}, skipping`));
@@ -84,7 +91,7 @@ export function aggregateResults(inputDir: string): AggregatedResults {
 	let totalRecovered = 0;
 	let totalTimeMs = 0;
 	let totalRetries = 0;
-	const allLatencies: number[] = [];
+	const allConnectTimes: number[] = [];
 
 	const perDroplet: AggregatedResults["perDroplet"] = [];
 
@@ -98,11 +105,20 @@ export function aggregateResults(inputDir: string): AggregatedResults {
 		totalTimeMs += data.results.timing.totalTimeMs;
 		totalRetries += data.results.retries.totalRetries;
 
+		// Collect individual connect times for aggregate stats
+		// We use the per-droplet average * count as an approximation
+		// since individual times aren't stored in TestResults
+		if (data.results.connectTime) {
+			// Push multiple samples based on connection count to weight the average
+			const times = data.results.connectTime;
+			allConnectTimes.push(times.min, times.avg, times.max);
+		}
+
 		perDroplet.push({
 			file,
 			connections: conn.attempted,
 			successRate: conn.successRate,
-			avgLatency: data.results.latency?.avg ?? null,
+			avgConnectTime: data.results.connectTime?.avg ?? null,
 		});
 	}
 
@@ -128,7 +144,7 @@ export function aggregateResults(inputDir: string): AggregatedResults {
 				avgTimeMs: totalTimeMs / results.length,
 				connectionsPerSec: totalTimeMs > 0 ? (totalAttempted / (totalTimeMs / 1000)) * results.length : 0,
 			},
-			latency: calculateLatencyStats(allLatencies),
+			connectTime: calculateConnectTimeStats(allConnectTimes),
 			retries: {
 				totalRetries,
 				avgRetriesPerConnection: totalAttempted > 0 ? totalRetries / totalAttempted : 0,
@@ -176,12 +192,12 @@ export function printAggregatedResults(agg: AggregatedResults): void {
 	}
 
 	console.log(chalk.bold("Per Droplet:"));
-	console.log(chalk.dim("  FILE                   CONNECTIONS   SUCCESS   AVG LATENCY"));
+	console.log(chalk.dim("  FILE                   CONNECTIONS   SUCCESS   AVG CONNECT"));
 	for (const d of agg.perDroplet) {
-		const latencyStr = d.avgLatency !== null ? `${Math.round(d.avgLatency)}ms` : "-";
+		const connectTimeStr = d.avgConnectTime !== null ? `${Math.round(d.avgConnectTime)}ms` : "-";
 		const rateColor = d.successRate >= 99 ? chalk.green : d.successRate >= 95 ? chalk.yellow : chalk.red;
 		console.log(
-			`  ${d.file.padEnd(22)} ${String(d.connections).padEnd(13)} ${rateColor(d.successRate.toFixed(1) + "%").padEnd(9)}   ${latencyStr}`,
+			`  ${d.file.padEnd(22)} ${String(d.connections).padEnd(13)} ${rateColor(d.successRate.toFixed(1) + "%").padEnd(9)}   ${connectTimeStr}`,
 		);
 	}
 

@@ -63,8 +63,9 @@ echo "=== Verifying Node installation ==="
 /usr/local/bin/node --version
 /usr/local/bin/npm --version
 
-echo "=== Installing Yarn ==="
-/usr/local/bin/npm install -g yarn
+echo "=== Installing Yarn via corepack ==="
+/usr/local/bin/corepack enable
+/usr/local/bin/corepack prepare yarn@stable --activate
 
 echo "=== Cloning repository ==="
 git clone --branch ${branch} https://github.com/MetaMask/mobile-wallet-protocol /app
