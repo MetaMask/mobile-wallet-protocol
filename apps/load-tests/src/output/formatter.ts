@@ -5,7 +5,7 @@ import type { TestResults } from "./types.js";
  * Print test results summary to console.
  */
 export function printResults(results: TestResults): void {
-	const { connections, timing, latency, retries, steadyState } = results.results;
+	const { connections, timing, connectTime, retries, steadyState } = results.results;
 
 	console.log(chalk.gray("─────────────────────────────────────"));
 	console.log(chalk.bold("         RESULTS SUMMARY"));
@@ -27,11 +27,11 @@ export function printResults(results: TestResults): void {
 	console.log(`Total time:  ${Math.round(timing.totalTimeMs)}ms`);
 	console.log(`Rate:        ${timing.connectionsPerSec.toFixed(1)} conn/sec`);
 
-	// Latency with color-coded p95
-	if (latency) {
-		const p95Color = latency.p95 <= 100 ? chalk.green : latency.p95 <= 400 ? chalk.yellow : chalk.red;
+	// Connection time with color-coded p95
+	if (connectTime) {
+		const p95Color = connectTime.p95 <= 100 ? chalk.green : connectTime.p95 <= 400 ? chalk.yellow : chalk.red;
 		console.log(
-			`Latency:     min=${latency.min}ms, max=${latency.max}ms, avg=${latency.avg}ms, p95=${p95Color(latency.p95 + "ms")}`,
+			`Connect:     min=${connectTime.min}ms, avg=${connectTime.avg}ms, p50=${connectTime.p50}ms, p95=${p95Color(connectTime.p95 + "ms")}, p99=${connectTime.p99}ms, max=${connectTime.max}ms`,
 		);
 	}
 

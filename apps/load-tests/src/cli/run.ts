@@ -10,7 +10,7 @@ import {
 	type ScenarioOptions,
 	type ScenarioResult,
 } from "../scenarios/index.js";
-import { calculateLatencyStats } from "../utils/stats.js";
+import { calculateConnectTimeStats } from "../utils/stats.js";
 
 /**
  * CLI options as parsed by commander (strings).
@@ -74,7 +74,7 @@ function buildTestResults(
 						? (connections.attempted / result.timing.totalTimeMs) * 1000
 						: 0,
 			},
-			latency: calculateLatencyStats(result.timing.connectionLatencies),
+			connectTime: calculateConnectTimeStats(result.timing.connectionLatencies),
 			retries: {
 				totalRetries: result.retries.totalRetries,
 				avgRetriesPerConnection:

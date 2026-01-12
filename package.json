@@ -45,7 +45,8 @@
 		"allowScripts": {
 			"@lavamoat/preinstall-always-fail": false,
 			"simple-git-hooks": false,
-			"tsup>esbuild": false
+			"tsup>esbuild": false,
+			"tsup>postcss-load-config>tsx>esbuild": false
 		}
 	},
 	"dependencies": {

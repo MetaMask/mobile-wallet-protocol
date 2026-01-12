@@ -26,11 +26,14 @@ export interface TestResults {
 			totalTimeMs: number;
 			connectionsPerSec: number;
 		};
-		latency: {
+		/** Connection establishment time (NOT message RTT) */
+		connectTime: {
 			min: number;
 			max: number;
 			avg: number;
+			p50: number;
 			p95: number;
+			p99: number;
 		} | null;
 		retries: {
 			totalRetries: number;

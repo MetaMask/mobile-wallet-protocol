@@ -138,7 +138,9 @@ export async function runSteadyState(
 		client.disconnect();
 	}
 
-	// Connection stability = percentage that stayed connected the whole time
+	// Connection stability = percentage still connected at end of hold period
+	// Note: This does NOT mean "stayed connected the whole time" - clients may have
+	// disconnected and reconnected during the hold. Use peakDisconnects for worst-case.
 	const connectionStability =
 		successfulConnections > 0
 			? ((successfulConnections - finalDisconnects) / successfulConnections) * 100

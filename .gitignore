@@ -41,3 +41,6 @@ apps/*/*.tsbuildinfo
 .llm-packages.txt
 .llm-apps.txt
 .todo.md
+
+# Temp working documents
+temp/
