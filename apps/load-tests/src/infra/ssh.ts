@@ -121,21 +121,31 @@ export async function downloadFile(
 	remotePath: string,
 	localPath: string,
 	privateKeyPath: string,
+	timeoutMs = 60000, // 1 minute default timeout
 ): Promise<void> {
 	const privateKey = fs.readFileSync(privateKeyPath, "utf-8");
 
 	return new Promise((resolve, reject) => {
 		const client = new Client();
+		let timedOut = false;
+
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			client.end();
+			reject(new Error(`SFTP download timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
 
 		client.on("ready", () => {
 			client.sftp((err, sftp) => {
 				if (err) {
+					clearTimeout(timeout);
 					client.end();
 					reject(err);
 					return;
 				}
 
 				sftp.fastGet(remotePath, localPath, (err) => {
+					clearTimeout(timeout);
 					client.end();
 					if (err) {
 						reject(err);
@@ -147,7 +157,10 @@ export async function downloadFile(
 		});
 
 		client.on("error", (err) => {
-			reject(err);
+			if (!timedOut) {
+				clearTimeout(timeout);
+				reject(err);
+			}
 		});
 
 		client.connect({
