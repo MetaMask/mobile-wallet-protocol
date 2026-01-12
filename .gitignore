@@ -34,9 +34,13 @@ packages/*/docs
 
 # typescript
 packages/*/*.tsbuildinfo
+apps/*/*.tsbuildinfo
 
 # LLM
 .llm.txt
 .llm-packages.txt
 .llm-apps.txt
 .todo.md
+
+# Temp
+temp/
