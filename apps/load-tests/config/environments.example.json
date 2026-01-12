@@ -1,0 +1,11 @@
+{
+  "dev": {
+    "relayUrl": "ws://localhost:8000/connection/websocket"
+  },
+  "uat": {
+    "relayUrl": "wss://uat-relay.example.com/connection/websocket"
+  },
+  "prod": {
+    "relayUrl": "wss://prod-relay.example.com/connection/websocket"
+  }
+}
