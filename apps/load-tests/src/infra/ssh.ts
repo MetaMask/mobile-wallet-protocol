@@ -72,9 +72,9 @@ export async function execSsh(
 					return;
 				}
 
-				stream.on("close", (code: number) => {
+				stream.on("close", (code: number | null) => {
 					clearTimeout(timeout);
-					exitCode = code ?? 0;
+					exitCode = code ?? 1; // Assume failure if no exit code
 					client.end();
 					resolve({
 						dropletName: "", // Will be filled in by caller
