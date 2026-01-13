@@ -33,8 +33,7 @@ packages/*/docs
 .yarn
 
 # typescript
-packages/*/*.tsbuildinfo
-apps/*/*.tsbuildinfo
+**/*.tsbuildinfo
 
 # LLM
 .llm.txt

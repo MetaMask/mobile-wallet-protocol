@@ -2,10 +2,5 @@
 .env
 .env.local
 
-# Results (except .gitkeep)
-results/*
-!results/.gitkeep
-
-# Infrastructure state
-results/.infra-state.json
-
+# Results (created programmatically, no .gitkeep needed)
+results/
