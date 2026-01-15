@@ -98,34 +98,44 @@ export async function runRealisticSession(
 		count: connections,
 		rampUpSec,
 		onStart: async () => {
-			// Create session pair (includes wallet connect delay and handshake)
-			const result = await createSessionPair({
-				url: target,
-				handshakeTimeoutMs: 120000, // 2 min timeout (includes 5s wallet delay)
-			});
+			try {
+				// Create session pair (includes wallet connect delay and handshake)
+				const result = await createSessionPair({
+					url: target,
+					handshakeTimeoutMs: 120000, // 2 min timeout (includes 5s wallet delay)
+				});
 
-			sessionResults.push(result);
+				sessionResults.push(result);
 
-			if (result.success && result.pair) {
-				successfulSessions++;
-				handshakeLatencies.push(result.handshakeTimeMs);
-				activePairs.push(result.pair);
+				if (result.success && result.pair) {
+					successfulSessions++;
+					handshakeLatencies.push(result.handshakeTimeMs);
+					activePairs.push(result.pair);
 
-				// Exchange messages (includes delays)
-				for (let m = 0; m < messagesPerSession; m++) {
-					messagesSent++;
-					// Message ID starts at 1 for human-readability
-					const exchangeResult = await result.pair.exchangeMessage(m + 1);
+					// Exchange messages (includes delays)
+					for (let m = 0; m < messagesPerSession; m++) {
+						messagesSent++;
+						// Message ID starts at 1 for human-readability
+						const exchangeResult = await result.pair.exchangeMessage(m + 1);
 
-					if (exchangeResult.success) {
-						messagesReceived++;
-						messageLatencies.push(exchangeResult.latencyMs);
-					} else {
-						messagesFailed++;
+						if (exchangeResult.success) {
+							messagesReceived++;
+							messageLatencies.push(exchangeResult.latencyMs);
+						} else {
+							messagesFailed++;
+						}
 					}
+				} else {
+					failedSessions++;
 				}
-			} else {
+			} catch {
+				// Handle any unexpected errors gracefully
 				failedSessions++;
+				sessionResults.push({
+					success: false,
+					handshakeTimeMs: 0,
+					error: "Unexpected error during session",
+				});
 			}
 
 			// Update progress bar
