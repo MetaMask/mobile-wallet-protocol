@@ -99,6 +99,7 @@ export async function execSsh(
 		client.on("error", (err) => {
 			if (!timedOut) {
 				clearTimeout(timeout);
+				client.end();
 				reject(err);
 			}
 		});
@@ -159,6 +160,7 @@ export async function downloadFile(
 		client.on("error", (err) => {
 			if (!timedOut) {
 				clearTimeout(timeout);
+				client.end();
 				reject(err);
 			}
 		});
