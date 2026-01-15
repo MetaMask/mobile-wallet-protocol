@@ -22,7 +22,7 @@ const DEFAULT_RESPONSE_DELAY_MS = 1000;
  */
 export interface MessageExchangeResult {
 	success: boolean;
-	/** Round-trip latency in milliseconds (send request → receive response) */
+	/** Network round-trip latency in ms (excludes 500ms sync buffer and artificial response delay) */
 	latencyMs: number;
 	/** Message ID for verification */
 	messageId?: number;
@@ -34,7 +34,7 @@ export interface MessageExchangeResult {
  */
 export interface SessionPairResult {
 	success: boolean;
-	/** Time to complete handshake in milliseconds (includes wallet connect delay) */
+	/** Time to complete handshake in milliseconds (excludes artificial 5s wallet delay) */
 	handshakeTimeMs: number;
 	/** The connected session pair (only if success is true) */
 	pair?: SessionPair;
@@ -223,14 +223,16 @@ async function connectWallet(walletClient: WalletClient, sessionRequest: Session
  * Create a message exchange function.
  *
  * Flow:
- * 1. dApp sends request
- * 2. Wallet receives request
- * 3. Wallet waits responseDelayMs (simulates user reviewing request)
- * 4. Wallet sends response
- * 5. dApp receives response
+ * 1. Wait 500ms (protocol synchronization buffer - excluded from latency)
+ * 2. dApp sends request
+ * 3. Wallet receives request
+ * 4. Wallet waits responseDelayMs (simulates user reviewing request)
+ * 5. Wallet sends response
+ * 6. dApp receives response
  *
- * Latency is measured as total round-trip time MINUS the artificial delay,
- * so we get actual network/processing time.
+ * Latency is measured as network round-trip time only, excluding:
+ * - The 500ms synchronization buffer (step 1)
+ * - The artificial response delay (step 4)
  */
 function createMessageExchanger(dappClient: DappClient, walletClient: WalletClient): SessionPair["exchangeMessage"] {
 	return async (optionsOrId: ExchangeMessageOptions | number): Promise<MessageExchangeResult> => {
