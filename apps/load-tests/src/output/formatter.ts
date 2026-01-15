@@ -34,12 +34,15 @@ export function printResults(results: TestResults): void {
 	const successRate = connections.successRate;
 	const rateColor =
 		successRate >= 99 ? chalk.green : successRate >= 95 ? chalk.yellow : chalk.red;
+	
+	// Use "Connection Pairs" for high-fidelity scenarios, "Connections" for low-fidelity
+	const isHighFidelity = handshake || recovery || steadyMessaging;
+	const connectionLabel = isHighFidelity ? "Connection Pairs" : "Connections";
 	console.log(
-		`Connections: ${connections.attempted} attempted, ${connections.successful} successful (${rateColor(successRate.toFixed(1) + "%")})`,
+		`${connectionLabel}: ${connections.attempted} attempted, ${connections.successful} successful (${rateColor(successRate.toFixed(1) + "%")})`,
 	);
 
 	// Breakdown with icons (only for low-fidelity scenarios where immediate/recovered are meaningful)
-	const isHighFidelity = handshake || recovery || steadyMessaging;
 	if (!isHighFidelity) {
 		console.log(
 			`  ${chalk.green("✓")} Immediate: ${connections.immediate} | ${chalk.yellow("↻")} Recovered: ${connections.recovered} | ${chalk.red("✗")} Failed: ${connections.failed}`,
@@ -97,7 +100,7 @@ export function printResults(results: TestResults): void {
 					? chalk.yellow
 					: chalk.red;
 		console.log(
-			`  Sessions:  ${handshake.successful}/${handshake.attempted} (${handshakeRateColor(handshake.successRate.toFixed(1) + "%")})`,
+			`  Pairs:     ${handshake.successful}/${handshake.attempted} (${handshakeRateColor(handshake.successRate.toFixed(1) + "%")})`,
 		);
 		if (handshake.latency) {
 			console.log(`  Latency:   ${formatLatency(handshake.latency)}`);
