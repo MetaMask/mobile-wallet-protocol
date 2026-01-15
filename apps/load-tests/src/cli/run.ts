@@ -22,6 +22,7 @@ interface CliOptions {
 	target: string;
 	scenario: string;
 	connections: string;
+	connectionPairs: string;
 	duration: string;
 	rampUp: string;
 	messagesPerSession: string;
@@ -30,10 +31,20 @@ interface CliOptions {
 	output?: string;
 }
 
+/** High-fidelity scenarios use connection pairs (dApp + Wallet) */
+function isHighFidelityScenario(scenario: string): boolean {
+	return ["realistic-session", "async-delivery", "steady-messaging"].includes(scenario);
+}
+
 function parseOptions(cli: CliOptions): ScenarioOptions {
+	// High-fidelity scenarios use --connection-pairs, low-fidelity use --connections
+	const count = isHighFidelityScenario(cli.scenario)
+		? Number.parseInt(cli.connectionPairs, 10)
+		: Number.parseInt(cli.connections, 10);
+
 	return {
 		target: cli.target,
-		connections: Number.parseInt(cli.connections, 10),
+		connections: count,
 		durationSec: Number.parseInt(cli.duration, 10),
 		rampUpSec: Number.parseInt(cli.rampUp, 10),
 	};
@@ -186,7 +197,8 @@ program
 	.version("0.0.1")
 	.requiredOption("--target <url>", "WebSocket URL of the relay server")
 	.option("--scenario <name>", "Scenario: connection-storm, steady-state, realistic-session, async-delivery, steady-messaging", "connection-storm")
-	.option("--connections <number>", "Number of session pairs (high-fidelity) or raw connections (low-fidelity)", "100")
+	.option("--connections <number>", "Number of raw connections (low-fidelity scenarios)", "100")
+	.option("--connection-pairs <number>", "Number of connection pairs (high-fidelity scenarios)", "100")
 	.option("--duration <seconds>", "Test duration in seconds (for steady-state, steady-messaging)", "60")
 	.option("--ramp-up <seconds>", "Seconds to ramp up to full connection count", "10")
 	.option("--messages-per-session <number>", "Messages to exchange per session (realistic-session only)", "3")
@@ -220,13 +232,17 @@ program
 		console.log(chalk.bold("Configuration:"));
 		console.log(`  Target:      ${chalk.dim(options.target)}`);
 		console.log(`  Scenario:    ${chalk.cyan(cli.scenario)}`);
-		console.log(`  Connections: ${chalk.bold(options.connections)}`);
+		if (isHighFidelityScenario(cli.scenario)) {
+			console.log(`  Connection Pairs: ${chalk.bold(options.connections)}`);
+		} else {
+			console.log(`  Connections: ${chalk.bold(options.connections)}`);
+		}
 		if (cli.scenario === "steady-state") {
 			console.log(`  Duration:    ${options.durationSec}s`);
 		}
 		console.log(`  Ramp-up:     ${options.rampUpSec}s`);
 		if (cli.scenario === "realistic-session") {
-			console.log(`  Messages:    ${(options as RealisticSessionOptions).messagesPerSession} per session`);
+			console.log(`  Messages:    ${(options as RealisticSessionOptions).messagesPerSession} per pair`);
 		}
 		if (cli.scenario === "async-delivery") {
 			console.log(`  Delay:       ${(options as AsyncDeliveryOptions).delaySec}s`);

@@ -59,10 +59,10 @@ export async function runRealisticSession(
 	const { target, connections, rampUpSec, messagesPerSession } = options;
 
 	console.log(
-		`${chalk.cyan("[realistic-session]")} Creating ${chalk.bold(connections)} session pairs to ${chalk.dim(target)}`,
+		`${chalk.cyan("[realistic-session]")} Creating ${chalk.bold(connections)} connection pairs to ${chalk.dim(target)}`,
 	);
 	console.log(
-		`${chalk.cyan("[realistic-session]")} Messages per session: ${chalk.bold(messagesPerSession)}`,
+		`${chalk.cyan("[realistic-session]")} Messages per pair: ${chalk.bold(messagesPerSession)}`,
 	);
 	console.log(
 		`${chalk.cyan("[realistic-session]")} Timing: 5s wallet delay, 1s between messages`,

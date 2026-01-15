@@ -18,7 +18,7 @@ import type { SteadyMessagingOptions, SteadyMessagingResult } from "./types.js";
 export async function runSteadyMessaging(options: SteadyMessagingOptions): Promise<SteadyMessagingResult> {
 	const { target, connections, durationSec, rampUpSec, messageIntervalSec } = options;
 
-	console.log(`${chalk.cyan("[steady-messaging]")} Creating ${connections} session pairs to ${target}`);
+	console.log(`${chalk.cyan("[steady-messaging]")} Creating ${connections} connection pairs to ${target}`);
 	console.log(`${chalk.cyan("[steady-messaging]")} Duration: ${durationSec}s, Message interval: ${messageIntervalSec}s`);
 	console.log(`${chalk.cyan("[steady-messaging]")} Pacing: ${calculatePacingRate(connections, rampUpSec)} pairs/sec over ${rampUpSec}s`);
 	console.log("");

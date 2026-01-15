@@ -19,8 +19,7 @@ export async function runAsyncDelivery(options: AsyncDeliveryOptions): Promise<A
 	const { target, connections, rampUpSec, delaySec } = options;
 	const pacingDelayMs = calculatePacingDelay(connections, rampUpSec);
 
-	// Note: "connections" in CLI means session pairs. Each pair = 2 WebSocket connections (dApp + wallet)
-	console.log(`${chalk.cyan("[async-delivery]")} Creating ${connections} session pairs to ${target}`);
+	console.log(`${chalk.cyan("[async-delivery]")} Creating ${connections} connection pairs to ${target}`);
 	console.log(`${chalk.cyan("[async-delivery]")} Peak WebSocket connections: ~${connections * 2} (${connections} dApps + ${connections} wallets during handshake)`);
 	console.log(`${chalk.cyan("[async-delivery]")} After setup: ${connections} WebSocket connections (dApps only, wallets disconnected)`);
 	console.log(`${chalk.cyan("[async-delivery]")} Delay before wallet reconnect: ${delaySec}s`);
