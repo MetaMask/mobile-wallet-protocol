@@ -1,0 +1,6 @@
+# Environment files (except example)
+.env
+.env.local
+
+# Results (created programmatically, no .gitkeep needed)
+results/

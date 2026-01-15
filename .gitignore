@@ -33,10 +33,13 @@ packages/*/docs
 .yarn
 
 # typescript
-packages/*/*.tsbuildinfo
+**/*.tsbuildinfo
 
 # LLM
 .llm.txt
 .llm-packages.txt
 .llm-apps.txt
 .todo.md
+
+# Temp working documents
+temp/
