@@ -19,7 +19,8 @@ export async function runSteadyMessaging(options: SteadyMessagingOptions): Promi
 	const { target, connections, durationSec, rampUpSec, messageIntervalSec } = options;
 
 	console.log(`${chalk.cyan("[steady-messaging]")} Creating ${connections} connection pairs to ${target}`);
-	console.log(`${chalk.cyan("[steady-messaging]")} Duration: ${durationSec}s, Message interval: ${messageIntervalSec}s`);
+	console.log(`${chalk.cyan("[steady-messaging]")} Duration: ${durationSec}s`);
+	console.log(`${chalk.cyan("[steady-messaging]")} Message flow: dApp sends → wallet waits ${messageIntervalSec}s → wallet responds`);
 	console.log(`${chalk.cyan("[steady-messaging]")} Pacing: ${calculatePacingRate(connections, rampUpSec)} pairs/sec over ${rampUpSec}s`);
 	console.log("");
 
@@ -64,7 +65,10 @@ export async function runSteadyMessaging(options: SteadyMessagingOptions): Promi
 	console.log(`${chalk.cyan("[steady-messaging]")} Setup complete: ${pairs.length} pairs connected`);
 	console.log("");
 
-	// === Phase 2: Hold phase - exchange messages periodically ===
+	// === Phase 2: Hold phase - exchange messages with realistic timing ===
+	// Each round: dApp sends → wallet waits (user reviews) → wallet responds
+	// Rounds run sequentially - next round starts when previous completes
+
 	const allLatencies: number[] = [];
 	const latencyOverTime: SteadyMessagingResult["latencyOverTime"] = [];
 	let totalExchanges = 0;
@@ -72,85 +76,84 @@ export async function runSteadyMessaging(options: SteadyMessagingOptions): Promi
 	let failedExchanges = 0;
 	let disconnects = 0;
 	let messageId = 0;
+	let roundNumber = 0;
 
 	const holdStartTime = performance.now();
 	const holdEndTime = holdStartTime + durationSec * 1000;
-	const intervalMs = messageIntervalSec * 1000;
-	let nextExchangeTime = holdStartTime + intervalMs;
+	const responseDelayMs = messageIntervalSec * 1000;
 	let lastLogTime = holdStartTime;
 	const logIntervalMs = 30000; // Log progress every 30 seconds
 
 	// Track which pairs are still alive
 	const activePairs = new Set(pairs);
 
-	console.log(`${chalk.cyan("[steady-messaging]")} Phase 2: Hold for ${durationSec}s (messaging every ${messageIntervalSec}s)`);
+	console.log(`${chalk.cyan("[steady-messaging]")} Phase 2: Hold for ${durationSec}s`);
+	console.log(`${chalk.cyan("[steady-messaging]")}   Each round: dApp→(${messageIntervalSec}s delay)→Wallet→dApp`);
 
-	while (performance.now() < holdEndTime) {
-		const now = performance.now();
+	while (performance.now() < holdEndTime && activePairs.size > 0) {
+		roundNumber++;
+		const roundStartTime = performance.now();
+		const roundLatencies: number[] = [];
 
-		// Time for a message exchange round?
-		if (now >= nextExchangeTime) {
-			const roundLatencies: number[] = [];
-
-			// Exchange messages with all active pairs in parallel
-			const exchangePromises = Array.from(activePairs).map(async (pair) => {
-				messageId++;
-				try {
-					const result = await pair.exchangeMessage(messageId);
-					if (result.success) {
-						roundLatencies.push(result.latencyMs);
-						successfulExchanges++;
-					} else {
-						failedExchanges++;
-						// If the exchange failed, the connection might be dead
-						if (result.error?.includes("not connected")) {
-							activePairs.delete(pair);
-							disconnects++;
-						}
-					}
-				} catch {
-					failedExchanges++;
-					activePairs.delete(pair);
-					disconnects++;
-				}
-				totalExchanges++;
-			});
-
-			await Promise.all(exchangePromises);
-
-			// Record this round's latencies
-			allLatencies.push(...roundLatencies);
-
-			// Record time-series data
-			if (roundLatencies.length > 0) {
-				const sorted = [...roundLatencies].sort((a, b) => a - b);
-				latencyOverTime.push({
-					timestampMs: Math.round(now - holdStartTime),
-					p50: sorted[Math.floor(sorted.length * 0.5)] ?? 0,
-					p99: sorted[Math.floor(sorted.length * 0.99)] ?? sorted[sorted.length - 1] ?? 0,
-					exchanges: roundLatencies.length,
+		// Exchange messages with all active pairs in parallel
+		// Each exchange includes the response delay (wallet user reviewing request)
+		const exchangePromises = Array.from(activePairs).map(async (pair) => {
+			messageId++;
+			try {
+				const result = await pair.exchangeMessage({
+					messageId,
+					responseDelayMs,
 				});
+				if (result.success) {
+					roundLatencies.push(result.latencyMs);
+					successfulExchanges++;
+				} else {
+					failedExchanges++;
+					if (result.error?.includes("not connected")) {
+						activePairs.delete(pair);
+						disconnects++;
+					}
+				}
+			} catch {
+				failedExchanges++;
+				activePairs.delete(pair);
+				disconnects++;
 			}
+			totalExchanges++;
+		});
 
-			nextExchangeTime = now + intervalMs;
+		await Promise.all(exchangePromises);
+
+		// Record this round's latencies
+		allLatencies.push(...roundLatencies);
+
+		// Record time-series data
+		if (roundLatencies.length > 0) {
+			const sorted = [...roundLatencies].sort((a, b) => a - b);
+			latencyOverTime.push({
+				timestampMs: Math.round(roundStartTime - holdStartTime),
+				p50: sorted[Math.floor(sorted.length * 0.5)] ?? 0,
+				p99: sorted[Math.floor(sorted.length * 0.99)] ?? sorted[sorted.length - 1] ?? 0,
+				exchanges: roundLatencies.length,
+			});
 		}
 
 		// Log progress every 30 seconds
+		const now = performance.now();
 		if (now - lastLogTime >= logIntervalMs) {
 			const elapsed = Math.round((now - holdStartTime) / 1000);
 			const remaining = Math.round((holdEndTime - now) / 1000);
 			const latestP99 = latencyOverTime[latencyOverTime.length - 1]?.p99 ?? 0;
 			console.log(
-				`${chalk.cyan("[steady-messaging]")}   ${elapsed}s elapsed, ${remaining}s remaining | ` +
+				`${chalk.cyan("[steady-messaging]")}   Round ${roundNumber}: ${elapsed}s elapsed, ${remaining}s remaining | ` +
 				`Active: ${activePairs.size}/${pairs.length} | ` +
-				`Exchanges: ${successfulExchanges}/${totalExchanges} | ` +
+				`Success: ${successfulExchanges}/${totalExchanges} | ` +
 				`P99: ${latestP99.toFixed(0)}ms`,
 			);
 			lastLogTime = now;
 		}
 
-		// Short sleep to avoid busy-waiting
-		await sleep(100);
+		// No additional delay between rounds - the response delay IS the pacing
 	}
 
 	console.log("");
