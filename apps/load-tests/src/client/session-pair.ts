@@ -13,8 +13,9 @@ export { MockKeyManager } from "./key-manager.js";
 // Simulates QR scan time. Session request sits in Centrifugo history during this delay.
 const WALLET_CONNECT_DELAY_MS = 5000;
 
-// Simulates user interaction time between messages.
-const MESSAGE_DELAY_MS = 1000;
+// Default delay before wallet responds (simulates user reviewing request).
+// Can be overridden per-exchange for steady-messaging scenario.
+const DEFAULT_RESPONSE_DELAY_MS = 1000;
 
 /**
  * Result of a message exchange (request + response round-trip).
@@ -41,6 +42,16 @@ export interface SessionPairResult {
 }
 
 /**
+ * Options for message exchange.
+ */
+export interface ExchangeMessageOptions {
+	/** Message ID for verification */
+	messageId: number;
+	/** Delay in ms before wallet responds (simulates user reviewing request). Default: 1000ms */
+	responseDelayMs?: number;
+}
+
+/**
  * A connected dApp + Wallet pair ready for messaging.
  */
 export interface SessionPair {
@@ -49,11 +60,13 @@ export interface SessionPair {
 	sessionId: string;
 
 	/**
-	 * Exchange a message: dApp sends request, wallet responds.
-	 * Includes a delay to simulate user interaction.
+	 * Exchange a message: dApp sends request, wallet waits (simulating user), then responds.
+	 * The delay simulates realistic user behavior (reviewing request before approving).
 	 * Returns the round-trip latency (excluding the artificial delay).
+	 *
+	 * @param options - Message ID and optional response delay
 	 */
-	exchangeMessage(messageId: number): Promise<MessageExchangeResult>;
+	exchangeMessage(options: ExchangeMessageOptions | number): Promise<MessageExchangeResult>;
 
 	/**
 	 * Disconnect both clients.
@@ -207,12 +220,25 @@ async function connectWallet(walletClient: WalletClient, sessionRequest: Session
 }
 
 /**
- * Create a message exchange function. Message ID is used for verification.
+ * Create a message exchange function.
+ *
+ * Flow:
+ * 1. dApp sends request
+ * 2. Wallet receives request
+ * 3. Wallet waits responseDelayMs (simulates user reviewing request)
+ * 4. Wallet sends response
+ * 5. dApp receives response
+ *
+ * Latency is measured as total round-trip time MINUS the artificial delay,
+ * so we get actual network/processing time.
  */
 function createMessageExchanger(dappClient: DappClient, walletClient: WalletClient): SessionPair["exchangeMessage"] {
-	return async (messageId: number): Promise<MessageExchangeResult> => {
-		// Simulate user interaction delay before sending
-		await sleep(MESSAGE_DELAY_MS);
+	return async (optionsOrId: ExchangeMessageOptions | number): Promise<MessageExchangeResult> => {
+		// Support both old (number) and new (options) API
+		const options: ExchangeMessageOptions =
+			typeof optionsOrId === "number" ? { messageId: optionsOrId } : optionsOrId;
+
+		const { messageId, responseDelayMs = DEFAULT_RESPONSE_DELAY_MS } = options;
 
 		const startTime = performance.now();
 
@@ -221,7 +247,7 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 			const requestPayload = { ...SAMPLE_REQUEST_PAYLOAD, id: messageId };
 			const responsePayload = { ...SAMPLE_RESPONSE_PAYLOAD, id: messageId };
 
-			// Set up wallet to receive message and respond
+			// Set up wallet to receive message, wait (simulating user), then respond
 			const walletReceivePromise = new Promise<void>((resolve, reject) => {
 				const timeout = setTimeout(() => {
 					reject(new Error(`Wallet did not receive message ${messageId} within 30s`));
@@ -230,6 +256,8 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 				walletClient.once("message", async () => {
 					clearTimeout(timeout);
 					try {
+						// Simulate user reviewing the request before responding
+						await sleep(responseDelayMs);
 						await walletClient.sendResponse(responsePayload);
 						resolve();
 					} catch (error) {
@@ -240,9 +268,10 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 
 			// Set up dApp to receive response
 			const dappReceivePromise = new Promise<number>((resolve, reject) => {
+				// Timeout needs to account for the response delay
 				const timeout = setTimeout(() => {
-					reject(new Error(`DApp did not receive response ${messageId} within 30s`));
-				}, 30000);
+					reject(new Error(`DApp did not receive response ${messageId} within timeout`));
+				}, 30000 + responseDelayMs);
 
 				dappClient.once("message", (msg: unknown) => {
 					clearTimeout(timeout);
@@ -258,7 +287,9 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 			// Wait for full round-trip
 			const [, receivedId] = await Promise.all([walletReceivePromise, dappReceivePromise]);
 
-			const latencyMs = performance.now() - startTime;
+			const totalTimeMs = performance.now() - startTime;
+			// Actual network latency = total time minus the artificial response delay
+			const latencyMs = totalTimeMs - responseDelayMs;
 
 			// Verify message ID matches
 			if (receivedId !== messageId) {
