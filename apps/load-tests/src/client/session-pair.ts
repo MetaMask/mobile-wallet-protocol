@@ -250,39 +250,53 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 			const requestPayload = { ...SAMPLE_REQUEST_PAYLOAD, id: messageId };
 			const responsePayload = { ...SAMPLE_RESPONSE_PAYLOAD, id: messageId };
 
-			// Set up wallet to receive message, wait (simulating user), then respond
-			const walletReceivePromise = new Promise<void>((resolve, reject) => {
-				const timeout = setTimeout(() => {
+		// Track if already resolved/rejected to prevent double-handling
+		let walletDone = false;
+		let dappDone = false;
+
+		// Set up wallet to receive message, wait (simulating user), then respond
+		const walletReceivePromise = new Promise<void>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				if (!walletDone) {
+					walletDone = true;
 					reject(new Error(`Wallet did not receive message ${messageId} within 30s`));
-				}, 30000);
+				}
+			}, 30000);
 
-				walletClient.once("message", async () => {
-					clearTimeout(timeout);
-					try {
-						// Simulate user reviewing the request before responding
-						await sleep(responseDelayMs);
-						await walletClient.sendResponse(responsePayload);
-						resolve();
-					} catch (error) {
-						reject(error);
-					}
-				});
+			walletClient.once("message", async () => {
+				if (walletDone) return; // Already timed out
+				clearTimeout(timeout);
+				walletDone = true;
+				try {
+					// Simulate user reviewing the request before responding
+					await sleep(responseDelayMs);
+					await walletClient.sendResponse(responsePayload);
+					resolve();
+				} catch (error) {
+					reject(error);
+				}
 			});
+		});
 
-			// Set up dApp to receive response
-			const dappReceivePromise = new Promise<number>((resolve, reject) => {
-				// Timeout needs to account for the response delay
-				const timeout = setTimeout(() => {
+		// Set up dApp to receive response
+		const dappReceivePromise = new Promise<number>((resolve, reject) => {
+			// Timeout needs to account for the response delay
+			const timeout = setTimeout(() => {
+				if (!dappDone) {
+					dappDone = true;
 					reject(new Error(`DApp did not receive response ${messageId} within timeout`));
-				}, 30000 + responseDelayMs);
+				}
+			}, 30000 + responseDelayMs);
 
-				dappClient.once("message", (msg: unknown) => {
-					clearTimeout(timeout);
-					// Extract message ID for verification
-					const receivedId = (msg as { id?: number })?.id ?? -1;
-					resolve(receivedId);
-				});
+			dappClient.once("message", (msg: unknown) => {
+				if (dappDone) return; // Already timed out
+				clearTimeout(timeout);
+				dappDone = true;
+				// Extract message ID for verification
+				const receivedId = (msg as { id?: number })?.id ?? -1;
+				resolve(receivedId);
 			});
+		});
 
 			// Send request from dApp
 			await dappClient.sendRequest(requestPayload);
