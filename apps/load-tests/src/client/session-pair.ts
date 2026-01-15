@@ -240,6 +240,9 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 
 		const { messageId, responseDelayMs = DEFAULT_RESPONSE_DELAY_MS } = options;
 
+		// Small delay to ensure event listeners are ready after handshake
+		await sleep(100);
+
 		const startTime = performance.now();
 
 		try {
