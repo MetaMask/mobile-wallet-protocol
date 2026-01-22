@@ -1,9 +1,13 @@
 #!/usr/bin/env node
+import { fork, type ChildProcess } from "node:child_process";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import { Command } from "commander";
 import { printResults } from "../output/formatter.js";
 import type { TestResults } from "../output/types.js";
 import { writeResults } from "../output/writer.js";
+import { aggregateScenarioResults, printWorkerSummary } from "../results/aggregate.js";
 import {
 	type AsyncDeliveryOptions,
 	type AsyncDeliveryResult,
@@ -16,7 +20,9 @@ import {
 	type SteadyMessagingOptions,
 	type SteadyMessagingResult,
 } from "../scenarios/index.js";
+import type { ScenarioName } from "../scenarios/types.js";
 import { calculateConnectTimeStats } from "../utils/stats.js";
+import { getWorkerCount, parseWorkersOption, type WorkerConfig, type WorkerMessage } from "./worker-types.js";
 
 interface CliOptions {
 	target: string;
@@ -29,6 +35,7 @@ interface CliOptions {
 	delay: string;
 	messageInterval: string;
 	output?: string;
+	workers?: string;
 }
 
 /** High-fidelity scenarios use connection pairs (dApp + Wallet) */
@@ -189,6 +196,118 @@ function buildTestResults(scenarioName: string, options: AnyOptions, result: Any
 	return testResults;
 }
 
+/**
+ * Run the scenario with multiple worker processes.
+ * Each worker handles a fraction of the total connections.
+ */
+async function runWithWorkers(
+	scenario: ScenarioName,
+	options: ScenarioOptions,
+	workerCount: number,
+): Promise<ScenarioResult> {
+	const connectionsPerWorker = Math.ceil(options.connections / workerCount);
+	const rampUpPerWorker = options.rampUpSec; // Each worker uses full ramp-up time
+
+	console.log(chalk.cyan(`[multi-worker] Spawning ${workerCount} workers, ${connectionsPerWorker} connections each`));
+	console.log("");
+
+	// Get the path to the worker script
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = path.dirname(__filename);
+	const workerPath = path.join(__dirname, "worker.js");
+
+	// Spawn workers
+	const workers: ChildProcess[] = [];
+	const results: Array<{ workerId: number; result: ScenarioResult }> = [];
+	const errors: Array<{ workerId: number; error: string }> = [];
+
+	const workerPromises = Array.from({ length: workerCount }, (_, i) => {
+		return new Promise<void>((resolve) => {
+			const worker = fork(workerPath, [], {
+				stdio: ["pipe", "pipe", "pipe", "ipc"],
+			});
+			workers.push(worker);
+
+			// Handle messages from worker
+			worker.on("message", (message: WorkerMessage) => {
+				if (message.type === "result") {
+					results.push({ workerId: message.workerId, result: message.result });
+					console.log(chalk.green(`[multi-worker] Worker ${message.workerId} completed`));
+					resolve();
+				} else if (message.type === "error") {
+					errors.push({ workerId: message.workerId, error: message.error });
+					console.log(chalk.red(`[multi-worker] Worker ${message.workerId} error: ${message.error}`));
+					resolve();
+				}
+			});
+
+			// Handle worker exit
+			worker.on("exit", (code) => {
+				if (code !== 0 && code !== null) {
+					const errorMsg = `Worker ${i} exited with code ${code}`;
+					if (!errors.find((e) => e.workerId === i)) {
+						errors.push({ workerId: i, error: errorMsg });
+					}
+					console.log(chalk.red(`[multi-worker] ${errorMsg}`));
+					resolve();
+				}
+			});
+
+			// Handle worker errors
+			worker.on("error", (err) => {
+				errors.push({ workerId: i, error: err.message });
+				console.log(chalk.red(`[multi-worker] Worker ${i} spawn error: ${err.message}`));
+				resolve();
+			});
+
+			// Calculate connections for this worker (last worker may get fewer)
+			const isLastWorker = i === workerCount - 1;
+			const remainingConnections = options.connections - connectionsPerWorker * i;
+			const workerConnections = isLastWorker
+				? Math.min(connectionsPerWorker, remainingConnections)
+				: connectionsPerWorker;
+
+			// Send configuration to worker
+			const config: WorkerConfig = {
+				workerId: i,
+				totalWorkers: workerCount,
+				scenario,
+				options: {
+					...options,
+					connections: workerConnections,
+					rampUpSec: rampUpPerWorker,
+				},
+			};
+			worker.send(config);
+		});
+	});
+
+	// Wait for all workers to complete
+	await Promise.all(workerPromises);
+
+	// Check for errors
+	if (errors.length > 0) {
+		console.log("");
+		console.log(chalk.red(`[multi-worker] ${errors.length} worker(s) failed:`));
+		for (const err of errors) {
+			console.log(chalk.red(`  Worker ${err.workerId}: ${err.error}`));
+		}
+	}
+
+	if (results.length === 0) {
+		throw new Error("All workers failed, no results to aggregate");
+	}
+
+	// Aggregate results
+	console.log("");
+	console.log(chalk.cyan(`[multi-worker] Aggregating results from ${results.length} worker(s)...`));
+
+	const aggregated = aggregateScenarioResults(results);
+	printWorkerSummary(aggregated);
+
+	return aggregated.result;
+}
+
 const program = new Command();
 
 program
@@ -205,6 +324,7 @@ program
 	.option("--delay <seconds>", "Seconds to wait before reconnect (async-delivery only)", "30")
 	.option("--message-interval <seconds>", "Seconds between message exchanges (steady-messaging only)", "5")
 	.option("--output <path>", "Path to write JSON results")
+	.option("--workers <count>", "Number of worker processes (or 'auto' for CPU count). Distributes load across workers.")
 	.action(async (cli: CliOptions) => {
 		if (!isValidScenarioName(cli.scenario)) {
 			console.error(chalk.red(`[load-test] Unknown scenario: ${cli.scenario}`));
@@ -254,9 +374,28 @@ program
 		if (cli.output) {
 			console.log(`  Output:      ${chalk.dim(cli.output)}`);
 		}
+
+		// Parse workers option
+		let workerCount = 1;
+		if (cli.workers) {
+			const workerOption = parseWorkersOption(cli.workers);
+			workerCount = getWorkerCount(workerOption);
+			console.log(`  Workers:     ${chalk.cyan(workerCount)} ${cli.workers === "auto" ? "(auto-detected)" : ""}`);
+		}
 		console.log("");
 
-		const result = await runScenario(cli.scenario, options);
+		// Run the scenario (single or multi-worker)
+		let result: AnyResult;
+		if (workerCount > 1) {
+			// Multi-worker mode - only supports low-fidelity scenarios for now
+			if (isHighFidelityScenario(cli.scenario)) {
+				console.log(chalk.yellow("[multi-worker] Warning: Multi-worker mode is experimental for high-fidelity scenarios"));
+			}
+			result = await runWithWorkers(cli.scenario as ScenarioName, options, workerCount);
+		} else {
+			result = await runScenario(cli.scenario, options);
+		}
+
 		const testResults = buildTestResults(cli.scenario, options, result);
 
 		console.log("");

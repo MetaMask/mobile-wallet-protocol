@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import chalk from "chalk";
 import type { TestResults } from "../output/types.js";
+import type { ScenarioResult } from "../scenarios/types.js";
 import { calculateConnectTimeStats } from "../utils/stats.js";
 
 /**
@@ -205,3 +206,150 @@ export function printAggregatedResults(agg: AggregatedResults): void {
 	console.log(chalk.gray("─".repeat(60)));
 }
 
+
+/**
+ * Aggregated scenario result from multiple workers.
+ * This combines raw ScenarioResult objects in memory (not from files).
+ */
+export interface AggregatedScenarioResult {
+	/** Number of workers that contributed to this result */
+	workerCount: number;
+	/** Combined result */
+	result: ScenarioResult;
+	/** Per-worker breakdown for debugging */
+	perWorker: Array<{
+		workerId: number;
+		connections: number;
+		successful: number;
+		failed: number;
+	}>;
+}
+
+/**
+ * Aggregate ScenarioResult objects from multiple workers in memory.
+ * This is used by the coordinator to combine results from forked workers.
+ */
+export function aggregateScenarioResults(
+	results: Array<{ workerId: number; result: ScenarioResult }>,
+): AggregatedScenarioResult {
+	if (results.length === 0) {
+		throw new Error("No results to aggregate");
+	}
+
+	// Initialize aggregated values
+	let totalAttempted = 0;
+	let totalSuccessful = 0;
+	let totalFailed = 0;
+	let totalImmediate = 0;
+	let totalRecovered = 0;
+	let maxTimeMs = 0; // Use max time since workers run in parallel
+	let totalRetries = 0;
+	const allLatencies: number[] = [];
+
+	// Steady-state specific
+	let totalCurrentDisconnects = 0;
+	let maxPeakDisconnects = 0;
+	let totalReconnects = 0;
+	let hasSteadyState = false;
+	let totalRampUpTimeMs = 0;
+	let totalHoldDurationMs = 0;
+
+	const perWorker: AggregatedScenarioResult["perWorker"] = [];
+
+	for (const { workerId, result } of results) {
+		const conn = result.connections;
+
+		totalAttempted += conn.attempted;
+		totalSuccessful += conn.successful;
+		totalFailed += conn.failed;
+		totalImmediate += conn.immediate;
+		totalRecovered += conn.recovered;
+
+		// Use max time since workers run in parallel
+		maxTimeMs = Math.max(maxTimeMs, result.timing.totalTimeMs);
+
+		totalRetries += result.retries.totalRetries;
+
+		// Collect all latencies for combined percentile calculation
+		allLatencies.push(...result.timing.connectionLatencies);
+
+		// Handle steady-state specific fields
+		if (result.steadyState) {
+			hasSteadyState = true;
+			totalCurrentDisconnects += result.steadyState.currentDisconnects;
+			maxPeakDisconnects = Math.max(maxPeakDisconnects, result.steadyState.peakDisconnects);
+			totalReconnects += result.steadyState.reconnectsDuringHold;
+			totalRampUpTimeMs = Math.max(totalRampUpTimeMs, result.steadyState.rampUpTimeMs);
+			totalHoldDurationMs = Math.max(totalHoldDurationMs, result.steadyState.holdDurationMs);
+		}
+
+		perWorker.push({
+			workerId,
+			connections: conn.attempted,
+			successful: conn.successful,
+			failed: conn.failed,
+		});
+	}
+
+	// Calculate combined stability
+	const connectionStability =
+		totalSuccessful > 0
+			? ((totalSuccessful - totalCurrentDisconnects) / totalSuccessful) * 100
+			: 0;
+
+	// Build aggregated result
+	const aggregatedResult: ScenarioResult = {
+		connections: {
+			attempted: totalAttempted,
+			successful: totalSuccessful,
+			failed: totalFailed,
+			immediate: totalImmediate,
+			recovered: totalRecovered,
+		},
+		timing: {
+			totalTimeMs: maxTimeMs,
+			connectionLatencies: allLatencies,
+		},
+		retries: {
+			totalRetries,
+		},
+	};
+
+	// Add steady-state fields if present
+	if (hasSteadyState) {
+		aggregatedResult.steadyState = {
+			rampUpTimeMs: totalRampUpTimeMs,
+			holdDurationMs: totalHoldDurationMs,
+			currentDisconnects: totalCurrentDisconnects,
+			peakDisconnects: maxPeakDisconnects,
+			reconnectsDuringHold: totalReconnects,
+			connectionStability,
+		};
+	}
+
+	return {
+		workerCount: results.length,
+		result: aggregatedResult,
+		perWorker,
+	};
+}
+
+/**
+ * Print a summary of worker results.
+ */
+export function printWorkerSummary(agg: AggregatedScenarioResult): void {
+	console.log("");
+	console.log(chalk.bold.cyan("Worker Summary:"));
+	console.log(chalk.dim("  WORKER   CONNECTIONS   SUCCESSFUL   FAILED"));
+	for (const w of agg.perWorker) {
+		const failedColor = w.failed > 0 ? chalk.red : chalk.green;
+		console.log(
+			`  ${String(w.workerId).padEnd(8)} ${String(w.connections).padEnd(13)} ${chalk.green(String(w.successful).padEnd(12))} ${failedColor(w.failed)}`,
+		);
+	}
+	console.log(chalk.dim(`  ${"─".repeat(45)}`));
+	console.log(
+		`  ${"Total".padEnd(8)} ${chalk.cyan(String(agg.result.connections.attempted).padEnd(13))} ${chalk.green(String(agg.result.connections.successful).padEnd(12))} ${agg.result.connections.failed > 0 ? chalk.red(agg.result.connections.failed) : chalk.green(0)}`,
+	);
+	console.log("");
+}
