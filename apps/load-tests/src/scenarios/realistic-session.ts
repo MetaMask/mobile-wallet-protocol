@@ -33,25 +33,25 @@ import type { RealisticSessionOptions, RealisticSessionResult } from "./types.js
  *
  * TIMING:
  * - Wallet connect delay: 5 seconds (simulates user scanning QR)
- * - Message delay: 1 second between messages (simulates user interaction)
+ * - Message delay: 10 seconds between messages (simulates user interaction)
  *
  * FLOW FOR EACH SESSION:
  * 1. Create dApp client, initiate connection, emit session_request
  * 2. Wait 5 seconds (QR scan time - session_request sits in history)
  * 3. Create Wallet client, connect (retrieves session_request from history)
  * 4. Handshake completes
- * 5. Exchange --messages-per-session request/response pairs (with delays)
- * 6. Disconnect
+ * 5. Exchange --messages-per-session request/response pairs (with 10s delays)
+ * 6. Hold connection (do NOT disconnect - simulates real user session)
  *
  * PACING:
  * Session pairs are STARTED at a rate determined by --ramp-up.
  * For example, 1000 pairs over 60s = ~17 pair starts/second.
  * Each pair runs independently (parallel execution).
  *
- * With a 5s wallet delay + ~2s handshake + 3 messages * 1s = ~10s per session:
- * - Session #1 starts at t=0, finishes ~t=10s
- * - Session #1000 starts at t=60s, finishes ~t=70s
- * - Peak concurrency: ~170 sessions in flight
+ * With a 5s wallet delay + ~2s handshake + 3 messages * 10s = ~37s per session:
+ * - Session #1 starts at t=0, messages complete ~t=37s, then HOLDS
+ * - Session #1000 starts at t=60s, messages complete ~t=97s, then HOLDS
+ * - All sessions remain connected after message exchange
  */
 export async function runRealisticSession(
 	options: RealisticSessionOptions,
@@ -65,7 +65,7 @@ export async function runRealisticSession(
 		`${chalk.cyan("[realistic-session]")} Messages per pair: ${chalk.bold(messagesPerSession)}`,
 	);
 	console.log(
-		`${chalk.cyan("[realistic-session]")} Timing: 5s wallet delay, 1s between messages`,
+		`${chalk.cyan("[realistic-session]")} Timing: 5s wallet delay, 10s between messages`,
 	);
 	if (rampUpSec > 0) {
 		console.log(
@@ -168,16 +168,13 @@ export async function runRealisticSession(
 		console.log("");
 	}
 
-	// Disconnect all pairs
-	console.log(`${chalk.cyan("[realistic-session]")} Disconnecting sessions...`);
-	const disconnectPromises = activePairs.map(async (pair) => {
-		try {
-			await pair.disconnect();
-		} catch {
-			// Ignore disconnect errors
-		}
-	});
-	await Promise.all(disconnectPromises);
+	// Hold connections (do NOT disconnect - simulates real user sessions staying connected)
+	console.log(`${chalk.cyan("[realistic-session]")} All sessions established. Holding ${activePairs.length} connections...`);
+	console.log(`${chalk.cyan("[realistic-session]")} (Connections will remain open - test complete)`);
+	
+	// Note: We intentionally do NOT disconnect here.
+	// In a real scenario, users keep their sessions open.
+	// The connections will be cleaned up when the process exits.
 
 	return {
 		connections: {

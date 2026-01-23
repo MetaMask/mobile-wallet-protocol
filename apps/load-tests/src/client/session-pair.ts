@@ -15,7 +15,7 @@ const WALLET_CONNECT_DELAY_MS = 5000;
 
 // Default delay before wallet responds (simulates user reviewing request).
 // Can be overridden per-exchange for steady-messaging scenario.
-const DEFAULT_RESPONSE_DELAY_MS = 1000;
+const DEFAULT_RESPONSE_DELAY_MS = 10000;
 
 /**
  * Result of a message exchange (request + response round-trip).
@@ -262,9 +262,9 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 				const timeout = setTimeout(() => {
 					if (!walletDone) {
 						walletDone = true;
-						reject(new Error(`Wallet did not receive message ${messageId} within 30s`));
+						reject(new Error(`Wallet did not receive message ${messageId} within 60s`));
 					}
-				}, 30000);
+				}, 60000);
 
 				walletClient.once("message", async () => {
 					if (walletDone) return; // Already timed out
@@ -289,7 +289,7 @@ function createMessageExchanger(dappClient: DappClient, walletClient: WalletClie
 						dappDone = true;
 						reject(new Error(`DApp did not receive response ${messageId} within timeout`));
 					}
-				}, 30000 + responseDelayMs);
+				}, 60000 + responseDelayMs);
 
 				dappClient.once("message", (msg: unknown) => {
 					if (dappDone) return; // Already timed out
