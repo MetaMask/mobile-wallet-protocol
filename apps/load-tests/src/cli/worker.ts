@@ -37,8 +37,8 @@ async function handleConfig(config: WorkerConfig): Promise<void> {
 
 	// Only suppress if we're in a worker (not the main process)
 	if (process.send) {
-		console.log = () => {};
-		console.error = () => {};
+		console.log = () => { };
+		console.error = () => { };
 	}
 
 	try {

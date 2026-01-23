@@ -65,7 +65,7 @@ export interface SshConfig {
 
 // Hardcoded droplet settings
 export const DROPLET_REGION = "nyc1";
-export const DROPLET_SIZE = "s-2vcpu-2gb"; // 2GB RAM needed for yarn install
+export const DROPLET_SIZE = "s-4vcpu-8gb"; // 4 cores, 8GB RAM for baseline testing
 export const DROPLET_IMAGE = "ubuntu-24-04-x64";
-export const DROPLET_HOURLY_COST = 0.018; // USD per hour for s-2vcpu-2gb
+export const DROPLET_HOURLY_COST = 0.071; // USD per hour for s-4vcpu-8gb
 

@@ -6,7 +6,8 @@
 	"scripts": {
 		"start": "tsx src/cli/run.ts",
 		"infra": "tsx src/cli/infra.ts",
-		"results": "tsx src/cli/results.ts"
+		"results": "tsx src/cli/results.ts",
+		"diagnose": "tsx src/cli/diagnose.ts"
 	},
 	"dependencies": {
 		"@metamask/mobile-wallet-protocol-core": "workspace:^",

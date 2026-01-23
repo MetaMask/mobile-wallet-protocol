@@ -206,7 +206,6 @@ export function printAggregatedResults(agg: AggregatedResults): void {
 	console.log(chalk.gray("─".repeat(60)));
 }
 
-
 /**
  * Aggregated scenario result from multiple workers.
  * This combines raw ScenarioResult objects in memory (not from files).
@@ -250,7 +249,7 @@ export function aggregateScenarioResults(
 	let totalCurrentDisconnects = 0;
 	let maxPeakDisconnects = 0;
 	let totalReconnects = 0;
-	let hasSteadyState = false;
+	let hassteadyState = false;
 	let totalRampUpTimeMs = 0;
 	let totalHoldDurationMs = 0;
 
@@ -275,7 +274,7 @@ export function aggregateScenarioResults(
 
 		// Handle steady-state specific fields
 		if (result.steadyState) {
-			hasSteadyState = true;
+			hassteadyState = true;
 			totalCurrentDisconnects += result.steadyState.currentDisconnects;
 			maxPeakDisconnects = Math.max(maxPeakDisconnects, result.steadyState.peakDisconnects);
 			totalReconnects += result.steadyState.reconnectsDuringHold;
@@ -316,7 +315,7 @@ export function aggregateScenarioResults(
 	};
 
 	// Add steady-state fields if present
-	if (hasSteadyState) {
+	if (hassteadyState) {
 		aggregatedResult.steadyState = {
 			rampUpTimeMs: totalRampUpTimeMs,
 			holdDurationMs: totalHoldDurationMs,
