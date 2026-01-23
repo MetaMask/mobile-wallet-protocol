@@ -11,6 +11,7 @@ import {
 	stopProgressBar,
 	updateProgressBar,
 } from "../utils/progress.js";
+import { sleep } from "../utils/timing.js";
 import type { RealisticSessionOptions, RealisticSessionResult } from "./types.js";
 
 /**
@@ -41,7 +42,8 @@ import type { RealisticSessionOptions, RealisticSessionResult } from "./types.js
  * 3. Create Wallet client, connect (retrieves session_request from history)
  * 4. Handshake completes
  * 5. Exchange --messages-per-session request/response pairs (with 10s delays)
- * 6. Hold connection (do NOT disconnect - simulates real user session)
+ * 6. Hold connection for remaining --duration time
+ * 7. Gracefully disconnect all sessions
  *
  * PACING:
  * Session pairs are STARTED at a rate determined by --ramp-up.
@@ -168,13 +170,46 @@ export async function runRealisticSession(
 		console.log("");
 	}
 
-	// Hold connections (do NOT disconnect - simulates real user sessions staying connected)
-	console.log(`${chalk.cyan("[realistic-session]")} All sessions established. Holding ${activePairs.length} connections...`);
-	console.log(`${chalk.cyan("[realistic-session]")} (Connections will remain open - test complete)`);
+	// Hold connections for the remaining duration
+	const elapsedSec = totalTime / 1000;
+	const holdDurationSec = Math.max(0, options.durationSec - elapsedSec);
 	
-	// Note: We intentionally do NOT disconnect here.
-	// In a real scenario, users keep their sessions open.
-	// The connections will be cleaned up when the process exits.
+	if (holdDurationSec > 0) {
+		console.log(`${chalk.cyan("[realistic-session]")} Holding ${activePairs.length} connections for ${Math.round(holdDurationSec)}s...`);
+		
+		// Log progress every 30 seconds during hold
+		const holdStartTime = performance.now();
+		const logInterval = 30000; // 30 seconds
+		let nextLogTime = logInterval;
+		
+		while (performance.now() - holdStartTime < holdDurationSec * 1000) {
+			await sleep(1000);
+			const elapsed = performance.now() - holdStartTime;
+			if (elapsed >= nextLogTime) {
+				const remaining = Math.round((holdDurationSec * 1000 - elapsed) / 1000);
+				console.log(`${chalk.cyan("[realistic-session]")} [${Math.round(elapsed / 1000)}s] Holding ${activePairs.length} connections... ${remaining}s remaining`);
+				nextLogTime += logInterval;
+			}
+		}
+		
+		console.log(`${chalk.cyan("[realistic-session]")} Hold complete.`);
+	} else {
+		console.log(`${chalk.cyan("[realistic-session]")} All sessions established with ${activePairs.length} connections.`);
+	}
+
+	// Gracefully disconnect all pairs
+	console.log(`${chalk.cyan("[realistic-session]")} Disconnecting ${activePairs.length} sessions...`);
+	const disconnectPromises = activePairs.map(async (pair) => {
+		try {
+			await pair.disconnect();
+		} catch {
+			// Ignore disconnect errors - connection may already be closed
+		}
+	});
+	await Promise.all(disconnectPromises);
+	console.log(`${chalk.cyan("[realistic-session]")} All sessions disconnected.`);
+
+	const finalTime = performance.now() - startTime;
 
 	return {
 		connections: {
@@ -186,7 +221,7 @@ export async function runRealisticSession(
 			recovered: 0,
 		},
 		timing: {
-			totalTimeMs: totalTime,
+			totalTimeMs: finalTime,
 			connectionLatencies: [], // Not used for this scenario
 		},
 		retries: {
