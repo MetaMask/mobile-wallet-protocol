@@ -198,15 +198,33 @@ export async function runRealisticSession(
 	}
 
 	// Gracefully disconnect all pairs
-	console.log(`${chalk.cyan("[realistic-session]")} Disconnecting ${activePairs.length} sessions...`);
-	const disconnectPromises = activePairs.map(async (pair) => {
-		try {
-			await pair.disconnect();
-		} catch {
-			// Ignore disconnect errors - connection may already be closed
-		}
-	});
-	await Promise.all(disconnectPromises);
+	const { rampDownSec } = options;
+	if (rampDownSec > 0 && activePairs.length > 0) {
+		// Paced disconnects - spread over rampDownSec
+		console.log(`${chalk.cyan("[realistic-session]")} Disconnecting ${activePairs.length} sessions over ${rampDownSec}s...`);
+		await runWithPacing({
+			count: activePairs.length,
+			rampUpSec: rampDownSec,
+			onStart: async (index) => {
+				try {
+					await activePairs[index].disconnect();
+				} catch {
+					// Ignore disconnect errors - connection may already be closed
+				}
+			},
+		});
+	} else {
+		// Instant disconnects (original behavior)
+		console.log(`${chalk.cyan("[realistic-session]")} Disconnecting ${activePairs.length} sessions...`);
+		const disconnectPromises = activePairs.map(async (pair) => {
+			try {
+				await pair.disconnect();
+			} catch {
+				// Ignore disconnect errors - connection may already be closed
+			}
+		});
+		await Promise.all(disconnectPromises);
+	}
 	console.log(`${chalk.cyan("[realistic-session]")} All sessions disconnected.`);
 
 	const finalTime = performance.now() - startTime;

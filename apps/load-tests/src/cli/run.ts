@@ -31,6 +31,7 @@ interface CliOptions {
 	connectionPairs: string;
 	duration: string;
 	rampUp: string;
+	rampDown: string;
 	messagesPerSession: string;
 	delay: string;
 	messageInterval: string;
@@ -61,6 +62,7 @@ function parseRealisticSessionOptions(cli: CliOptions): RealisticSessionOptions 
 	return {
 		...parseOptions(cli),
 		messagesPerSession: Number.parseInt(cli.messagesPerSession, 10),
+		rampDownSec: Number.parseInt(cli.rampDown, 10),
 	};
 }
 
@@ -320,6 +322,7 @@ program
 	.option("--connection-pairs <number>", "Number of connection pairs (high-fidelity scenarios)", "100")
 	.option("--duration <seconds>", "Test duration in seconds (for steady-state, steady-messaging)", "60")
 	.option("--ramp-up <seconds>", "Seconds to ramp up to full connection count", "10")
+	.option("--ramp-down <seconds>", "Seconds to spread disconnects over (realistic-session only)", "0")
 	.option("--messages-per-session <number>", "Messages to exchange per session (realistic-session only)", "3")
 	.option("--delay <seconds>", "Seconds to wait before reconnect (async-delivery only)", "30")
 	.option("--message-interval <seconds>", "Seconds between message exchanges (steady-messaging only)", "5")
@@ -363,6 +366,10 @@ program
 		console.log(`  Ramp-up:     ${options.rampUpSec}s`);
 		if (cli.scenario === "realistic-session") {
 			console.log(`  Messages:    ${(options as RealisticSessionOptions).messagesPerSession} per pair`);
+			const rampDown = (options as RealisticSessionOptions).rampDownSec;
+			if (rampDown > 0) {
+				console.log(`  Ramp-down:   ${rampDown}s`);
+			}
 		}
 		if (cli.scenario === "async-delivery") {
 			console.log(`  Delay:       ${(options as AsyncDeliveryOptions).delaySec}s`);

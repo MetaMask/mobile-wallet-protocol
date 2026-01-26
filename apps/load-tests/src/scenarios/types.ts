@@ -15,6 +15,8 @@ export interface ScenarioOptions {
 export interface RealisticSessionOptions extends ScenarioOptions {
 	/** Number of request/response message pairs to exchange per session */
 	messagesPerSession: number;
+	/** Seconds to spread disconnects over (0 = all at once) */
+	rampDownSec: number;
 }
 
 /**
