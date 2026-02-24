@@ -57,7 +57,7 @@ t.describe("UntrustedConnectionHandler", () => {
 		};
 		mockOffer = {
 			channelId: "secure-channel",
-			publicKeyB64: "cHVia2V5",
+			publicKeyB64: "Aqurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6ur",
 			otp: "123456",
 			deadline: Date.now() + 1000,
 		};
@@ -157,7 +157,7 @@ t.describe("UntrustedConnectionHandler", () => {
 
 	t.test("should throw if handshake offer is missing OTP details", async () => {
 		// Mock offer without OTP
-		const invalidOffer = { channelId: "secure-channel", publicKeyB64: "pubkey" };
+		const invalidOffer = { channelId: "secure-channel", publicKeyB64: "Aqurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6ur" };
 		context.once = t.vi.fn((event, callback) => {
 			if (event === "handshake_offer_received") {
 				setTimeout(() => callback(invalidOffer), 10);

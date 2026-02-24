@@ -56,8 +56,8 @@ t.describe("TrustedConnectionHandler", () => {
 		};
 		mockOffer = {
 			channelId: "secure-channel",
-			publicKeyB64: "cHVia2V5",
-		}; // No OTP for trusted flow
+			publicKeyB64: "Aqurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6ur",
+		};
 	});
 
 	t.test("should execute the full trusted flow successfully", async () => {
