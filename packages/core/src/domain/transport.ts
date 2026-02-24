@@ -40,7 +40,7 @@ export interface ITransport {
 	 * @param event The name of the event to listen for.
 	 * @param handler The callback function to execute.
 	 */
-	on(event: "message", handler: (payload: { channel: string; data: string }) => void): void;
+	on(event: "message", handler: (payload: { channel: string; data: string; confirmNonce?: () => Promise<void> }) => void): void;
 	on(event: "connecting" | "connected" | "disconnected", handler: () => void): void;
 	on(event: "error", handler: (error: Error) => void): void;
 

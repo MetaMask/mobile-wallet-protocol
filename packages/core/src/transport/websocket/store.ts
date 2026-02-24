@@ -42,10 +42,24 @@ export class WebSocketTransportStorage {
 	async getNextNonce(channel: string): Promise<number> {
 		const key = this.getNonceKey(channel);
 		const value = await this.kvstore.get(key);
-		const currentNonce = value ? parseInt(value, 10) : 0;
+		let currentNonce = value ? parseInt(value, 10) : 0;
+		if (Number.isNaN(currentNonce)) currentNonce = 0;
 		const nextNonce = currentNonce + 1;
 		await this.kvstore.set(key, nextNonce.toString());
 		return nextNonce;
+	}
+
+	/**
+	 * Confirms a received nonce after the message has been successfully processed
+	 * (e.g., decrypted). Only updates if the nonce is higher than the current value.
+	 */
+	async confirmNonce(channel: string, clientId: string, nonce: number): Promise<void> {
+		const latestNonces = await this.getLatestNonces(channel);
+		const current = latestNonces.get(clientId) || 0;
+		if (nonce > current) {
+			latestNonces.set(clientId, nonce);
+			await this.setLatestNonces(channel, latestNonces);
+		}
 	}
 
 	/**

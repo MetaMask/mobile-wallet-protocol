@@ -51,6 +51,14 @@ type TransportState = "disconnected" | "connecting" | "connected";
 
 /** The maximum number of messages to fetch from history upon a new subscription. */
 const HISTORY_FETCH_LIMIT = 50;
+/**
+ * Maximum allowed nonce jump from a known sender. Messages with a nonce that
+ * jumps more than this from the last confirmed nonce are rejected as suspicious.
+ * Does not apply to the first message from a new sender (baseline is 0).
+ * Set to 2x the history fetch limit to allow for missed messages while still
+ * catching poisoning attempts.
+ */
+const MAX_NONCE_JUMP = 100;
 /** The maximum number of retry attempts for publishing a message. */
 const MAX_RETRY_ATTEMPTS = 5;
 /** The base delay in milliseconds for exponential backoff between publish retries. */
@@ -229,6 +237,11 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 	/**
 	 * Parses an incoming raw message, checks for duplicates, and emits it.
+	 *
+	 * The nonce is checked for deduplication but NOT persisted here. The emitted
+	 * payload includes a `confirmNonce` callback that the consumer (BaseClient)
+	 * must call after successful decryption. This prevents an attacker from
+	 * poisoning the nonce tracker with high-nonce messages that fail decryption.
 	 */
 	private async _handleIncomingMessage(channel: string, rawData: string): Promise<void> {
 		try {
@@ -246,13 +259,21 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			const latestNonces = await this.storage.getLatestNonces(channel);
 			const latestNonce = latestNonces.get(message.clientId) || 0;
 
-			if (message.nonce > latestNonce) {
-				// This is a new message, update the latest nonce and emit the message.
-				latestNonces.set(message.clientId, message.nonce);
-				await this.storage.setLatestNonces(channel, latestNonces);
-				this.emit("message", { channel, data: message.payload });
+			if (message.nonce <= latestNonce) {
+				// Duplicate message, ignore it.
+				return;
 			}
-			// If message.nonce <= latestNonce, it's a duplicate and we ignore it.
+
+			// Reject suspiciously large nonce jumps (but allow first message from a new sender).
+			if (latestNonce > 0 && message.nonce - latestNonce > MAX_NONCE_JUMP) {
+				this.emit("error", new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, `Nonce jump too large: ${latestNonce} -> ${message.nonce}`));
+				return;
+			}
+
+			// Emit with a confirmation callback. The nonce is NOT saved until
+			// the consumer calls confirmNonce (typically after successful decryption).
+			const confirmNonce = () => this.storage.confirmNonce(channel, message.clientId, message.nonce);
+			this.emit("message", { channel, data: message.payload, confirmNonce });
 		} catch (error) {
 			this.emit("error", new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, `Failed to parse incoming message: ${error instanceof Error ? error.message : "Unknown error"}`));
 		}
