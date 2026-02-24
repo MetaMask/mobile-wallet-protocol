@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** `SessionStore` constructor is now private; use `await SessionStore.create(kvstore)` ([#68](https://github.com/MetaMask/mobile-wallet-protocol/pull/68))
+
+### Fixed
+
+- Validate incoming public keys as compressed secp256k1 keys at all ingestion points ([#68](https://github.com/MetaMask/mobile-wallet-protocol/pull/68))
+- Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#68](https://github.com/MetaMask/mobile-wallet-protocol/pull/68))
+- Prevent nonce poisoning by deferring nonce persistence until after successful decryption ([#68](https://github.com/MetaMask/mobile-wallet-protocol/pull/68))
+- Guard against `NaN` in session expiry timestamps and nonce storage ([#68](https://github.com/MetaMask/mobile-wallet-protocol/pull/68))
+
 ## [0.3.1]
 
 ### Fixed
