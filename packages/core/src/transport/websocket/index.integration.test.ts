@@ -189,7 +189,7 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 			const received = await messagePromise;
 
 			// The subscriber transport should unwrap the envelope and emit the original payload.
-			t.expect(received).toEqual({ channel, data: payload });
+			t.expect(received).toMatchObject({ channel, data: payload });
 
 			await publisher.disconnect();
 		});
@@ -431,9 +431,10 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 			const messagePayload = "dedup-test-message";
 			let messageCount = 0;
 
-			subscriber.on("message", ({ data }) => {
+			subscriber.on("message", ({ data, confirmNonce }) => {
 				if (data === messagePayload) {
 					messageCount++;
+					confirmNonce?.();
 				}
 			});
 
@@ -461,9 +462,10 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 			});
 			transports.push(newSubscriber);
 
-			newSubscriber.on("message", ({ data }) => {
+			newSubscriber.on("message", ({ data, confirmNonce }) => {
 				if (data === messagePayload) {
 					messageCount++;
+					confirmNonce?.();
 				}
 			});
 
@@ -787,11 +789,12 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 
 			const messagePromises: Promise<any>[] = [];
 			for (let i = 0; i < 3; i++) {
-				messagePromises.push(waitFor(transport, "message"));
+				const p = waitFor(transport, "message").then((msg: any) => msg.confirmNonce?.());
+				messagePromises.push(p);
 				await publisher.publish(channel, `message-${i}`);
 			}
 
-			// Wait for all messages to be received
+			// Wait for all messages to be received and nonces confirmed
 			await Promise.all(messagePromises);
 
 			// Verify storage has accumulated data

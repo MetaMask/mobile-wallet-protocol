@@ -166,11 +166,12 @@ t.describe("BaseClient", () => {
 	});
 
 	t.test("disconnect should clear transport, delete session, and emit event", async () => {
+		const otherKeyPair = new KeyManager().generateKeyPair();
 		const session: Session = {
 			id: "session-to-disconnect",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: otherKeyPair.publicKey,
 			expiresAt: Date.now() + 60000,
 		};
 
