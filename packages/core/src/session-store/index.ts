@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
@@ -32,10 +33,20 @@ export class SessionStore implements ISessionStore {
 	private static readonly MASTER_LIST_KEY = "sessions:master-list";
 
 	private readonly kvstore: IKVStore;
+	private readonly mutex = new Mutex();
 
-	constructor(kvstore: IKVStore) {
+	/**
+	 * Creates a new SessionStore instance with a clean state.
+	 * Runs garbage collection to remove any expired sessions before returning.
+	 */
+	static async create(kvstore: IKVStore): Promise<SessionStore> {
+		const store = new SessionStore(kvstore);
+		await store.garbageCollect();
+		return store;
+	}
+
+	private constructor(kvstore: IKVStore) {
 		this.kvstore = kvstore;
-		this.garbageCollect(); // Run garbage collection once on startup
 	}
 
 	/**
@@ -172,23 +183,29 @@ export class SessionStore implements ISessionStore {
 
 	/**
 	 * Adds a session ID to the master list.
+	 * Protected by a mutex to prevent concurrent read/modify/write corruption.
 	 * @param id - The ID of the session to add.
 	 */
 	private async addToMasterList(id: string): Promise<void> {
-		const list = await this.getMasterList();
-		if (!list.includes(id)) {
-			list.push(id);
-			await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(list));
-		}
+		await this.mutex.runExclusive(async () => {
+			const list = await this.getMasterList();
+			if (!list.includes(id)) {
+				list.push(id);
+				await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(list));
+			}
+		});
 	}
 
 	/**
 	 * Removes a session ID from the master list.
+	 * Protected by a mutex to prevent concurrent read/modify/write corruption.
 	 * @param id - The ID of the session to remove.
 	 */
 	private async removeFromMasterList(id: string): Promise<void> {
-		const list = await this.getMasterList();
-		const filtered = list.filter((sessionId) => sessionId !== id);
-		await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(filtered));
+		await this.mutex.runExclusive(async () => {
+			const list = await this.getMasterList();
+			const filtered = list.filter((sessionId) => sessionId !== id);
+			await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(filtered));
+		});
 	}
 }

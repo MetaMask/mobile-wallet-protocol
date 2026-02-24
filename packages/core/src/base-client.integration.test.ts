@@ -97,8 +97,8 @@ t.describe("BaseClient", () => {
 		const kvstoreA = new InMemoryKVStore();
 		const kvstoreB = new InMemoryKVStore();
 
-		sessionStoreA = new SessionStore(kvstoreA);
-		sessionStoreB = new SessionStore(kvstoreB);
+		sessionStoreA = await SessionStore.create(kvstoreA);
+		sessionStoreB = await SessionStore.create(kvstoreB);
 
 		const transportA = await WebSocketTransport.create({ url: WEBSOCKET_URL, kvstore: kvstoreA, websocket: WebSocket });
 		const transportB = await WebSocketTransport.create({ url: WEBSOCKET_URL, kvstore: kvstoreB, websocket: WebSocket });
@@ -276,7 +276,7 @@ t.describe("BaseClient", () => {
 		// 3. Create a third client to publish garbage data
 		const kvstoreC = new InMemoryKVStore();
 		const transportC = await WebSocketTransport.create({ url: WEBSOCKET_URL, kvstore: kvstoreC, websocket: WebSocket });
-		const clientC = new TestClient(transportC, new KeyManager(), new SessionStore(kvstoreC));
+		const clientC = new TestClient(transportC, new KeyManager(), await SessionStore.create(kvstoreC));
 		await clientC["transport"].connect();
 
 		// 4. Listen for error events on client B

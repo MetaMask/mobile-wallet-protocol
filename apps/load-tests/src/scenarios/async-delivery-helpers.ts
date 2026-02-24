@@ -32,8 +32,8 @@ export interface AsyncDeliverySession {
 export async function setupAsyncDeliverySession(url: string, timeoutMs = 60000): Promise<AsyncDeliverySession | null> {
 	const dappKvStore = new InMemoryKVStore();
 	const walletKvStore = new InMemoryKVStore();
-	const dappSessionStore = new SessionStore(dappKvStore);
-	const walletSessionStore = new SessionStore(walletKvStore);
+	const dappSessionStore = await SessionStore.create(dappKvStore);
+	const walletSessionStore = await SessionStore.create(walletKvStore);
 	const keyManager = new MockKeyManager();
 
 	let dappClient: DappClient | null = null;
@@ -93,7 +93,7 @@ export async function setupAsyncDeliverySession(url: string, timeoutMs = 60000):
 export async function testAsyncRecovery(session: AsyncDeliverySession, timeoutMs = 30000): Promise<AsyncDeliveryTestResult> {
 	const { sessionId, url, dappClient, walletKvStore } = session;
 	const keyManager = new MockKeyManager();
-	const walletSessionStore = new SessionStore(walletKvStore);
+	const walletSessionStore = await SessionStore.create(walletKvStore);
 
 	let walletClient: WalletClient | null = null;
 	let timeoutHandle: ReturnType<typeof setTimeout> | null = null;

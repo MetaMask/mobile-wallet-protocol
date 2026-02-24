@@ -47,7 +47,7 @@ t.describe("WalletClient Integration Tests", () => {
 
 	t.beforeEach(async () => {
 		const walletKvStore = new InMemoryKVStore();
-		const walletSessionStore = new SessionStore(walletKvStore);
+		const walletSessionStore = await SessionStore.create(walletKvStore);
 		const walletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
 		walletClient = new WalletClient({ transport: walletTransport, sessionstore: walletSessionStore, keymanager: new KeyManager() });
 
@@ -73,7 +73,7 @@ t.describe("WalletClient Integration Tests", () => {
 
 		// Create fresh client for second test to avoid state issues
 		const walletKvStore2 = new InMemoryKVStore();
-		const walletSessionStore2 = new SessionStore(walletKvStore2);
+		const walletSessionStore2 = await SessionStore.create(walletKvStore2);
 		const walletTransport2 = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore2, websocket: WebSocket });
 		const walletClient2 = new WalletClient({ transport: walletTransport2, sessionstore: walletSessionStore2, keymanager: new KeyManager() });
 

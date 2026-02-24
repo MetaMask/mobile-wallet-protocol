@@ -2764,6 +2764,7 @@ __metadata:
     "@metamask/auto-changelog": ^5.0.2
     "@types/uuid": ^10.0.0
     "@types/ws": ^8.18.1
+    async-mutex: ^0.5.0
     centrifuge: ^5.3.5
     eciesjs: ^0.4.15
     eventemitter3: ^5.0.1
@@ -5418,6 +5419,15 @@ __metadata:
   version: 1.0.1
   resolution: "async-limiter@npm:1.0.1"
   checksum: 2b849695b465d93ad44c116220dee29a5aeb63adac16c1088983c339b0de57d76e82533e8e364a93a9f997f28bbfc6a92948cefc120652bd07f3b59f8d75cf2b
+  languageName: node
+  linkType: hard
+
+"async-mutex@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "async-mutex@npm:0.5.0"
+  dependencies:
+    tslib: ^2.4.0
+  checksum: be1587f4875f3bb15e34e9fcce82eac2966daef4432c8d0046e61947fb9a1b95405284601bc7ce4869319249bc07c75100880191db6af11d1498931ac2a2f9ea
   languageName: node
   linkType: hard
 

@@ -41,9 +41,9 @@ t.describe("SessionStore", () => {
 		expiresAt,
 	});
 
-	t.beforeEach(() => {
+	t.beforeEach(async () => {
 		kvstore = new MockKVStore();
-		sessionstore = new SessionStore(kvstore);
+		sessionstore = await SessionStore.create(kvstore);
 	});
 
 	t.test("should set and get a session", async () => {
@@ -133,6 +133,61 @@ t.describe("SessionStore", () => {
 
 		const retrieved = await sessionstore.get("nan-get");
 		t.expect(retrieved).toBeNull();
+	});
+
+	t.test("should complete GC before the first public method returns", async () => {
+		// Seed the kvstore with one expired session BEFORE creating the store
+		const expiredKey = "session:gc-test-expired";
+		const expiredData = {
+			id: "gc-test-expired",
+			channel: "test-channel",
+			keyPair: { publicKeyB64: Buffer.from(new Uint8Array(33).fill(1)).toString("base64"), privateKeyB64: Buffer.from(new Uint8Array(32).fill(1)).toString("base64") },
+			theirPublicKeyB64: Buffer.from(new Uint8Array(33).fill(2)).toString("base64"),
+			expiresAt: Date.now() - 10000,
+		};
+		await kvstore.set(expiredKey, JSON.stringify(expiredData));
+		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["gc-test-expired"]));
+
+		// Create a new store - GC should run and clean up the expired session
+		const store = await SessionStore.create(kvstore);
+
+		// The first public call should wait for GC to finish
+		const list = await store.list();
+		t.expect(list).toHaveLength(0);
+
+		// The expired session should be gone from kvstore
+		const raw = await kvstore.get(expiredKey);
+		t.expect(raw).toBeNull();
+	});
+
+	t.test("should not lose entries when multiple sessions are set concurrently", async () => {
+		const sessions = Array.from({ length: 10 }, (_, i) => createSession(`concurrent-${i}`, Date.now() + 10000));
+
+		// Set all sessions concurrently
+		await Promise.all(sessions.map((s) => sessionstore.set(s)));
+
+		const list = await sessionstore.list();
+		t.expect(list).toHaveLength(10);
+		t.expect(list.map((s) => s.id).sort()).toEqual(sessions.map((s) => s.id).sort());
+	});
+
+	t.test("should not corrupt master list when set and delete run concurrently", async () => {
+		// First, set a few sessions sequentially
+		const s1 = createSession("mix-1", Date.now() + 10000);
+		const s2 = createSession("mix-2", Date.now() + 10000);
+		const s3 = createSession("mix-3", Date.now() + 10000);
+		await sessionstore.set(s1);
+		await sessionstore.set(s2);
+		await sessionstore.set(s3);
+
+		// Now concurrently add new sessions and delete existing ones
+		const s4 = createSession("mix-4", Date.now() + 10000);
+		const s5 = createSession("mix-5", Date.now() + 10000);
+		await Promise.all([sessionstore.set(s4), sessionstore.delete("mix-1"), sessionstore.set(s5), sessionstore.delete("mix-2")]);
+
+		const list = await sessionstore.list();
+		const ids = list.map((s) => s.id).sort();
+		t.expect(ids).toEqual(["mix-3", "mix-4", "mix-5"]);
 	});
 
 	t.test("should garbage collect expired sessions", async () => {

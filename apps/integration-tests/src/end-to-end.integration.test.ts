@@ -90,8 +90,8 @@ t.describe("E2E Integration Test", () => {
 	t.beforeEach(async () => {
 		dappKvStore = new InMemoryKVStore();
 		walletKvStore = new InMemoryKVStore();
-		dappSessionStore = new SessionStore(dappKvStore);
-		walletSessionStore = new SessionStore(walletKvStore);
+		dappSessionStore = await SessionStore.create(dappKvStore);
+		walletSessionStore = await SessionStore.create(walletKvStore);
 
 		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
 		const walletTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: walletKvStore, websocket: WebSocket });
@@ -247,8 +247,8 @@ t.describe("E2E Integration Test via Proxy", () => {
 
 		dappKvStore = new InMemoryKVStore();
 		walletKvStore = new InMemoryKVStore();
-		dappSessionStore = new SessionStore(dappKvStore);
-		walletSessionStore = new SessionStore(walletKvStore);
+		dappSessionStore = await SessionStore.create(dappKvStore);
+		walletSessionStore = await SessionStore.create(walletKvStore);
 
 		// DApp connects directly, Wallet connects through proxy
 		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
