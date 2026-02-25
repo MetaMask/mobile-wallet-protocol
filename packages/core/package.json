@@ -25,6 +25,7 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"dependencies": {
+		"async-mutex": "^0.5.0",
 		"centrifuge": "^5.3.5",
 		"eventemitter3": "^5.0.1",
 		"uuid": "^11.1.0"

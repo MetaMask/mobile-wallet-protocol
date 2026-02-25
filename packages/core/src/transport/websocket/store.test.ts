@@ -116,6 +116,52 @@ t.describe("WebSocketTransportStorage", () => {
 			t.expect(nextNonce).toBe(6);
 			t.expect(await kvstore.get(newStorage.getNonceKey(channel))).toBe("6");
 		});
+
+		t.test("should recover from NaN nonce value in storage", async () => {
+			const channel = "session:nan-channel";
+
+			// Corrupt the stored nonce value
+			await kvstore.set(storage.getNonceKey(channel), "not-a-number");
+
+			const nonce = await storage.getNextNonce(channel);
+			t.expect(nonce).toBe(1);
+			t.expect(await kvstore.get(storage.getNonceKey(channel))).toBe("1");
+		});
+	});
+
+	t.describe("Nonce Confirmation", () => {
+		let storage: WebSocketTransportStorage;
+
+		t.beforeEach(async () => {
+			storage = await WebSocketTransportStorage.create(kvstore);
+		});
+
+		t.test("should save nonce via confirmNonce", async () => {
+			const channel = "session:confirm-channel";
+			await storage.confirmNonce(channel, "sender-1", 5);
+
+			const nonces = await storage.getLatestNonces(channel);
+			t.expect(nonces.get("sender-1")).toBe(5);
+		});
+
+		t.test("should not regress nonce on confirmNonce with lower value", async () => {
+			const channel = "session:confirm-channel";
+			await storage.confirmNonce(channel, "sender-1", 10);
+			await storage.confirmNonce(channel, "sender-1", 3);
+
+			const nonces = await storage.getLatestNonces(channel);
+			t.expect(nonces.get("sender-1")).toBe(10);
+		});
+
+		t.test("should track nonces independently per sender", async () => {
+			const channel = "session:confirm-channel";
+			await storage.confirmNonce(channel, "sender-1", 5);
+			await storage.confirmNonce(channel, "sender-2", 8);
+
+			const nonces = await storage.getLatestNonces(channel);
+			t.expect(nonces.get("sender-1")).toBe(5);
+			t.expect(nonces.get("sender-2")).toBe(8);
+		});
 	});
 
 	t.describe("Latest Nonces Management", () => {

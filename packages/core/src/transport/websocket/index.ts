@@ -51,6 +51,17 @@ type TransportState = "disconnected" | "connecting" | "connected";
 
 /** The maximum number of messages to fetch from history upon a new subscription. */
 const HISTORY_FETCH_LIMIT = 50;
+/**
+ * Maximum allowed nonce jump from a known sender. Messages with a nonce that
+ * jumps more than this from the last confirmed nonce are rejected as suspicious.
+ * Does not apply to the first message from a new sender (baseline is 0).
+ *
+ * Trade-off: if the receiver goes offline and misses more than this many
+ * messages from a known sender, legitimate messages will be permanently
+ * blocked. In practice this is unlikely given low message rates in MWP
+ * sessions, but worth noting.
+ */
+const MAX_NONCE_JUMP = 100;
 /** The maximum number of retry attempts for publishing a message. */
 const MAX_RETRY_ATTEMPTS = 5;
 /** The base delay in milliseconds for exponential backoff between publish retries. */
@@ -65,6 +76,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	private readonly centrifuge: Centrifuge | SharedCentrifuge;
 	private readonly storage: WebSocketTransportStorage;
 	private readonly queue: QueuedItem[] = [];
+	private readonly pendingNonces = new Map<string, Set<number>>();
 	private isProcessingQueue = false;
 	private state: TransportState = "disconnected";
 
@@ -214,6 +226,9 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 	 */
 	public async clear(channel: string): Promise<void> {
 		await this.storage.clear(channel);
+		for (const key of this.pendingNonces.keys()) {
+			if (key.startsWith(`${channel}:`)) this.pendingNonces.delete(key);
+		}
 		const sub = this.centrifuge.getSubscription(channel);
 		if (sub) this.centrifuge.removeSubscription(sub as Subscription);
 	}
@@ -229,6 +244,11 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 
 	/**
 	 * Parses an incoming raw message, checks for duplicates, and emits it.
+	 *
+	 * The nonce is checked for deduplication but NOT persisted here. The emitted
+	 * payload includes a `confirmNonce` callback that the consumer (BaseClient)
+	 * must call after successful decryption. This prevents an attacker from
+	 * poisoning the nonce tracker with high-nonce messages that fail decryption.
 	 */
 	private async _handleIncomingMessage(channel: string, rawData: string): Promise<void> {
 		try {
@@ -246,13 +266,40 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			const latestNonces = await this.storage.getLatestNonces(channel);
 			const latestNonce = latestNonces.get(message.clientId) || 0;
 
-			if (message.nonce > latestNonce) {
-				// This is a new message, update the latest nonce and emit the message.
-				latestNonces.set(message.clientId, message.nonce);
-				await this.storage.setLatestNonces(channel, latestNonces);
-				this.emit("message", { channel, data: message.payload });
+			if (message.nonce <= latestNonce) {
+				return;
 			}
-			// If message.nonce <= latestNonce, it's a duplicate and we ignore it.
+
+			// Reject suspiciously large nonce jumps (but allow first message from a new sender).
+			if (latestNonce > 0 && message.nonce - latestNonce > MAX_NONCE_JUMP) {
+				this.emit("error", new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, `Nonce jump too large: ${latestNonce} -> ${message.nonce}`));
+				return;
+			}
+
+			// Guard against duplicate processing between emit and confirm.
+			// Without this, a message arriving via both live publication and
+			// _fetchHistory could pass the storage-based dedup check twice
+			// because the nonce hasn't been confirmed yet.
+			const pendingKey = `${channel}:${message.clientId}`;
+			const pending = this.pendingNonces.get(pendingKey);
+			if (pending?.has(message.nonce)) {
+				return;
+			}
+			if (!pending) {
+				this.pendingNonces.set(pendingKey, new Set([message.nonce]));
+			} else {
+				pending.add(message.nonce);
+			}
+
+			const confirmNonce = async () => {
+				await this.storage.confirmNonce(channel, message.clientId, message.nonce);
+				const p = this.pendingNonces.get(pendingKey);
+				if (p) {
+					p.delete(message.nonce);
+					if (p.size === 0) this.pendingNonces.delete(pendingKey);
+				}
+			};
+			this.emit("message", { channel, data: message.payload, confirmNonce });
 		} catch (error) {
 			this.emit("error", new TransportError(ErrorCode.TRANSPORT_PARSE_FAILED, `Failed to parse incoming message: ${error instanceof Error ? error.message : "Unknown error"}`));
 		}
