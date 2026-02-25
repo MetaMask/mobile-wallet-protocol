@@ -45,7 +45,10 @@ export abstract class BaseClient extends EventEmitter {
 
 		this.transport.on("message", async (payload) => {
 			if (!this.session?.keyPair.privateKey) return;
-			if (await this.checkSessionExpiry()) return;
+			if (await this.checkSessionExpiry()) {
+				this.emit("error", new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired"));
+				return;
+			}
 			const message = await this.decryptMessage(payload.data);
 			if (message) {
 				// Confirm the nonce only after successful decryption to prevent
@@ -153,14 +156,12 @@ export abstract class BaseClient extends EventEmitter {
 	}
 
 	/**
-	 * Checks if the current session has expired. If so, disconnects and
-	 * emits an error event so observers know why the session ended.
+	 * Checks if the current session has expired. If so, triggers a disconnect.
 	 *
 	 * @returns true if the session was expired (and cleanup was triggered), false otherwise.
 	 */
 	private async checkSessionExpiry(): Promise<boolean> {
 		if (!this.session || this.session.expiresAt >= Date.now()) return false;
-		this.emit("error", new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired"));
 		await this.disconnect();
 		return true;
 	}
