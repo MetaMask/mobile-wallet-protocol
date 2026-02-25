@@ -27,8 +27,8 @@ export default function BasicDemo() {
 				const dappKvStore = new LocalStorageKVStore("dapp-");
 				const walletKvStore = new LocalStorageKVStore("wallet-");
 
-				const dappSessionStore = new SessionStore(dappKvStore);
-				const walletSessionStore = new SessionStore(walletKvStore);
+				const dappSessionStore = await SessionStore.create(dappKvStore);
+				const walletSessionStore = await SessionStore.create(walletKvStore);
 
 				// Create transports (in a real app, these would be separate instances)
 				const dappTransport = await WebSocketTransport.create({

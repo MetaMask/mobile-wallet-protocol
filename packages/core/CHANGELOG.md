@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Add `validatePeerKey` method to `IKeyManager` interface for peer public key validation at handshake and resume time ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- **BREAKING:** `SessionStore` constructor is now private; use `await SessionStore.create(kvstore)` ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 
 ### Fixed
 
+- Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
 ## [0.3.1]

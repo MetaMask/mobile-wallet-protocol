@@ -62,7 +62,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 				setIsInitializing(true);
 
 				const kvstore = new AsyncStorageKVStore("wallet-");
-				const sessionstore = new SessionStore(kvstore);
+				const sessionstore = await SessionStore.create(kvstore);
 
 				manager = new SessionManager(sessionstore, RELAY_URL);
 				setSessionManager(manager);

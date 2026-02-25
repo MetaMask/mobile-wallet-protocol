@@ -48,7 +48,7 @@ t.describe("DappClient Integration Tests", () => {
 
 	t.beforeEach(async () => {
 		const dappKvStore = new InMemoryKVStore();
-		const dappSessionStore = new SessionStore(dappKvStore);
+		const dappSessionStore = await SessionStore.create(dappKvStore);
 		const dappTransport = await WebSocketTransport.create({ url: RELAY_URL, kvstore: dappKvStore, websocket: WebSocket });
 		dappClient = new DappClient({ transport: dappTransport, sessionstore: dappSessionStore, keymanager: new KeyManager() });
 	});
