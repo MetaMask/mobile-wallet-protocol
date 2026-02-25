@@ -1,4 +1,12 @@
-import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest, validateSecp256k1PublicKey } from "@metamask/mobile-wallet-protocol-core";
+import {
+	ClientState,
+	ErrorCode,
+	type HandshakeOfferPayload,
+	type Session,
+	SessionError,
+	type SessionRequest,
+	validateSecp256k1PublicKey,
+} from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
 import { HANDSHAKE_TIMEOUT } from "../client";
 import type { IConnectionHandler } from "../domain/connection-handler";
