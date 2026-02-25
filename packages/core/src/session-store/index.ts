@@ -2,6 +2,7 @@ import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
 import type { ISessionStore } from "../domain/session-store";
+import { validateSecp256k1PublicKey } from "../utils/validate-public-key";
 
 /**
  * Serializable representation of a Session where Uint8Array keys are converted to base64 strings.
@@ -42,8 +43,8 @@ export class SessionStore implements ISessionStore {
 	 * @param session - The session to set.
 	 */
 	async set(session: Session): Promise<void> {
-		// Check if session is expired
-		if (session.expiresAt < Date.now()) {
+		// Check if session is expired (also rejects NaN)
+		if (Number.isNaN(session.expiresAt) || session.expiresAt < Date.now()) {
 			throw new SessionError(ErrorCode.SESSION_SAVE_FAILED, "Cannot save expired session");
 		}
 
@@ -80,14 +81,16 @@ export class SessionStore implements ISessionStore {
 		try {
 			const data: SerializableSession = JSON.parse(raw);
 
-			// Check if session is expired
-			if (data.expiresAt < Date.now()) {
-				// Session expired, clean it up
+			// Check if session is expired (handles NaN, non-number, and past timestamps)
+			if (typeof data.expiresAt !== "number" || !(data.expiresAt >= Date.now())) {
 				await this.delete(id);
 				return null;
 			}
 
 			// Deserialize back to Session
+			const theirPublicKey = new Uint8Array(Buffer.from(data.theirPublicKeyB64, "base64"));
+			validateSecp256k1PublicKey(theirPublicKey);
+
 			const session: Session = {
 				id: data.id,
 				channel: data.channel,
@@ -95,7 +98,7 @@ export class SessionStore implements ISessionStore {
 					publicKey: new Uint8Array(Buffer.from(data.keyPair.publicKeyB64, "base64")),
 					privateKey: new Uint8Array(Buffer.from(data.keyPair.privateKeyB64, "base64")),
 				},
-				theirPublicKey: new Uint8Array(Buffer.from(data.theirPublicKeyB64, "base64")),
+				theirPublicKey,
 				expiresAt: data.expiresAt,
 			};
 

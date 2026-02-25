@@ -1,4 +1,4 @@
-import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest, validateSecp256k1PublicKey } from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
 import { HANDSHAKE_TIMEOUT } from "../client";
 import type { IConnectionHandler } from "../domain/connection-handler";
@@ -82,10 +82,12 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * @returns The complete session object ready for use
 	 */
 	private _createFinalSession(session: Session, offer: HandshakeOfferPayload): Session {
+		const theirPublicKey = base64ToBytes(offer.publicKeyB64);
+		validateSecp256k1PublicKey(theirPublicKey);
 		return {
 			...session,
 			channel: `session:${offer.channelId}`,
-			theirPublicKey: base64ToBytes(offer.publicKeyB64),
+			theirPublicKey,
 		};
 	}
 

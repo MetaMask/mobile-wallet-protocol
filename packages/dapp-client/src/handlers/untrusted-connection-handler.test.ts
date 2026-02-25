@@ -57,7 +57,7 @@ t.describe("UntrustedConnectionHandler", () => {
 		};
 		mockOffer = {
 			channelId: "secure-channel",
-			publicKeyB64: "cHVia2V5",
+			publicKeyB64: "Aqurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6ur",
 			otp: "123456",
 			deadline: Date.now() + 1000,
 		};

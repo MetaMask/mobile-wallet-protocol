@@ -114,6 +114,27 @@ t.describe("SessionStore", () => {
 		t.expect(raw).toBeNull();
 	});
 
+	t.test("should reject a session with NaN expiresAt on set", async () => {
+		const session = createSession("nan-set", Number.NaN);
+		await t.expect(sessionstore.set(session)).rejects.toThrow("Cannot save expired session");
+	});
+
+	t.test("should treat a session with NaN expiresAt as expired on get", async () => {
+		const key = "session:nan-get";
+		const data = {
+			id: "nan-get",
+			channel: "test-channel",
+			keyPair: { publicKeyB64: Buffer.from(new Uint8Array(33).fill(1)).toString("base64"), privateKeyB64: Buffer.from(new Uint8Array(32).fill(1)).toString("base64") },
+			theirPublicKeyB64: Buffer.from(new Uint8Array(33).fill(2)).toString("base64"),
+			expiresAt: "not-a-number",
+		};
+		await kvstore.set(key, JSON.stringify(data));
+		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["nan-get"]));
+
+		const retrieved = await sessionstore.get("nan-get");
+		t.expect(retrieved).toBeNull();
+	});
+
 	t.test("should garbage collect expired sessions", async () => {
 		const valid = createSession("valid", Date.now() + 10000);
 		const expired = createSession("expired", Date.now() - 10000);

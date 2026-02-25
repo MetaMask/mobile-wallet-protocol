@@ -15,6 +15,7 @@ export enum ErrorCode {
 
 	// Crypto errors
 	DECRYPTION_FAILED = "DECRYPTION_FAILED",
+	INVALID_KEY = "INVALID_KEY",
 
 	// Handshake errors
 	REQUEST_EXPIRED = "REQUEST_EXPIRED",
