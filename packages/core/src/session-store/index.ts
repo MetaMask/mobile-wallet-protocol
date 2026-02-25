@@ -1,3 +1,4 @@
+import { Mutex } from "async-mutex";
 import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
@@ -31,10 +32,20 @@ export class SessionStore implements ISessionStore {
 	private static readonly MASTER_LIST_KEY = "sessions:master-list";
 
 	private readonly kvstore: IKVStore;
+	private readonly mutex = new Mutex();
 
-	constructor(kvstore: IKVStore) {
+	/**
+	 * Creates a new SessionStore instance and runs initial garbage collection.
+	 * Use this instead of the constructor to ensure GC completes before use.
+	 */
+	static async create(kvstore: IKVStore): Promise<SessionStore> {
+		const store = new SessionStore(kvstore);
+		await store.garbageCollect();
+		return store;
+	}
+
+	private constructor(kvstore: IKVStore) {
 		this.kvstore = kvstore;
-		this.garbageCollect(); // Run garbage collection once on startup
 	}
 
 	/**
@@ -169,11 +180,13 @@ export class SessionStore implements ISessionStore {
 	 * @param id - The ID of the session to add.
 	 */
 	private async addToMasterList(id: string): Promise<void> {
-		const list = await this.getMasterList();
-		if (!list.includes(id)) {
-			list.push(id);
-			await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(list));
-		}
+		await this.mutex.runExclusive(async () => {
+			const list = await this.getMasterList();
+			if (!list.includes(id)) {
+				list.push(id);
+				await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(list));
+			}
+		});
 	}
 
 	/**
@@ -181,8 +194,10 @@ export class SessionStore implements ISessionStore {
 	 * @param id - The ID of the session to remove.
 	 */
 	private async removeFromMasterList(id: string): Promise<void> {
-		const list = await this.getMasterList();
-		const filtered = list.filter((sessionId) => sessionId !== id);
-		await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(filtered));
+		await this.mutex.runExclusive(async () => {
+			const list = await this.getMasterList();
+			const filtered = list.filter((sessionId) => sessionId !== id);
+			await this.kvstore.set(SessionStore.MASTER_LIST_KEY, JSON.stringify(filtered));
+		});
 	}
 }

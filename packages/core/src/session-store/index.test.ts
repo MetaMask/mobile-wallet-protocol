@@ -41,9 +41,9 @@ t.describe("SessionStore", () => {
 		expiresAt,
 	});
 
-	t.beforeEach(() => {
+	t.beforeEach(async () => {
 		kvstore = new MockKVStore();
-		sessionstore = new SessionStore(kvstore);
+		sessionstore = await SessionStore.create(kvstore);
 	});
 
 	t.test("should set and get a session", async () => {
@@ -135,25 +135,47 @@ t.describe("SessionStore", () => {
 		t.expect(retrieved).toBeNull();
 	});
 
-	t.test("should garbage collect expired sessions", async () => {
-		const valid = createSession("valid", Date.now() + 10000);
-		const expired = createSession("expired", Date.now() - 10000);
+	t.test("should complete GC before the first public method returns", async () => {
+		const freshKvstore = new MockKVStore();
+		const validSession = createSession("valid", Date.now() + 10000);
+		const expiredSession = createSession("expired", Date.now() - 10000);
 
-		// Manually set sessions in the kvstore
-		await sessionstore.set(valid);
-		// Manually setting an expired session by bypassing the `set` method's check
-		const expiredKey = `session:${expired.id}`;
-		await kvstore.set(expiredKey, JSON.stringify(expired));
-		await (kvstore as MockKVStore)["store"].set("sessions:master-list", JSON.stringify(["valid", "expired"]));
+		// Seed store with one valid and one expired session
+		await freshKvstore.set(
+			"session:valid",
+			JSON.stringify({
+				...validSession,
+				keyPair: { publicKeyB64: Buffer.from(validSession.keyPair.publicKey).toString("base64"), privateKeyB64: Buffer.from(validSession.keyPair.privateKey).toString("base64") },
+				theirPublicKeyB64: Buffer.from(validSession.theirPublicKey).toString("base64"),
+			}),
+		);
+		await freshKvstore.set(
+			"session:expired",
+			JSON.stringify({
+				...expiredSession,
+				keyPair: {
+					publicKeyB64: Buffer.from(expiredSession.keyPair.publicKey).toString("base64"),
+					privateKeyB64: Buffer.from(expiredSession.keyPair.privateKey).toString("base64"),
+				},
+				theirPublicKeyB64: Buffer.from(expiredSession.theirPublicKey).toString("base64"),
+			}),
+		);
+		await freshKvstore.set("sessions:master-list", JSON.stringify(["valid", "expired"]));
 
-		// Manually trigger garbage collection
-		await (sessionstore as any).garbageCollect();
-
-		const list = await sessionstore.list();
+		const store = await SessionStore.create(freshKvstore);
+		const list = await store.list();
 		t.expect(list).toHaveLength(1);
 		t.expect(list[0].id).toBe("valid");
+	});
 
-		const rawExpired = await kvstore.get(expiredKey);
-		t.expect(rawExpired).toBeNull();
+	t.test("should not lose entries when multiple sessions are set concurrently", async () => {
+		const promises = [];
+		for (let i = 0; i < 10; i++) {
+			promises.push(sessionstore.set(createSession(`concurrent-${i}`, Date.now() + 10000)));
+		}
+		await Promise.all(promises);
+
+		const list = await sessionstore.list();
+		t.expect(list).toHaveLength(10);
 	});
 });

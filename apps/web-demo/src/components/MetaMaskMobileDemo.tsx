@@ -178,7 +178,7 @@ export default function MetaMaskMobileDemo() {
 			addDappLog("system", "Creating dApp client...");
 
 			const dappKvStore = new LocalStorageKVStore("metamask-mobile-demo-dapp/");
-			const sessionStore = new SessionStore(dappKvStore);
+			const sessionStore = await SessionStore.create(dappKvStore);
 			setDappSessionStore(sessionStore);
 
 			const dappTransport = await WebSocketTransport.create({

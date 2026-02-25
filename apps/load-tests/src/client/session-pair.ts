@@ -93,8 +93,8 @@ export async function createSessionPair(options: CreateSessionPairOptions): Prom
 	// Create isolated stores for each client
 	const dappKvStore = new InMemoryKVStore();
 	const walletKvStore = new InMemoryKVStore();
-	const dappSessionStore = new SessionStore(dappKvStore);
-	const walletSessionStore = new SessionStore(walletKvStore);
+	const dappSessionStore = await SessionStore.create(dappKvStore);
+	const walletSessionStore = await SessionStore.create(walletKvStore);
 
 	// Use MockKeyManager - no real crypto (see key-manager.ts for rationale)
 	const keyManager = new MockKeyManager();

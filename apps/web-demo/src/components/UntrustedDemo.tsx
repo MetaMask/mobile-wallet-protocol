@@ -177,7 +177,7 @@ export default function UntrustedDemo() {
 			addDappLog("system", "Creating dApp client...");
 
 			const dappKvStore = new LocalStorageKVStore("untrusted-demo-dapp-");
-			const dappSessionStore = new SessionStore(dappKvStore);
+			const dappSessionStore = await SessionStore.create(dappKvStore);
 
 			const dappTransport = await WebSocketTransport.create({
 				url: RELAY_URL,
@@ -350,7 +350,7 @@ export default function UntrustedDemo() {
 			addWalletLog("system", "Creating wallet client...");
 
 			const walletKvStore = new LocalStorageKVStore("untrusted-demo-wallet-");
-			const walletSessionStore = new SessionStore(walletKvStore);
+			const walletSessionStore = await SessionStore.create(walletKvStore);
 
 			const walletTransport = await WebSocketTransport.create({
 				url: RELAY_URL,
