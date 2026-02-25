@@ -170,7 +170,11 @@ t.describe("BaseClient", () => {
 			id: "session-to-disconnect",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() + 60000,
 		};
 
@@ -198,7 +202,11 @@ t.describe("BaseClient", () => {
 			id: "expired-session",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() - 1000, // Expired 1 second ago
 		};
 
@@ -220,7 +228,11 @@ t.describe("BaseClient", () => {
 			id: "expired-resume-session",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() + 60000, // Valid session
 		};
 
