@@ -1248,12 +1248,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ecies/ciphers@npm:^0.2.3":
-  version: 0.2.4
-  resolution: "@ecies/ciphers@npm:0.2.4"
+"@ecies/ciphers@npm:^0.2.5":
+  version: 0.2.5
+  resolution: "@ecies/ciphers@npm:0.2.5"
   peerDependencies:
     "@noble/ciphers": ^1.0.0
-  checksum: 6300075ffce01765ad0ddcc26ed6150301cd448bc79b7a046cbd659c4bd6e3a05f207df2a09396cdf529bcc6ab921b26cb50483703c57f80f2d8898c369284f3
+  checksum: 33aa89b8633e66cf5f0fbc18e461e4b152261bd7d30658a213ebb86beb7ae657d64defa7c4483e1c5c82f5935241958210d44d39efab7e4f09bbfa4e76323ad7
   languageName: node
   linkType: hard
 
@@ -2765,7 +2765,7 @@ __metadata:
     "@types/uuid": ^10.0.0
     "@types/ws": ^8.18.1
     centrifuge: ^5.3.5
-    eciesjs: ^0.4.15
+    eciesjs: 0.4.17
     eventemitter3: ^5.0.1
     prettier: ^3.3.3
     tsup: ^8.5.0
@@ -2799,7 +2799,7 @@ __metadata:
     "@metamask/mobile-wallet-protocol-wallet-client": "workspace:^"
     "@types/ws": ^8.18.1
     centrifuge: ^5.3.5
-    eciesjs: ^0.4.15
+    eciesjs: 0.4.17
     toxiproxy-node-client: ^4.0.0
     vitest: ^3.2.4
     ws: ^8.18.3
@@ -2822,7 +2822,7 @@ __metadata:
     cli-progress: ^3.12.0
     commander: ^13.1.0
     dotenv: ^16.5.0
-    eciesjs: ^0.4.15
+    eciesjs: 0.4.17
     ssh2: ^1.16.0
     tsx: ^4.20.3
     typescript: ^5.8.3
@@ -2980,12 +2980,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:^1.9.1":
-  version: 1.9.6
-  resolution: "@noble/curves@npm:1.9.6"
+"@noble/curves@npm:^1.9.7":
+  version: 1.9.7
+  resolution: "@noble/curves@npm:1.9.7"
   dependencies:
     "@noble/hashes": 1.8.0
-  checksum: 0944cb0fd0f521ee2004df22013e997c85d3a10b529e98cb2d5b552343fd62cd3edb65a3373dcb255bda18cb7651b0399e58a3f50b5307db2b3ef0c2bdb35248
+  checksum: 65acad44ac6944ab96471109087d6cfcbcaa251faad6295961be9a5ace220634f4b7c74a96d1ee2274ad3880ea953d8e8259893ed8c906c831ef29f5c04ec9cc
   languageName: node
   linkType: hard
 
@@ -6722,15 +6722,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eciesjs@npm:^0.4.15":
-  version: 0.4.15
-  resolution: "eciesjs@npm:0.4.15"
+"eciesjs@npm:0.4.17":
+  version: 0.4.17
+  resolution: "eciesjs@npm:0.4.17"
   dependencies:
-    "@ecies/ciphers": ^0.2.3
+    "@ecies/ciphers": ^0.2.5
     "@noble/ciphers": ^1.3.0
-    "@noble/curves": ^1.9.1
+    "@noble/curves": ^1.9.7
     "@noble/hashes": ^1.8.0
-  checksum: 133a0ded69da0579d7082fe89b6a15225cf5cf503f653438355c2106cfc42576ab75835421f6a1ad099b9b802f389fc0077e72a951fd0e7dbc5c1e5220457ac9
+  checksum: 799b2b14c652f50135afb369cdd05c6a38e73ba9651f08df440065c1b0009d9f88f6fcb98715d23c09229a634004d5b9bbe26de3bd359ca8f8f8aebfccafca6b
   languageName: node
   linkType: hard
 
@@ -12472,7 +12472,7 @@ __metadata:
     "@types/react": ~19.1.10
     "@types/react-native-get-random-values": ^1.8.2
     buffer: ^6.0.3
-    eciesjs: ^0.4.15
+    eciesjs: 0.4.17
     eslint: ^9.25.0
     eslint-config-expo: ~10.0.0
     expo: ^54.0.0
@@ -14534,7 +14534,7 @@ __metadata:
     "@types/qrcode": ^1.5.5
     "@types/react": ^19
     "@types/react-dom": ^19
-    eciesjs: ^0.4.15
+    eciesjs: 0.4.17
     eslint: ^9
     eslint-config-next: 15.4.1
     next: 15.4.1
