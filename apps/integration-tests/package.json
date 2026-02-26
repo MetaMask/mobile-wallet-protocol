@@ -6,7 +6,7 @@
 		"@metamask/mobile-wallet-protocol-core": "workspace:^",
 		"@metamask/mobile-wallet-protocol-dapp-client": "workspace:^",
 		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
-		"eciesjs": "^0.4.15"
+		"eciesjs": "0.4.17"
 	},
 	"dependencies": {
 		"@types/ws": "^8.18.1",

@@ -13,7 +13,7 @@
 		"@metamask/mobile-wallet-protocol-wallet-client": "workspace:^",
 		"@types/pako": "^2.0.4",
 		"@types/qrcode": "^1.5.5",
-		"eciesjs": "^0.4.15",
+		"eciesjs": "0.4.17",
 		"next": "15.4.1",
 		"pako": "^2.1.0",
 		"qrcode": "^1.5.4",
