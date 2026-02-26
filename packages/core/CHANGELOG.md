@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Add `validatePeerKey` method to `IKeyManager` interface for peer public key validation at handshake and resume time ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+
 ### Fixed
 
-- Validate incoming public keys as compressed secp256k1 keys at all ingestion points ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
 ## [0.3.1]

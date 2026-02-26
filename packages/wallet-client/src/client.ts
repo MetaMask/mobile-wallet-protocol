@@ -112,7 +112,11 @@ export class WalletClient extends BaseClient {
 			await handler.execute(session, request);
 		} catch (error) {
 			this.emit("error", error);
-			await this.disconnect();
+			if (this.session) {
+				await this.disconnect();
+			} else {
+				this.state = ClientState.DISCONNECTED;
+			}
 			throw error;
 		}
 	}
