@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 /** biome-ignore-all lint/complexity/useLiteralKeys: test code */
 
-import { decrypt, encrypt, PrivateKey } from "eciesjs";
+import { decrypt, encrypt, PrivateKey, PublicKey } from "eciesjs";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -41,6 +41,10 @@ export class KeyManager implements IKeyManager {
 	generateKeyPair(): KeyPair {
 		const privateKey = new PrivateKey();
 		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	validatePeerKey(key: Uint8Array): void {
+		PublicKey.fromHex(Buffer.from(key).toString("hex"));
 	}
 
 	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {

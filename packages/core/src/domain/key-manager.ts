@@ -7,4 +7,5 @@ export interface IKeyManager {
 	generateKeyPair(): KeyPair;
 	encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string>;
 	decrypt(encryptedB64: string, myPrivateKey: Uint8Array): Promise<string>;
+	validatePeerKey(key: Uint8Array): void;
 }

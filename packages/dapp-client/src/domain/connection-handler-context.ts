@@ -1,4 +1,4 @@
-import type { ClientState, HandshakeOfferPayload, ISessionStore, ITransport, ProtocolMessage, Session } from "@metamask/mobile-wallet-protocol-core";
+import type { ClientState, HandshakeOfferPayload, IKeyManager, ISessionStore, ITransport, ProtocolMessage, Session } from "@metamask/mobile-wallet-protocol-core";
 import type { OtpRequiredPayload } from "../client";
 
 /**
@@ -14,6 +14,7 @@ export interface IConnectionHandlerContext {
 	// Core Dependencies
 	readonly transport: ITransport;
 	readonly sessionstore: ISessionStore;
+	readonly keymanager: IKeyManager;
 
 	// Events
 	emit(event: "otp_required", payload: OtpRequiredPayload): void;

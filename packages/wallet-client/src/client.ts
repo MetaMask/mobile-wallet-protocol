@@ -10,7 +10,6 @@ import {
 	type Session,
 	SessionError,
 	type SessionRequest,
-	validateSecp256k1PublicKey,
 } from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
 import { v4 as uuid } from "uuid";
@@ -155,7 +154,7 @@ export class WalletClient extends BaseClient {
 	 */
 	private _createSession(request: SessionRequest): Session {
 		const theirPublicKey = base64ToBytes(request.publicKeyB64);
-		validateSecp256k1PublicKey(theirPublicKey);
+		this.keymanager.validatePeerKey(theirPublicKey);
 		return {
 			id: request.id,
 			channel: `session:${uuid()}`, // Create a new, unique channel for secure communication

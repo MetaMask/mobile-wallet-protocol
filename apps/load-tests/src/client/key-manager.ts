@@ -21,6 +21,10 @@ export class MockKeyManager implements IKeyManager {
 		};
 	}
 
+	validatePeerKey(_key: Uint8Array): void {
+		// No-op: load tests don't use real crypto
+	}
+
 	async encrypt(plaintext: string, _theirPublicKey: Uint8Array): Promise<string> {
 		return Buffer.from(plaintext, "utf8").toString("base64");
 	}

@@ -118,6 +118,7 @@ export class DappClient extends BaseClient {
 		const context: IConnectionHandlerContext = {
 			transport: this.transport,
 			sessionstore: this.sessionstore,
+			keymanager: this.keymanager,
 			get session() {
 				return self.session;
 			},

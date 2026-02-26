@@ -5,7 +5,6 @@ import {
 	type Session,
 	SessionError,
 	type SessionRequest,
-	validateSecp256k1PublicKey,
 } from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
 import type { OtpRequiredPayload } from "../client";
@@ -124,7 +123,7 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 	 */
 	private _createFinalSession(session: Session, offer: HandshakeOfferPayload): Session {
 		const theirPublicKey = base64ToBytes(offer.publicKeyB64);
-		validateSecp256k1PublicKey(theirPublicKey);
+		this.context.keymanager.validatePeerKey(theirPublicKey);
 		return {
 			...session,
 			channel: `session:${offer.channelId}`,

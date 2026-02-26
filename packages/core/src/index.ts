@@ -12,4 +12,3 @@ export type { ISessionStore } from "./domain/session-store";
 export type { ITransport } from "./domain/transport";
 export { DEFAULT_SESSION_TTL, SessionStore } from "./session-store";
 export { WebSocketTransport, type WebSocketTransportOptions } from "./transport/websocket/index";
-export { validateSecp256k1PublicKey } from "./utils/validate-public-key";

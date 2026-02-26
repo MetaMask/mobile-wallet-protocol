@@ -2,7 +2,6 @@ import { ErrorCode, SessionError } from "../domain/errors";
 import type { IKVStore } from "../domain/kv-store";
 import type { Session } from "../domain/session";
 import type { ISessionStore } from "../domain/session-store";
-import { validateSecp256k1PublicKey } from "../utils/validate-public-key";
 
 /**
  * Serializable representation of a Session where Uint8Array keys are converted to base64 strings.
@@ -87,10 +86,7 @@ export class SessionStore implements ISessionStore {
 				return null;
 			}
 
-			// Deserialize back to Session
 			const theirPublicKey = new Uint8Array(Buffer.from(data.theirPublicKeyB64, "base64"));
-			validateSecp256k1PublicKey(theirPublicKey);
-
 			const session: Session = {
 				id: data.id,
 				channel: data.channel,
