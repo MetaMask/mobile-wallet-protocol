@@ -86,7 +86,6 @@ export class SessionStore implements ISessionStore {
 				return null;
 			}
 
-			const theirPublicKey = new Uint8Array(Buffer.from(data.theirPublicKeyB64, "base64"));
 			const session: Session = {
 				id: data.id,
 				channel: data.channel,
@@ -94,7 +93,7 @@ export class SessionStore implements ISessionStore {
 					publicKey: new Uint8Array(Buffer.from(data.keyPair.publicKeyB64, "base64")),
 					privateKey: new Uint8Array(Buffer.from(data.keyPair.privateKeyB64, "base64")),
 				},
-				theirPublicKey,
+				theirPublicKey: new Uint8Array(Buffer.from(data.theirPublicKeyB64, "base64")),
 				expiresAt: data.expiresAt,
 			};
 
