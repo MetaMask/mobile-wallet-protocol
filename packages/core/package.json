@@ -20,6 +20,9 @@
 		"changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-core",
 		"changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-core"
 	},
+	"engines": {
+		"node": ">=20"
+	},
 	"publishConfig": {
 		"access": "public",
 		"registry": "https://registry.npmjs.org/"

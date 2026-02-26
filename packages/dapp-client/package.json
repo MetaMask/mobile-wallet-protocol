@@ -33,6 +33,9 @@
 		"changelog:update": "../../scripts/update-changelog.sh @metamask/mobile-wallet-protocol-dapp-client",
 		"changelog:validate": "../../scripts/validate-changelog.sh @metamask/mobile-wallet-protocol-dapp-client"
 	},
+	"engines": {
+		"node": ">=20"
+	},
 	"publishConfig": {
 		"access": "public",
 		"registry": "https://registry.npmjs.org/"

@@ -10,7 +10,7 @@ Follow these steps to run the full end-to-end demo on your machine.
 
 ### Prerequisites
 
-- **Node.js**: Use version 18.x or later.
+- **Node.js**: Use version 20.x or later.
 - **Yarn**: This repository uses Yarn for package management.
 - **Docker & Docker Compose**: Required to run the backend relay server.
 - **Expo Go App**: To run the mobile wallet demo, you'll need the [Expo Go](https://expo.dev/go) app on your iOS or Android device.
