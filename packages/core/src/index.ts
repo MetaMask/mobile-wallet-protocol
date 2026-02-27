@@ -12,3 +12,4 @@ export type { ISessionStore } from "./domain/session-store";
 export type { ITransport } from "./domain/transport";
 export { DEFAULT_SESSION_TTL, SessionStore } from "./session-store";
 export { WebSocketTransport, type WebSocketTransportOptions } from "./transport/websocket/index";
+export { timingSafeEqual } from "./utils/timing-safe-equal";
