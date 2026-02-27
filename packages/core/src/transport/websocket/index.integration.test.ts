@@ -189,7 +189,8 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 			const received = await messagePromise;
 
 			// The subscriber transport should unwrap the envelope and emit the original payload.
-			t.expect(received).toEqual({ channel, data: payload });
+			t.expect(received).toMatchObject({ channel, data: payload });
+			t.expect(received.confirmNonce).toBeTypeOf("function");
 
 			await publisher.disconnect();
 		});
@@ -431,16 +432,18 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 			const messagePayload = "dedup-test-message";
 			let messageCount = 0;
 
-			subscriber.on("message", ({ data }) => {
+			subscriber.on("message", ({ data, confirmNonce }) => {
 				if (data === messagePayload) {
 					messageCount++;
+					confirmNonce?.();
 				}
 			});
 
 			// Send the message once using normal publish
 			const firstMessagePromise = waitFor(subscriber, "message");
 			await rawPublisher.publish(channel, messagePayload);
-			await firstMessagePromise;
+			const firstMsg = await firstMessagePromise;
+			await firstMsg.confirmNonce?.();
 			t.expect(messageCount).toBe(1);
 
 			// Create the exact same message envelope that was sent
@@ -791,8 +794,11 @@ t.describe.each(testModes)("WebSocketTransport with $name", ({ useSharedConnecti
 				await publisher.publish(channel, `message-${i}`);
 			}
 
-			// Wait for all messages to be received
-			await Promise.all(messagePromises);
+			// Wait for all messages to be received and confirm nonces so they persist
+			const receivedMsgs = await Promise.all(messagePromises);
+			for (const msg of receivedMsgs) {
+				await msg.confirmNonce?.();
+			}
 
 			// Verify storage has accumulated data
 			const storage = (transport as any).storage;
