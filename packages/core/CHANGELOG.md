@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Prevent nonce poisoning by deferring nonce persistence until after successful decryption ([#69](https://github.com/MetaMask/mobile-wallet-protocol/pull/69))
+- Guard against `NaN` in nonce storage ([#69](https://github.com/MetaMask/mobile-wallet-protocol/pull/69))
 - Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 

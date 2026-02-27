@@ -46,7 +46,12 @@ export abstract class BaseClient extends EventEmitter {
 		this.transport.on("message", async (payload) => {
 			if (!this.session?.keyPair.privateKey) return;
 			const message = await this.decryptMessage(payload.data);
-			if (message) this.handleMessage(message);
+			if (message) {
+				// Confirm the nonce only after successful decryption to prevent
+				// attackers from poisoning the nonce tracker with invalid messages.
+				await payload.confirmNonce?.();
+				this.handleMessage(message);
+			}
 		});
 	}
 
