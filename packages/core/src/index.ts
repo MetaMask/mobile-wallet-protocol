@@ -1,6 +1,6 @@
 export { BaseClient } from "./base-client";
 export { ClientState } from "./domain/client-state";
-export type { ConnectionMode } from "./domain/connection-mode";
+export { CONNECTION_MODES, type ConnectionMode, isValidConnectionMode } from "./domain/connection-mode";
 export { CryptoError, ErrorCode, ProtocolError, SessionError, TransportError } from "./domain/errors";
 export type { IKeyManager } from "./domain/key-manager";
 export type { KeyPair } from "./domain/key-pair";
