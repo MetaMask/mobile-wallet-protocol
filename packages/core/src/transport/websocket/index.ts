@@ -297,10 +297,7 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 				try {
 					await this.storage.confirmNonce(channel, message.clientId, message.nonce);
 				} catch (error) {
-					this.emit(
-						"error",
-						new TransportError(ErrorCode.UNKNOWN, `Failed to confirm nonce: ${error instanceof Error ? error.message : String(error)}`),
-					);
+					this.emit("error", new TransportError(ErrorCode.UNKNOWN, `Failed to confirm nonce: ${error instanceof Error ? error.message : String(error)}`));
 				}
 				const p = this.pendingNonces.get(pendingKey);
 				if (p) {
