@@ -1,4 +1,4 @@
-import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, ErrorCode, type HandshakeOfferPayload, type Session, SessionError, type SessionRequest, timingSafeEqual } from "@metamask/mobile-wallet-protocol-core";
 import { base64ToBytes } from "@metamask/utils";
 import type { OtpRequiredPayload } from "../client";
 import type { IConnectionHandler } from "../domain/connection-handler";
@@ -88,9 +88,10 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 				return reject(new SessionError(ErrorCode.OTP_ENTRY_TIMEOUT, "The OTP has already expired."));
 			}
 
+			const expectedOtp = offer.otp;
 			let attempts = 0;
 			const submit = async (otp: string): Promise<void> => {
-				if (otp !== offer.otp) {
+				if (!timingSafeEqual(otp, expectedOtp)) {
 					attempts++;
 					if (attempts >= this.otpAttempts) {
 						reject(new SessionError(ErrorCode.OTP_MAX_ATTEMPTS_REACHED, "Maximum OTP attempts reached."));
