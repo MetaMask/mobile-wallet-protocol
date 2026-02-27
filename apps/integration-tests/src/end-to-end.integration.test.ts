@@ -209,6 +209,32 @@ t.describe("E2E Integration Test", () => {
 		await resumedDappClient.sendRequest(testPayload);
 		await t.expect(messagePromise).resolves.toEqual(testPayload);
 	});
+
+	t.test("should discard inbound messages when the receiver's session has expired", async () => {
+		await connectClients(dappClient, walletClient, "trusted");
+
+		// Verify the connection works before expiry
+		const preExpiryPayload = { method: "before_expiry" };
+		const preExpiryPromise = new Promise((resolve) => walletClient.once("message", resolve));
+		await dappClient.sendRequest(preExpiryPayload);
+		await t.expect(preExpiryPromise).resolves.toEqual(preExpiryPayload);
+
+		// Force-expire the wallet's session by setting expiresAt to the past
+		(walletClient as any).session.expiresAt = Date.now() - 1000;
+
+		// Listen for the SESSION_EXPIRED error on the wallet
+		const errorPromise = new Promise<any>((resolve) => walletClient.once("error", resolve));
+
+		// Dapp sends another message - wallet should reject it
+		const postExpiryPayload = { method: "after_expiry" };
+		await dappClient.sendRequest(postExpiryPayload);
+
+		const error = await errorPromise;
+		t.expect(error.code).toBe("SESSION_EXPIRED");
+
+		// Give time for any message processing
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	});
 });
 
 t.describe("E2E Integration Test via Proxy", () => {

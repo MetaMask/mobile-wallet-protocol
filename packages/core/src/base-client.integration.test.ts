@@ -352,6 +352,48 @@ t.describe("BaseClient", () => {
 		publishSpy.mockRestore();
 	});
 
+	t.test("should discard inbound messages on an expired session", async () => {
+		const keyManagerA = new KeyManager();
+		const keyManagerB = new KeyManager();
+		const keyPairA = keyManagerA.generateKeyPair();
+		const keyPairB = keyManagerB.generateKeyPair();
+
+		const sessionA: Session = {
+			id: "session-inbound-expiry",
+			channel,
+			keyPair: keyPairA,
+			theirPublicKey: keyPairB.publicKey,
+			expiresAt: Date.now() + 60000,
+		};
+		const sessionB: Session = {
+			id: "session-inbound-expiry",
+			channel,
+			keyPair: keyPairB,
+			theirPublicKey: keyPairA.publicKey,
+			expiresAt: Date.now() - 1000, // Already expired
+		};
+
+		clientA.setSession(sessionA);
+		clientB.setSession(sessionB);
+
+		await clientA["transport"].subscribe(channel);
+		await clientB["transport"].subscribe(channel);
+
+		const errorPromise = new Promise<any>((resolve) => {
+			clientB.once("error", resolve);
+		});
+
+		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "should_be_dropped" } };
+		await clientA.sendMessage(channel, messageToSend);
+
+		const error = await errorPromise;
+		t.expect(error.code).toBe("SESSION_EXPIRED");
+
+		// Give a moment for any message processing to complete
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		t.expect(clientB.receivedMessages).toHaveLength(0);
+	});
+
 	t.test("should reject resume() when client is already connected", async () => {
 		// 1. Create and store a valid session
 		const keyManagerA = new KeyManager();

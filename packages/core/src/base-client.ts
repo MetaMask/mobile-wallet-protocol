@@ -45,6 +45,10 @@ export abstract class BaseClient extends EventEmitter {
 
 		this.transport.on("message", async (payload) => {
 			if (!this.session?.keyPair.privateKey) return;
+			if (await this.checkSessionExpiry()) {
+				this.emit("error", new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired"));
+				return;
+			}
 			const message = await this.decryptMessage(payload.data);
 			if (message) {
 				// Confirm the nonce only after successful decryption to prevent
@@ -144,7 +148,7 @@ export abstract class BaseClient extends EventEmitter {
 	 */
 	protected async sendMessage(channel: string, message: ProtocolMessage): Promise<void> {
 		if (!this.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, "Cannot send message: session is not initialized.");
-		await this.checkSessionExpiry();
+		if (await this.checkSessionExpiry()) throw new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired");
 		const plaintext = JSON.stringify(message);
 		const encrypted = await this.keymanager.encrypt(plaintext, this.session.theirPublicKey);
 		const ok = await this.transport.publish(channel, encrypted);
@@ -152,15 +156,14 @@ export abstract class BaseClient extends EventEmitter {
 	}
 
 	/**
-	 * Checks if the current session is expired. If it is, triggers a disconnect.
-	 * @throws {SessionError} if the session is expired.
+	 * Checks if the current session has expired. If so, triggers a disconnect.
+	 *
+	 * @returns true if the session was expired (and cleanup was triggered), false otherwise.
 	 */
-	private async checkSessionExpiry(): Promise<void> {
-		if (!this.session) return;
-		if (this.session.expiresAt < Date.now()) {
-			await this.disconnect();
-			throw new SessionError(ErrorCode.SESSION_EXPIRED, "Session expired");
-		}
+	private async checkSessionExpiry(): Promise<boolean> {
+		if (!this.session || this.session.expiresAt >= Date.now()) return false;
+		await this.disconnect();
+		return true;
 	}
 
 	/**
