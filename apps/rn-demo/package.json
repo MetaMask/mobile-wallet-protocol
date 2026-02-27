@@ -18,7 +18,7 @@
 		"@react-navigation/elements": "^2.3.8",
 		"@react-navigation/native": "^7.1.6",
 		"buffer": "^6.0.3",
-		"eciesjs": "^0.4.15",
+		"eciesjs": "0.4.17",
 		"expo": "^54.0.0",
 		"expo-camera": "~17.0.8",
 		"expo-constants": "~18.0.9",
