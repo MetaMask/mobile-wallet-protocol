@@ -6,6 +6,7 @@ import {
 	type IKeyManager,
 	type ISessionStore,
 	type ITransport,
+	isValidConnectionMode,
 	type ProtocolMessage,
 	type Session,
 	SessionError,
@@ -77,10 +78,12 @@ export class WalletClient extends BaseClient {
 	 */
 	public async connect(options: { sessionRequest: SessionRequest }): Promise<void> {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
-		this.state = ClientState.CONNECTING;
 
 		const request = options.sessionRequest;
+		if (!isValidConnectionMode(request.mode)) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Invalid connection mode: "${String(request.mode)}"`);
 		if (Date.now() > request.expiresAt) throw new SessionError(ErrorCode.REQUEST_EXPIRED, "Session request expired");
+
+		this.state = ClientState.CONNECTING;
 
 		const self = this;
 		const context: IConnectionHandlerContext = {

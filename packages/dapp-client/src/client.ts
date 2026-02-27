@@ -7,6 +7,7 @@ import {
 	type IKeyManager,
 	type ISessionStore,
 	type ITransport,
+	isValidConnectionMode,
 	type Message,
 	type ProtocolMessage,
 	type Session,
@@ -107,9 +108,11 @@ export class DappClient extends BaseClient {
 	 */
 	public async connect(options: DappConnectOptions = {}): Promise<void> {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
-		this.state = ClientState.CONNECTING;
 
 		const { mode = "untrusted", initialPayload } = options;
+		if (!isValidConnectionMode(mode)) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Invalid connection mode: "${String(mode)}"`);
+
+		this.state = ClientState.CONNECTING;
 		const { pendingSession, request } = this._createPendingSessionAndRequest(mode, initialPayload);
 		this.session = pendingSession;
 		this.emit("session_request", request);
