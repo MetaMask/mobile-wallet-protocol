@@ -54,7 +54,9 @@ const HISTORY_FETCH_LIMIT = 50;
 /**
  * Maximum allowed nonce jump from a known sender. Messages with a nonce that
  * jumps more than this from the last confirmed nonce are rejected as suspicious.
- * Does not apply to the first message from a new sender (baseline is 0).
+ * Does not apply to the first message from a new sender (baseline is 0). This
+ * is safe because a spoofed first message would fail decryption and its nonce
+ * would never be confirmed to storage.
  *
  * Trade-off: if the receiver goes offline and misses more than this many
  * messages from a known sender, legitimate messages will be permanently
@@ -292,7 +294,14 @@ export class WebSocketTransport extends EventEmitter implements ITransport {
 			}
 
 			const confirmNonce = async () => {
-				await this.storage.confirmNonce(channel, message.clientId, message.nonce);
+				try {
+					await this.storage.confirmNonce(channel, message.clientId, message.nonce);
+				} catch (error) {
+					this.emit(
+						"error",
+						new TransportError(ErrorCode.UNKNOWN, `Failed to confirm nonce: ${error instanceof Error ? error.message : String(error)}`),
+					);
+				}
 				const p = this.pendingNonces.get(pendingKey);
 				if (p) {
 					p.delete(message.nonce);
