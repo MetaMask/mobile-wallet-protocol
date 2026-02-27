@@ -82,8 +82,6 @@ export class WalletClient extends BaseClient {
 		const request = options.sessionRequest;
 		if (Date.now() > request.expiresAt) throw new SessionError(ErrorCode.REQUEST_EXPIRED, "Session request expired");
 
-		const session = this._createSession(request);
-
 		const self = this;
 		const context: IConnectionHandlerContext = {
 			transport: this.transport,
@@ -110,10 +108,15 @@ export class WalletClient extends BaseClient {
 		const handler: IConnectionHandler = request.mode === "trusted" ? new TrustedConnectionHandler(context) : new UntrustedConnectionHandler(context);
 
 		try {
+			const session = this._createSession(request);
 			await handler.execute(session, request);
 		} catch (error) {
 			this.emit("error", error);
-			await this.disconnect();
+			if (this.session) {
+				await this.disconnect();
+			} else {
+				this.state = ClientState.DISCONNECTED;
+			}
 			throw error;
 		}
 	}
@@ -154,11 +157,13 @@ export class WalletClient extends BaseClient {
 	 * @returns A new `Session` object
 	 */
 	private _createSession(request: SessionRequest): Session {
+		const theirPublicKey = base64ToBytes(request.publicKeyB64);
+		this.keymanager.validatePeerKey(theirPublicKey);
 		return {
 			id: request.id,
 			channel: `session:${uuid()}`, // Create a new, unique channel for secure communication
 			keyPair: this.keymanager.generateKeyPair(),
-			theirPublicKey: base64ToBytes(request.publicKeyB64),
+			theirPublicKey,
 			expiresAt: Date.now() + DEFAULT_SESSION_TTL,
 		};
 	}

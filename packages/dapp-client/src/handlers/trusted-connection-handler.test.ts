@@ -22,6 +22,12 @@ function createMockDappHandlerContext(): IConnectionHandlerContext {
 			list: vi.fn(),
 			delete: vi.fn(),
 		},
+		keymanager: {
+			generateKeyPair: vi.fn(),
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			validatePeerKey: vi.fn(),
+		},
 		emit: vi.fn(),
 		once: vi.fn(),
 		off: vi.fn(),
@@ -56,7 +62,7 @@ t.describe("TrustedConnectionHandler", () => {
 		};
 		mockOffer = {
 			channelId: "secure-channel",
-			publicKeyB64: "cHVia2V5",
+			publicKeyB64: "Aqurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6ur",
 		}; // No OTP for trusted flow
 	});
 

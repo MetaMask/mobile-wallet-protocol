@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 /** biome-ignore-all lint/complexity/useLiteralKeys: test code */
 
-import { decrypt, encrypt, PrivateKey } from "eciesjs";
+import { decrypt, encrypt, PrivateKey, PublicKey } from "eciesjs";
 import { v4 as uuid } from "uuid";
 import * as t from "vitest";
 import WebSocket from "ws";
@@ -41,6 +41,10 @@ export class KeyManager implements IKeyManager {
 	generateKeyPair(): KeyPair {
 		const privateKey = new PrivateKey();
 		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	validatePeerKey(key: Uint8Array): void {
+		PublicKey.fromHex(Buffer.from(key).toString("hex"));
 	}
 
 	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {
@@ -170,7 +174,11 @@ t.describe("BaseClient", () => {
 			id: "session-to-disconnect",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() + 60000,
 		};
 
@@ -198,7 +206,11 @@ t.describe("BaseClient", () => {
 			id: "expired-session",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() - 1000, // Expired 1 second ago
 		};
 
@@ -220,7 +232,11 @@ t.describe("BaseClient", () => {
 			id: "expired-resume-session",
 			channel,
 			keyPair: new KeyManager().generateKeyPair(),
-			theirPublicKey: new Uint8Array(33),
+			theirPublicKey: (() => {
+				const k = new Uint8Array(33);
+				k[0] = 0x02;
+				return k;
+			})(),
 			expiresAt: Date.now() + 60000, // Valid session
 		};
 

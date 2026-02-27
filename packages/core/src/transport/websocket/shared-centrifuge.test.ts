@@ -7,7 +7,7 @@ t.describe("SharedCentrifuge Unit Tests", () => {
 		// Clean up any shared contexts after each test
 		// @ts-expect-error - accessing private property for cleanup
 		const contexts = SharedCentrifuge.contexts;
-		for (const [url, context] of contexts.entries()) {
+		for (const [_url, context] of contexts.entries()) {
 			// Clear any pending reconnect promises
 			context.reconnectPromise = null;
 			// Remove all event listeners to prevent unhandled errors

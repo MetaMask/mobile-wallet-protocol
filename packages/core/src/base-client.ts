@@ -92,6 +92,7 @@ export abstract class BaseClient extends EventEmitter {
 		try {
 			const session = await this.sessionstore.get(sessionId);
 			if (!session) throw new SessionError(ErrorCode.SESSION_NOT_FOUND, "Session not found or expired");
+			this.keymanager.validatePeerKey(session.theirPublicKey);
 
 			this.session = session;
 			await this.transport.connect();

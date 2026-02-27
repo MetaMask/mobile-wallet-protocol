@@ -42,8 +42,8 @@ export class SessionStore implements ISessionStore {
 	 * @param session - The session to set.
 	 */
 	async set(session: Session): Promise<void> {
-		// Check if session is expired
-		if (session.expiresAt < Date.now()) {
+		// Check if session is expired (also rejects NaN)
+		if (Number.isNaN(session.expiresAt) || session.expiresAt < Date.now()) {
 			throw new SessionError(ErrorCode.SESSION_SAVE_FAILED, "Cannot save expired session");
 		}
 
@@ -80,14 +80,12 @@ export class SessionStore implements ISessionStore {
 		try {
 			const data: SerializableSession = JSON.parse(raw);
 
-			// Check if session is expired
-			if (data.expiresAt < Date.now()) {
-				// Session expired, clean it up
+			// Check if session is expired (handles NaN, non-number, and past timestamps)
+			if (typeof data.expiresAt !== "number" || !(data.expiresAt >= Date.now())) {
 				await this.delete(id);
 				return null;
 			}
 
-			// Deserialize back to Session
 			const session: Session = {
 				id: data.id,
 				channel: data.channel,

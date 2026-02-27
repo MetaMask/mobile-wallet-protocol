@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 import { type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
-import { decrypt, encrypt, PrivateKey } from "eciesjs";
+import { decrypt, encrypt, PrivateKey, PublicKey } from "eciesjs";
 import * as t from "vitest";
 import WebSocket from "ws";
 import { DappClient } from "./client";
@@ -24,6 +24,10 @@ export class KeyManager implements IKeyManager {
 	generateKeyPair(): KeyPair {
 		const privateKey = new PrivateKey();
 		return { privateKey: new Uint8Array(privateKey.secret), publicKey: privateKey.publicKey.toBytes(true) };
+	}
+
+	validatePeerKey(key: Uint8Array): void {
+		PublicKey.fromHex(Buffer.from(key).toString("hex"));
 	}
 
 	async encrypt(plaintext: string, theirPublicKey: Uint8Array): Promise<string> {

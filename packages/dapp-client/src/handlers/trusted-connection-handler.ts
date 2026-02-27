@@ -82,10 +82,12 @@ export class TrustedConnectionHandler implements IConnectionHandler {
 	 * @returns The complete session object ready for use
 	 */
 	private _createFinalSession(session: Session, offer: HandshakeOfferPayload): Session {
+		const theirPublicKey = base64ToBytes(offer.publicKeyB64);
+		this.context.keymanager.validatePeerKey(theirPublicKey);
 		return {
 			...session,
 			channel: `session:${offer.channelId}`,
-			theirPublicKey: base64ToBytes(offer.publicKeyB64),
+			theirPublicKey,
 		};
 	}
 
