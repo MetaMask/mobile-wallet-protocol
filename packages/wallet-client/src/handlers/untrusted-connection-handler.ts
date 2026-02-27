@@ -47,7 +47,9 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 	 * @returns An object containing the OTP string and its deadline
 	 */
 	private _generateOtpWithDeadline(): { otp: string; deadline: number } {
-		const otp = Math.floor(100000 + Math.random() * 900000).toString();
+		const buf = new Uint32Array(1);
+		globalThis.crypto.getRandomValues(buf);
+		const otp = (100000 + (buf[0] % 900000)).toString();
 		const deadline = Date.now() + this.otpTimeoutMs;
 		return { otp, deadline };
 	}

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation
 - Validate peer public keys during session creation ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 - Fix client stuck in CONNECTING state when session creation fails ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
