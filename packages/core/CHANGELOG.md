@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject inbound messages on expired sessions instead of processing them
 - Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
