@@ -7,6 +7,7 @@ import * as t from "vitest";
 import WebSocket from "ws";
 import { BaseClient } from "./base-client";
 import { ClientState } from "./domain/client-state";
+import { ErrorCode } from "./domain/errors";
 import type { IKeyManager } from "./domain/key-manager";
 import type { KeyPair } from "./domain/key-pair";
 import type { IKVStore } from "./domain/kv-store";
@@ -366,6 +367,49 @@ t.describe("BaseClient", () => {
 
 		// 6. Restore the original method
 		publishSpy.mockRestore();
+	});
+
+	t.test("should reject inbound messages on an expired session", async () => {
+		const keyManagerA = new KeyManager();
+		const keyManagerB = new KeyManager();
+		const keyPairA = keyManagerA.generateKeyPair();
+		const keyPairB = keyManagerB.generateKeyPair();
+
+		const sessionA: Session = {
+			id: "session-inbound-expiry",
+			channel,
+			keyPair: keyPairA,
+			theirPublicKey: keyPairB.publicKey,
+			expiresAt: Date.now() + 60000,
+		};
+		const sessionB: Session = {
+			id: "session-inbound-expiry",
+			channel,
+			keyPair: keyPairB,
+			theirPublicKey: keyPairA.publicKey,
+			expiresAt: Date.now() - 1000, // Already expired
+		};
+
+		clientA.setSession(sessionA);
+		clientB.setSession(sessionB);
+
+		await clientA["transport"].subscribe(channel);
+		await clientB["transport"].subscribe(channel);
+
+		const errorPromise = new Promise<any>((resolve) => {
+			clientB.once("error", resolve);
+		});
+
+		const messageToSend: ProtocolMessage = { type: "message", payload: { method: "should_be_rejected" } };
+		await clientA.sendMessage(channel, messageToSend);
+
+		const error = await errorPromise;
+		t.expect(error.code).toBe(ErrorCode.SESSION_EXPIRED);
+
+		// Give a small window to ensure no message processing occurs
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		t.expect(clientB.receivedMessages).toHaveLength(0);
+		t.expect(clientB.getSession()).toBeNull();
 	});
 
 	t.test("should reject resume() when client is already connected", async () => {

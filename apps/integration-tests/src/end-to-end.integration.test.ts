@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
 /** biome-ignore-all lint/suspicious/noShadowRestrictedNames: test code */
-import { type ConnectionMode, type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { type ConnectionMode, ErrorCode, type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { DappClient, type OtpRequiredPayload } from "@metamask/mobile-wallet-protocol-dapp-client";
 import { WalletClient } from "@metamask/mobile-wallet-protocol-wallet-client";
 import { decrypt, encrypt, PrivateKey, PublicKey } from "eciesjs";
@@ -188,6 +188,34 @@ t.describe("E2E Integration Test", () => {
 		const messageFromWalletPromise = new Promise((resolve) => dappClient.on("message", resolve));
 		await walletClient.sendResponse(responsePayload);
 		await t.expect(messageFromWalletPromise).resolves.toEqual(responsePayload);
+	});
+
+	t.test("should reject inbound messages on an expired session", async () => {
+		await connectClients(dappClient, walletClient, "trusted");
+
+		// Verify a message works pre-expiry
+		const preExpiryPayload = { method: "pre_expiry_check" };
+		const preExpiryPromise = new Promise((resolve) => walletClient.on("message", resolve));
+		await dappClient.sendRequest(preExpiryPayload);
+		await t.expect(preExpiryPromise).resolves.toEqual(preExpiryPayload);
+
+		// Force-expire the wallet's session
+		(walletClient as any).session.expiresAt = Date.now() - 1000;
+
+		const errorPromise = new Promise<any>((resolve) => {
+			walletClient.once("error", resolve);
+		});
+
+		// Send another message from dapp
+		await dappClient.sendRequest({ method: "post_expiry_check" });
+
+		// Wallet should emit SESSION_EXPIRED
+		const error = await errorPromise;
+		t.expect(error.code).toBe(ErrorCode.SESSION_EXPIRED);
+
+		// Wait briefly, confirm the message was NOT delivered
+		const walletMessagePromise = new Promise((resolve) => walletClient.once("message", resolve));
+		await assertPromiseNotResolve(walletMessagePromise, 500, "Wallet should not receive messages on expired session");
 	});
 
 	t.test("should successfully resume a previously established session", async () => {
