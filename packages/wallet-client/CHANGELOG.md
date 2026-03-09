@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix: add runtime validation for ConnectionMode (WAPI-1129) ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
+- fix: replace Math.random() with crypto.getRandomValues() (WAPI-1127) ([#73](https://github.com/MetaMask/mobile-wallet-protocol/pull/73))
+- fix: SessionStore race conditions and async initialization (WAPI-1118)
+- fix: drop Node 18 support, require Node 20+ (WAPI-1133) ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
+
 ### Fixed
 
 - Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation

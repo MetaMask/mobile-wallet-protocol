@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- fix: reject inbound messages on expired sessions (WAPI-1130) ([#72](https://github.com/MetaMask/mobile-wallet-protocol/pull/72))
+- chore: pin eciesjs to exact version 0.4.17 ([#77](https://github.com/MetaMask/mobile-wallet-protocol/pull/77))
+- fix: add runtime validation for ConnectionMode (WAPI-1129) ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
+- fix: use timing-safe comparison for OTP verification (WAPI-1128) ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
+- fix: SessionStore race conditions and async initialization (WAPI-1118)
+- fix: drop Node 18 support, require Node 20+ (WAPI-1133) ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
+
 ### Added
 
 - `isValidConnectionMode()` and `CONNECTION_MODES` for runtime validation of connection mode values
