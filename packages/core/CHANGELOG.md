@@ -7,20 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0]
+
 ### Added
 
-- `isValidConnectionMode()` and `CONNECTION_MODES` for runtime validation of connection mode values
+- `isValidConnectionMode()` and `CONNECTION_MODES` for runtime validation of connection mode values ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
 
 ### Changed
 
 - Add `validatePeerKey` method to `IKeyManager` interface for peer public key validation at handshake and resume time ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- Pin `eciesjs` to exact version 0.4.17 ([#77](https://github.com/MetaMask/mobile-wallet-protocol/pull/77))
 - **BREAKING:** `SessionStore` constructor is now private; use `await SessionStore.create(kvstore)` ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
+- **BREAKING:** Drop Node 18 support, require Node 20+ ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
 
 ### Fixed
 
-- Reject inbound messages on expired sessions instead of processing them
+- Reject inbound messages on expired sessions instead of processing them ([#72](https://github.com/MetaMask/mobile-wallet-protocol/pull/72))
 - Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- Use timing-safe comparison for OTP verification ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
 
 ## [0.3.1]
 
@@ -71,7 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package ([#35](https://github.com/MetaMask/mobile-wallet-protocol/pull/35))
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.1...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.4.0...HEAD
+[0.4.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.1...@metamask/mobile-wallet-protocol-core@0.4.0
 [0.3.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.0...@metamask/mobile-wallet-protocol-core@0.3.1
 [0.3.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.2.0...@metamask/mobile-wallet-protocol-core@0.3.0
 [0.2.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.1...@metamask/mobile-wallet-protocol-core@0.2.0

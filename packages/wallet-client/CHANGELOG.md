@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Changed
+
+- Validate connection mode at client construction time ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
+- **BREAKING:** Drop Node 18 support, require Node 20+ ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
+
 ### Fixed
 
-- Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation
+- Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation ([#73](https://github.com/MetaMask/mobile-wallet-protocol/pull/73))
 - Validate peer public keys during session creation ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 - Fix client stuck in CONNECTING state when session creation fails ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
@@ -53,7 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package ([#35](https://github.com/MetaMask/mobile-wallet-protocol/pull/35))
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.2.2...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.3.0...HEAD
+[0.3.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.2.2...@metamask/mobile-wallet-protocol-wallet-client@0.3.0
 [0.2.2]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.2.1...@metamask/mobile-wallet-protocol-wallet-client@0.2.2
 [0.2.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.2.0...@metamask/mobile-wallet-protocol-wallet-client@0.2.1
 [0.2.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-wallet-client@0.1.1...@metamask/mobile-wallet-protocol-wallet-client@0.2.0
