@@ -9,20 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0]
 
-### Uncategorized
-
-- fix: add runtime validation for ConnectionMode (WAPI-1129) ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
-- fix: use timing-safe comparison for OTP verification (WAPI-1128) ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
-- fix: SessionStore race conditions and async initialization (WAPI-1118)
-- fix: drop Node 18 support, require Node 20+ (WAPI-1133) ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
-
 ### Changed
 
 - Validate peer public keys during handshake in both trusted and untrusted connection flows ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- Validate connection mode at client construction time ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
+- **BREAKING:** Drop Node 18 support, require Node 20+ ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
 
 ### Fixed
 
-- Use constant-time comparison for OTP verification to prevent timing side-channel attacks
+- Use constant-time comparison for OTP verification to prevent timing side-channel attacks ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
 
 ## [0.2.2]
 

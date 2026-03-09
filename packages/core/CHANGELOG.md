@@ -9,29 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0]
 
-### Uncategorized
-
-- fix: reject inbound messages on expired sessions (WAPI-1130) ([#72](https://github.com/MetaMask/mobile-wallet-protocol/pull/72))
-- chore: pin eciesjs to exact version 0.4.17 ([#77](https://github.com/MetaMask/mobile-wallet-protocol/pull/77))
-- fix: add runtime validation for ConnectionMode (WAPI-1129) ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
-- fix: use timing-safe comparison for OTP verification (WAPI-1128) ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
-- fix: SessionStore race conditions and async initialization (WAPI-1118)
-- fix: drop Node 18 support, require Node 20+ (WAPI-1133) ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
-
 ### Added
 
-- `isValidConnectionMode()` and `CONNECTION_MODES` for runtime validation of connection mode values
+- `isValidConnectionMode()` and `CONNECTION_MODES` for runtime validation of connection mode values ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
 
 ### Changed
 
 - Add `validatePeerKey` method to `IKeyManager` interface for peer public key validation at handshake and resume time ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- Pin `eciesjs` to exact version 0.4.17 ([#77](https://github.com/MetaMask/mobile-wallet-protocol/pull/77))
 - **BREAKING:** `SessionStore` constructor is now private; use `await SessionStore.create(kvstore)` ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
+- **BREAKING:** Drop Node 18 support, require Node 20+ ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
 
 ### Fixed
 
-- Reject inbound messages on expired sessions instead of processing them
+- Reject inbound messages on expired sessions instead of processing them ([#72](https://github.com/MetaMask/mobile-wallet-protocol/pull/72))
 - Fix `SessionStore` race conditions and fire-and-forget garbage collection ([#71](https://github.com/MetaMask/mobile-wallet-protocol/pull/71))
 - Guard against `NaN` in session expiry timestamps ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
+- Use timing-safe comparison for OTP verification ([#74](https://github.com/MetaMask/mobile-wallet-protocol/pull/74))
 
 ## [0.3.1]
 

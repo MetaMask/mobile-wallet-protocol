@@ -9,16 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0]
 
-### Uncategorized
+### Changed
 
-- fix: add runtime validation for ConnectionMode (WAPI-1129) ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
-- fix: replace Math.random() with crypto.getRandomValues() (WAPI-1127) ([#73](https://github.com/MetaMask/mobile-wallet-protocol/pull/73))
-- fix: SessionStore race conditions and async initialization (WAPI-1118)
-- fix: drop Node 18 support, require Node 20+ (WAPI-1133) ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
+- Validate connection mode at client construction time ([#75](https://github.com/MetaMask/mobile-wallet-protocol/pull/75))
+- **BREAKING:** Drop Node 18 support, require Node 20+ ([#76](https://github.com/MetaMask/mobile-wallet-protocol/pull/76))
 
 ### Fixed
 
-- Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation
+- Replace `Math.random()` with `crypto.getRandomValues()` for OTP generation ([#73](https://github.com/MetaMask/mobile-wallet-protocol/pull/73))
 - Validate peer public keys during session creation ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 - Fix client stuck in CONNECTING state when session creation fails ([#70](https://github.com/MetaMask/mobile-wallet-protocol/pull/70))
 
