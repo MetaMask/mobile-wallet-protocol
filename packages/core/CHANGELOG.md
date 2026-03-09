@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0]
+
 ### Uncategorized
 
 - fix: reject inbound messages on expired sessions (WAPI-1130) ([#72](https://github.com/MetaMask/mobile-wallet-protocol/pull/72))
@@ -80,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of the package ([#35](https://github.com/MetaMask/mobile-wallet-protocol/pull/35))
 
-[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.1...HEAD
+[Unreleased]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.4.0...HEAD
+[0.4.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.1...@metamask/mobile-wallet-protocol-core@0.4.0
 [0.3.1]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.3.0...@metamask/mobile-wallet-protocol-core@0.3.1
 [0.3.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.2.0...@metamask/mobile-wallet-protocol-core@0.3.0
 [0.2.0]: https://github.com/MetaMask/mobile-wallet-protocol/compare/@metamask/mobile-wallet-protocol-core@0.1.1...@metamask/mobile-wallet-protocol-core@0.2.0
