@@ -12,7 +12,7 @@
 		"@types/ws": "^8.18.1",
 		"centrifuge": "^5.3.5",
 		"toxiproxy-node-client": "^4.0.0",
-		"vitest": "^3.2.4",
+		"vitest": "^4.1.8",
 		"ws": "^8.18.3"
 	}
 }
