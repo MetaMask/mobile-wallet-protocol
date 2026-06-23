@@ -18,4 +18,12 @@ export type SessionRequest = {
 	 * on mobile deep linking.
 	 */
 	initialMessage?: Message;
+	/**
+	 * Optional capabilities advertised by the dApp in the session request.
+	 * Used for opt-in protocol extensions during the untrusted connection flow.
+	 */
+	capabilities?: {
+		/** When true, the wallet may defer OTP display until the dApp sends an `otp-display-grant`. */
+		otpDisplayGrant?: true;
+	};
 };
