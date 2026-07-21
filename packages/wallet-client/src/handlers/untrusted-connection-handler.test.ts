@@ -196,4 +196,85 @@ t.describe("UntrustedConnectionHandler", () => {
 
 		t.expect(connectedCallOrder).toBeLessThan(handleMessageCallOrder);
 	});
+
+	t.describe("otp-display-grant", () => {
+		function setupDeferredGrantMocks(): { resolveGrant: () => void; resolveAck: () => void } {
+			let resolveGrant: () => void = () => {};
+			let resolveAck: () => void = () => {};
+
+			context.once = t.vi.fn((event, callback) => {
+				if (event === "otp_display_grant_received") {
+					resolveGrant = callback;
+				} else if (event === "handshake_ack_received") {
+					resolveAck = callback;
+				}
+				return context;
+			});
+
+			return { resolveGrant: () => resolveGrant(), resolveAck: () => resolveAck() };
+		}
+
+		t.test("should defer display_otp until otp-display-grant when capability is advertised", async () => {
+			mockRequest.capabilities = { otpDisplayGrant: true };
+			const { resolveGrant, resolveAck } = setupDeferredGrantMocks();
+
+			const executePromise = handler.execute(mockSession, mockRequest);
+
+			await t.vi.waitFor(() => {
+				t.expect(context.sendMessage).toHaveBeenCalledWith(mockRequest.channel, t.expect.objectContaining({ type: "handshake-offer" }));
+			});
+
+			const sendMessageMock = context.sendMessage as t.MockedFunction<typeof context.sendMessage>;
+			const message = sendMessageMock.mock.calls[0][1] as { payload: { otpDisplayGrantRequired?: boolean } };
+			t.expect(message.payload.otpDisplayGrantRequired).toBe(true);
+
+			const emitMock = context.emit as t.Mock;
+			t.expect(emitMock.mock.calls.some((call) => call[0] === "display_otp")).toBe(false);
+
+			resolveGrant();
+			await t.vi.waitFor(() => {
+				t.expect(context.emit).toHaveBeenCalledWith("display_otp", t.expect.any(String), t.expect.any(Number));
+			});
+
+			resolveAck();
+			await executePromise;
+		});
+
+		t.test("should throw if otp-display-grant is not received in time", async () => {
+			mockRequest.capabilities = { otpDisplayGrant: true };
+			context.once = t.vi.fn();
+
+			const originalDateNow = Date.now;
+			let callCount = 0;
+			Date.now = t.vi.fn(() => {
+				callCount++;
+				if (callCount === 1) {
+					return originalDateNow();
+				}
+				return originalDateNow() + 70000;
+			});
+
+			try {
+				await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow("OTP display grant timed out before it could begin.");
+			} finally {
+				Date.now = originalDateNow;
+			}
+		});
+
+		t.test("should keep legacy flow when capability is not advertised", async () => {
+			const emitMock = context.emit as t.Mock;
+			const sendMessageMock = context.sendMessage as t.Mock;
+
+			await handler.execute(mockSession, mockRequest);
+
+			const displayOtpInvocation = emitMock.mock.invocationCallOrder.find((_, index) => emitMock.mock.calls[index][0] === "display_otp");
+			const sendOfferInvocation = sendMessageMock.mock.invocationCallOrder[0];
+
+			t.expect(displayOtpInvocation).toBeDefined();
+			t.expect(displayOtpInvocation!).toBeLessThan(sendOfferInvocation!);
+
+			const message = sendMessageMock.mock.calls[0][1] as { payload: { otpDisplayGrantRequired?: boolean } };
+			t.expect(message.payload.otpDisplayGrantRequired).toBeUndefined();
+		});
+	});
 });

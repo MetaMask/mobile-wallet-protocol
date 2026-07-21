@@ -19,6 +19,8 @@ export interface IConnectionHandlerContext {
 	emit(event: "connected"): void;
 	once(event: "handshake_ack_received", listener: () => void): void;
 	off(event: "handshake_ack_received", listener: () => void): void;
+	once(event: "otp_display_grant_received", listener: () => void): void;
+	off(event: "otp_display_grant_received", listener: () => void): void;
 
 	// Actions
 	sendMessage(channel: string, message: ProtocolMessage): Promise<void>;

@@ -15,6 +15,8 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  *
  * This flow provides maximum security by requiring the user to manually verify
  * the connection through a time-limited One-Time Password displayed on the wallet.
+ * When the dApp advertises `capabilities.otpDisplayGrant`, OTP display is deferred
+ * until the dApp sends `otp-display-grant` on the secure session channel.
  */
 export class UntrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
@@ -34,8 +36,17 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this.context.transport.subscribe(session.channel); // secure channel
 		this.context.session = session;
 		const { otp, deadline } = this._generateOtpWithDeadline();
-		this.context.emit("display_otp", otp, deadline);
-		await this._sendHandshakeOffer(request.channel, otp, deadline);
+		const otpDisplayGrantRequired = request.capabilities?.otpDisplayGrant === true;
+
+		if (otpDisplayGrantRequired) {
+			await this._sendHandshakeOffer(request.channel, otp, deadline, true);
+			await this._waitForOtpDisplayGrant(deadline);
+			this.context.emit("display_otp", otp, deadline);
+		} else {
+			this.context.emit("display_otp", otp, deadline);
+			await this._sendHandshakeOffer(request.channel, otp, deadline);
+		}
+
 		await this._waitForHandshakeAck(deadline);
 		await this._finalizeConnection(request.channel);
 		this._processInitialMessage(request.initialMessage);
@@ -58,9 +69,11 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 	 * Sends the `handshake-offer` message containing the public key, new channel ID, and OTP.
 	 *
 	 * @param channel - The handshake channel to publish the offer to
-	 * @param options - Options containing OTP and deadline for untrusted connections
+	 * @param otp - The generated OTP for untrusted connections
+	 * @param deadline - The OTP expiration timestamp
+	 * @param otpDisplayGrantRequired - Whether the dApp must grant OTP display before it is shown
 	 */
-	private async _sendHandshakeOffer(channel: string, otp: string, deadline: number): Promise<void> {
+	private async _sendHandshakeOffer(channel: string, otp: string, deadline: number, otpDisplayGrantRequired = false): Promise<void> {
 		if (!this.context.session) throw new SessionError(ErrorCode.SESSION_INVALID_STATE);
 		const handshakePayload: HandshakeOfferPayload = {
 			publicKeyB64: bytesToBase64(this.context.session.keyPair.publicKey),
@@ -68,7 +81,40 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 			otp,
 			deadline,
 		};
+
+		if (otpDisplayGrantRequired) {
+			handshakePayload.otpDisplayGrantRequired = true;
+		}
+
 		await this.context.sendMessage(channel, { type: "handshake-offer", payload: handshakePayload });
+	}
+
+	/**
+	 * Waits for an `otp-display-grant` message from the dApp.
+	 *
+	 * @param deadline - The timestamp when the grant must be received
+	 * @returns A promise that resolves when the grant is received
+	 * @throws {SessionError} If the grant is not received before the deadline
+	 */
+	private _waitForOtpDisplayGrant(deadline: number): Promise<void> {
+		return new Promise((resolve, reject) => {
+			const timeoutDuration = deadline - Date.now();
+			if (timeoutDuration <= 0) {
+				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "OTP display grant timed out before it could begin."));
+			}
+
+			const timeoutId = setTimeout(() => {
+				this.context.off("otp_display_grant_received", onGrantReceived);
+				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "DApp did not grant OTP display in time."));
+			}, timeoutDuration);
+
+			const onGrantReceived = () => {
+				clearTimeout(timeoutId);
+				resolve();
+			};
+
+			this.context.once("otp_display_grant_received", onGrantReceived);
+		});
 	}
 
 	/**
