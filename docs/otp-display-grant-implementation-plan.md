@@ -17,7 +17,7 @@ Companion to [otp-display-grant-plan.md](./otp-display-grant-plan.md). This docu
 | 8 | **Not started** | Demos & docs |
 | 9 | **Not started** | Final verification |
 
-**Current blocker:** None for unit-level strict flow. **Next:** Phase 7 E2E integration tests.
+**Current blocker:** None for unit-level strict flow. **Next:** Phase 8 demos & documentation.
 
 ## Scope
 
@@ -269,11 +269,11 @@ Consolidate and fill gaps across both clients.
 
 **File:** `apps/integration-tests/src/end-to-end.integration.test.ts`
 
-- [ ] **7.1** Add helper `connectClientsStrict()` mirroring existing `connectClients()` but with `requireOtpDisplayGrant: true`.
-- [ ] **7.2** E2E: strict dapp + strict wallet — full connect + bidirectional messaging.
-- [ ] **7.3** E2E: strict dapp + legacy wallet simulation — expect clean failure (`OTP_DISPLAY_GRANT_REQUIRED` or timeout waiting for grant on wallet side).
-- [ ] **7.4** E2E: legacy dapp + strict-capable wallet — legacy flow still works.
-- [ ] **7.5** Assert timing: in strict E2E, `display_otp` on wallet fires **after** dapp receives offer (not before).
+- [x] **7.1** Add helper `connectClientsStrict()` mirroring existing `connectClients()` but with `requireOtpDisplayGrant: true`.
+- [x] **7.2** E2E: strict dapp + strict wallet — full connect + bidirectional messaging.
+- [x] **7.3** E2E: strict dapp + legacy wallet simulation — expect clean failure (`OTP_DISPLAY_GRANT_REQUIRED` or timeout waiting for grant on wallet side).
+- [x] **7.4** E2E: legacy dapp + strict-capable wallet — legacy flow still works.
+- [x] **7.5** Assert timing: in strict E2E, `display_otp` on wallet fires **after** dapp receives offer (not before).
 
 **Compatibility matrix verification**
 
