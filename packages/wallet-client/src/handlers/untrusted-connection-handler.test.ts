@@ -224,6 +224,12 @@ t.describe("UntrustedConnectionHandler", () => {
 				t.expect(context.sendMessage).toHaveBeenCalledWith(mockRequest.channel, t.expect.objectContaining({ type: "handshake-offer" }));
 			});
 
+			const onceMock = context.once as t.Mock;
+			const grantListenerCallIndex = onceMock.mock.calls.findIndex((call) => call[0] === "otp_display_grant_received");
+			const grantListenerInvocation = onceMock.mock.invocationCallOrder[grantListenerCallIndex];
+			const sendOfferInvocation = (context.sendMessage as t.Mock).mock.invocationCallOrder[0];
+			t.expect(grantListenerInvocation).toBeLessThan(sendOfferInvocation);
+
 			const sendMessageMock = context.sendMessage as t.MockedFunction<typeof context.sendMessage>;
 			const message = sendMessageMock.mock.calls[0][1] as { payload: { otpDisplayGrantRequired?: boolean } };
 			t.expect(message.payload.otpDisplayGrantRequired).toBe(true);
@@ -271,7 +277,8 @@ t.describe("UntrustedConnectionHandler", () => {
 			const sendOfferInvocation = sendMessageMock.mock.invocationCallOrder[0];
 
 			t.expect(displayOtpInvocation).toBeDefined();
-			t.expect(displayOtpInvocation!).toBeLessThan(sendOfferInvocation!);
+			t.expect(sendOfferInvocation).toBeDefined();
+			t.expect(displayOtpInvocation).toBeLessThan(sendOfferInvocation);
 
 			const message = sendMessageMock.mock.calls[0][1] as { payload: { otpDisplayGrantRequired?: boolean } };
 			t.expect(message.payload.otpDisplayGrantRequired).toBeUndefined();
@@ -303,7 +310,8 @@ t.describe("UntrustedConnectionHandler", () => {
 
 			const displayOtpInvocation = emitMock.mock.invocationCallOrder.find((_, index) => emitMock.mock.calls[index][0] === "display_otp");
 			const sendOfferInvocation = (context.sendMessage as t.Mock).mock.invocationCallOrder[0];
-			t.expect(displayOtpInvocation!).toBeGreaterThan(sendOfferInvocation!);
+			t.expect(displayOtpInvocation).toBeDefined();
+			t.expect(displayOtpInvocation).toBeGreaterThan(sendOfferInvocation);
 
 			resolveAck();
 			await executePromise;

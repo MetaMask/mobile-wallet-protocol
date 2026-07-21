@@ -87,17 +87,16 @@ async function connectClientsStrict(dappClient: DappClient, walletClient: Wallet
 	const sessionRequest = await sessionRequestPromise;
 	t.expect(sessionRequest.capabilities?.otpDisplayGrant).toBe(true);
 
-	const walletConnectPromise = walletClient.connect({ sessionRequest });
-
 	const otpPromise = new Promise<string>((resolve) => {
-		walletClient.on("display_otp", (otp) => resolve(otp));
+		walletClient.once("display_otp", (otp) => resolve(otp));
 	});
-	const otp = await otpPromise;
 
 	const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
-		dappClient.on("otp_required", resolve);
+		dappClient.once("otp_required", resolve);
 	});
-	const otpPayload = await otpRequiredPromise;
+
+	const walletConnectPromise = walletClient.connect({ sessionRequest });
+	const [otp, otpPayload] = await Promise.all([otpPromise, otpRequiredPromise]);
 	await otpPayload.submit(otp);
 
 	await Promise.all([dappConnectPromise, walletConnectPromise]);
@@ -354,22 +353,22 @@ t.describe("E2E Integration Test", () => {
 			(dappClient as any).on("handshake_offer_received", () => {
 				dappReceivedOffer = true;
 			});
-			walletClient.on("display_otp", () => {
-				t.expect(dappReceivedOffer, "display_otp must not fire before dapp receives handshake offer").toBe(true);
-				displayOtpFired = true;
+			const otpPromise = new Promise<string>((resolve) => {
+				walletClient.once("display_otp", (otp) => {
+					t.expect(dappReceivedOffer, "display_otp must not fire before dapp receives handshake offer").toBe(true);
+					displayOtpFired = true;
+					resolve(otp);
+				});
+			});
+
+			const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
+				dappClient.once("otp_required", resolve);
 			});
 
 			const walletConnectPromise = walletClient.connect({ sessionRequest });
-
-			const otpPromise = new Promise<string>((resolve) => {
-				walletClient.on("display_otp", (otp) => resolve(otp));
-			});
-			const otp = await otpPromise;
+			const [otp, otpPayload] = await Promise.all([otpPromise, otpRequiredPromise]);
 			t.expect(displayOtpFired).toBe(true);
 
-			const otpPayload = await new Promise<OtpRequiredPayload>((resolve) => {
-				dappClient.on("otp_required", resolve);
-			});
 			await otpPayload.submit(otp);
 			await Promise.all([dappConnectPromise, walletConnectPromise]);
 		});

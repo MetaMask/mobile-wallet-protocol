@@ -190,11 +190,7 @@ export class DappClient extends BaseClient {
 	 * @param mode - The connection mode to use for this session
 	 * @returns An object containing the pending session and session request
 	 */
-	private _createPendingSessionAndRequest(
-		mode: ConnectionMode,
-		initialPayload?: unknown,
-		requireOtpDisplayGrant = false,
-	): { pendingSession: Session; request: SessionRequest } {
+	private _createPendingSessionAndRequest(mode: ConnectionMode, initialPayload?: unknown, requireOtpDisplayGrant = false): { pendingSession: Session; request: SessionRequest } {
 		const id = uuid();
 		const keyPair = this.keymanager.generateKeyPair();
 

@@ -18,8 +18,8 @@ export interface IConnectionHandlerContext {
 	emit(event: "display_otp", otp: string, deadline: number): void;
 	emit(event: "connected"): void;
 	once(event: "handshake_ack_received", listener: () => void): void;
-	off(event: "handshake_ack_received", listener: () => void): void;
 	once(event: "otp_display_grant_received", listener: () => void): void;
+	off(event: "handshake_ack_received", listener: () => void): void;
 	off(event: "otp_display_grant_received", listener: () => void): void;
 
 	// Actions

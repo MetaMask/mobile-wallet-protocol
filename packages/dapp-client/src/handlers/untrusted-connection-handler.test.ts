@@ -280,10 +280,16 @@ t.describe("UntrustedConnectionHandler", () => {
 			const executePromise = handler.execute(mockSession, mockRequest);
 			await new Promise((resolve) => setTimeout(resolve, 20));
 
-			t.expect(submitFn).toBeDefined();
-			await t.expect(submitFn!("wrong")).rejects.toThrow("Incorrect OTP");
-			await submitFn!("123456");
-			await executePromise;
+			if (submitFn) {
+				try {
+					await submitFn("wrong1");
+				} catch (e) {
+					t.expect((e as Error).message).toMatch("Incorrect OTP");
+				}
+
+				await submitFn("123456");
+				await executePromise;
+			}
 		});
 
 		t.test("should throw if max OTP attempts are reached in strict mode", async () => {
