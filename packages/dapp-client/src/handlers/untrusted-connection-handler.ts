@@ -16,6 +16,9 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  *
  * This flow provides maximum security by requiring user verification of the
  * connection through a time-limited One-Time Password.
+ *
+ * When the session request advertises `capabilities.otpDisplayGrant`, the dApp sends
+ * `otp-display-grant` on the handshake channel before prompting for OTP entry.
  */
 export class UntrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
@@ -34,10 +37,22 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		await this.context.transport.connect();
 		await this.context.transport.subscribe(request.channel);
 		const offer = await this._waitForHandshakeOffer(request.expiresAt);
-		await this._handleOtpInput(offer);
-		const finalSession = this._createFinalSession(session, offer);
-		this.context.session = finalSession;
-		await this._acknowledgeHandshake(finalSession);
+		this._validateStrictOffer(request, offer);
+
+		if (this._isStrictFlow(request, offer)) {
+			this._applyWalletPublicKeyFromOffer(session, offer);
+			await this._sendOtpDisplayGrant(request.channel);
+			await this._handleOtpInput(offer);
+			const finalSession = this._createFinalSession(session, offer);
+			this.context.session = finalSession;
+			await this._acknowledgeHandshake(finalSession);
+		} else {
+			await this._handleOtpInput(offer);
+			const finalSession = this._createFinalSession(session, offer);
+			this.context.session = finalSession;
+			await this._acknowledgeHandshake(finalSession);
+		}
+
 		await this._finalizeConnection(request.channel);
 	}
 
@@ -68,6 +83,28 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 
 			this.context.once("handshake_offer_received", onOfferReceived);
 		});
+	}
+
+	/**
+	 * Rejects offers that do not support strict OTP display grant when required.
+	 *
+	 * @param offer - The handshake offer from the wallet
+	 * @throws {SessionError} If strict mode is required but the offer lacks support
+	 */
+	private _validateStrictOffer(request: SessionRequest, offer: HandshakeOfferPayload): void {
+		if (request.capabilities?.otpDisplayGrant === true && offer.otpDisplayGrantRequired !== true) {
+			throw new SessionError(ErrorCode.OTP_DISPLAY_GRANT_REQUIRED, "Wallet does not support OTP display grant required by this dApp.");
+		}
+	}
+
+	/**
+	 * Whether the connection should use the strict OTP display grant flow.
+	 *
+	 * @param request - The session request for this connection attempt
+	 * @param offer - The handshake offer from the wallet
+	 */
+	private _isStrictFlow(request: SessionRequest, offer: HandshakeOfferPayload): boolean {
+		return request.capabilities?.otpDisplayGrant === true && offer.otpDisplayGrantRequired === true;
 	}
 
 	/**
@@ -109,6 +146,19 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 	}
 
 	/**
+	 * Sets the wallet's public key on the pending session so handshake messages can be
+	 * encrypted to the accepted offer's wallet before the secure session is established.
+	 *
+	 * @param session - The pending session object
+	 * @param offer - The handshake offer payload from the wallet
+	 */
+	private _applyWalletPublicKeyFromOffer(session: Session, offer: HandshakeOfferPayload): void {
+		const theirPublicKey = base64ToBytes(offer.publicKeyB64);
+		this.context.keymanager.validatePeerKey(theirPublicKey);
+		this.context.session = { ...session, theirPublicKey };
+	}
+
+	/**
 	 * Creates the final session object with details from the wallet's offer.
 	 *
 	 * @param session - The pending session object (with temporary values)
@@ -123,6 +173,15 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 			channel: `session:${offer.channelId}`,
 			theirPublicKey,
 		};
+	}
+
+	/**
+	 * Sends `otp-display-grant` on the handshake channel, encrypted to the wallet's public key.
+	 *
+	 * @param handshakeChannel - The temporary handshake channel for this connection attempt
+	 */
+	private async _sendOtpDisplayGrant(handshakeChannel: string): Promise<void> {
+		await this.context.sendMessage(handshakeChannel, { type: "otp-display-grant" });
 	}
 
 	/**

@@ -16,7 +16,7 @@ import type { IConnectionHandlerContext } from "../domain/connection-handler-con
  * This flow provides maximum security by requiring the user to manually verify
  * the connection through a time-limited One-Time Password displayed on the wallet.
  * When the dApp advertises `capabilities.otpDisplayGrant`, OTP display is deferred
- * until the dApp sends `otp-display-grant` on the secure session channel.
+ * until the dApp sends `otp-display-grant` on the handshake channel.
  */
 export class UntrustedConnectionHandler implements IConnectionHandler {
 	private readonly context: IConnectionHandlerContext;
@@ -100,12 +100,12 @@ export class UntrustedConnectionHandler implements IConnectionHandler {
 		return new Promise((resolve, reject) => {
 			const timeoutDuration = deadline - Date.now();
 			if (timeoutDuration <= 0) {
-				return reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "OTP display grant timed out before it could begin."));
+				return reject(new SessionError(ErrorCode.OTP_DISPLAY_GRANT_TIMEOUT, "OTP display grant timed out before it could begin."));
 			}
 
 			const timeoutId = setTimeout(() => {
 				this.context.off("otp_display_grant_received", onGrantReceived);
-				reject(new SessionError(ErrorCode.REQUEST_EXPIRED, "DApp did not grant OTP display in time."));
+				reject(new SessionError(ErrorCode.OTP_DISPLAY_GRANT_TIMEOUT, "DApp did not grant OTP display in time."));
 			}, timeoutDuration);
 
 			const onGrantReceived = () => {

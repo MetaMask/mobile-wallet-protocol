@@ -143,7 +143,6 @@ export class DappClient extends BaseClient {
 			once: this.once.bind(this),
 			off: this.off.bind(this),
 			sendMessage: this.sendMessage.bind(this),
-			requireOtpDisplayGrant: mode === "untrusted" && requireOtpDisplayGrant,
 		};
 
 		const handler: IConnectionHandler = mode === "trusted" ? new TrustedConnectionHandler(context) : new UntrustedConnectionHandler(context);

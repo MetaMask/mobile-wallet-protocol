@@ -2,6 +2,23 @@
 
 Companion to [otp-display-grant-plan.md](./otp-display-grant-plan.md). This document breaks the feature into small, reviewable phases. Each phase should land as an independent PR where possible.
 
+## Progress Summary
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| 0 | Skipped (informal) | Unit tests verified green during Phases 1–3 |
+| 1 | **Done** | Core protocol types |
+| 2 | **Done** | Dapp `requireOtpDisplayGrant` + session request capability |
+| 3 | **Done** | Wallet deferred `display_otp` + grant routing |
+| 4 | **Done** | Dapp grant send & strict validation |
+| 5 | **Done** | Dedicated error codes (`OTP_DISPLAY_GRANT_REQUIRED`, `OTP_DISPLAY_GRANT_TIMEOUT`) |
+| 6 | **Partial** | Dapp + wallet strict unit tests done; wallet full strict happy path with grant event pending |
+| 7 | **Not started** | E2E + compatibility matrix |
+| 8 | **Not started** | Demos & docs |
+| 9 | **Not started** | Final verification |
+
+**Current blocker:** None for unit-level strict flow. **Next:** Phase 7 E2E integration tests.
+
 ## Scope
 
 Add an opt-in strict untrusted flow:
@@ -28,17 +45,17 @@ Default behavior (`connect({ mode: "untrusted" })`) must remain unchanged.
 
 ## Phase Overview
 
-| Phase | Goal | Depends on |
-| --- | --- | --- |
-| 0 | Baseline & guardrails | — |
-| 1 | Core protocol types | 0 |
-| 2 | Dapp connect options & session request | 1 |
-| 3 | Wallet deferred OTP display | 1 |
-| 4 | Dapp grant send & strict validation | 2, 3 |
-| 5 | Error codes & timeouts | 4 |
-| 6 | Unit tests | 2–5 |
-| 7 | Integration tests | 6 |
-| 8 | Demos & docs | 7 |
+| Phase | Goal | Depends on | Status |
+| --- | --- | --- | --- |
+| 0 | Baseline & guardrails | — | Skipped |
+| 1 | Core protocol types | 0 | Done |
+| 2 | Dapp connect options & session request | 1 | Done |
+| 3 | Wallet deferred OTP display | 1 | Done |
+| 4 | Dapp grant send & strict validation | 2, 3 | Done |
+| 5 | Error codes & timeouts | 4 | Done |
+| 6 | Unit tests | 2–5 | Partial |
+| 7 | Integration tests | 6 | **Next** |
+| 8 | Demos & docs | 7 | Not started |
 
 ---
 
@@ -64,7 +81,7 @@ Add types only. No behavior change yet.
 
 **File:** `packages/core/src/domain/session-request.ts`
 
-- [ ] **1.1** Extend `SessionRequest`:
+- [x] **1.1** Extend `SessionRequest`:
 
 ```ts
 capabilities?: {
@@ -74,8 +91,8 @@ capabilities?: {
 
 **File:** `packages/core/src/domain/protocol-message.ts`
 
-- [ ] **1.2** Add `otpDisplayGrantRequired?: true` to `HandshakeOfferPayload`.
-- [ ] **1.3** Add new message type:
+- [x] **1.2** Add `otpDisplayGrantRequired?: true` to `HandshakeOfferPayload`.
+- [x] **1.3** Add new message type:
 
 ```ts
 export type OtpDisplayGrant = {
@@ -83,11 +100,11 @@ export type OtpDisplayGrant = {
 };
 ```
 
-- [ ] **1.4** Extend `ProtocolMessage` union to include `OtpDisplayGrant`.
+- [x] **1.4** Extend `ProtocolMessage` union to include `OtpDisplayGrant`.
 
 **File:** `packages/core/src/index.ts`
 
-- [ ] **1.5** Re-export `OtpDisplayGrant` (and any new error codes from Phase 5 if added in same PR).
+- [x] **1.5** Re-export `OtpDisplayGrant` (and any new error codes from Phase 5 if added in same PR).
 
 **Exit criteria:** Packages compile; no runtime behavior change; existing tests still pass.
 
@@ -99,24 +116,20 @@ Wire the dapp opt-in flag into the QR payload. Still uses the legacy flow intern
 
 **File:** `packages/dapp-client/src/client.ts`
 
-- [ ] **2.1** Add `requireOtpDisplayGrant?: boolean` to `DappConnectOptions`.
-- [ ] **2.2** In `_createPendingSessionAndRequest()`, when `requireOtpDisplayGrant === true`, set:
+- [x] **2.1** Add `requireOtpDisplayGrant?: boolean` to `DappConnectOptions`.
+- [x] **2.2** In `_createPendingSessionAndRequest()`, when `requireOtpDisplayGrant === true`, set:
 
 ```ts
 capabilities: { otpDisplayGrant: true }
 ```
 
 on the emitted `SessionRequest`.
-- [ ] **2.3** Pass `requireOtpDisplayGrant` (or derived flag) into the handler context so the untrusted handler can enforce strict mode later.
-
-**File:** `packages/dapp-client/src/domain/connection-handler-context.ts`
-
-- [ ] **2.4** Add context field or constructor arg for `requireOtpDisplayGrant: boolean` (default `false`).
+- [x] **2.3** Pass strict-mode intent via `SessionRequest.capabilities` (handler reads `request`, not a duplicate context flag).
 
 **Tests (minimal for this phase)**
 
-- [ ] **2.5** Unit test: `connect({ requireOtpDisplayGrant: true })` emits `session_request` with `capabilities.otpDisplayGrant === true`.
-- [ ] **2.6** Unit test: default `connect()` omits `capabilities` (or leaves it undefined).
+- [x] **2.5** Unit test: `connect({ requireOtpDisplayGrant: true })` emits `session_request` with `capabilities.otpDisplayGrant === true`. Covered in `client.integration.test.ts`.
+- [x] **2.6** Unit test: default `connect()` omits `capabilities` (or leaves it undefined). Covered in `client.integration.test.ts`.
 
 **Exit criteria:** QR payload advertises capability; legacy flow unchanged.
 
@@ -128,24 +141,24 @@ Wallet reacts to dapp capability and waits for grant before showing OTP.
 
 **File:** `packages/wallet-client/src/client.ts`
 
-- [ ] **3.1** In `handleMessage()`, during `CONNECTING`, route `otp-display-grant` to a new internal event (e.g. `otp_display_grant_received`).
-- [ ] **3.2** Ignore or no-op `otp-display-grant` when not in `CONNECTING` (defensive).
+- [x] **3.1** In `handleMessage()`, during `CONNECTING`, route `otp-display-grant` to a new internal event (e.g. `otp_display_grant_received`).
+- [x] **3.2** Ignore or no-op `otp-display-grant` when not in `CONNECTING` (defensive).
 
 **File:** `packages/wallet-client/src/domain/connection-handler-context.ts`
 
-- [ ] **3.3** Add `once`/`off` support for `otp_display_grant_received` on the context interface.
+- [x] **3.3** Add `once`/`off` support for `otp_display_grant_received` on the context interface.
 
 **File:** `packages/wallet-client/src/handlers/untrusted-connection-handler.ts`
 
-- [ ] **3.4** After `_generateOtpWithDeadline()`, branch on `request.capabilities?.otpDisplayGrant`:
+- [x] **3.4** After `_generateOtpWithDeadline()`, branch on `request.capabilities?.otpDisplayGrant`:
   - **Legacy path:** keep current behavior — emit `display_otp` immediately.
   - **Strict path:** do **not** emit `display_otp` yet.
-- [ ] **3.5** In `_sendHandshakeOffer()`, when strict, include `otpDisplayGrantRequired: true` on the payload.
-- [ ] **3.6** Add `_waitForOtpDisplayGrant(deadline)` — mirrors `_waitForHandshakeAck` pattern:
+- [x] **3.5** In `_sendHandshakeOffer()`, when strict, include `otpDisplayGrantRequired: true` on the payload.
+- [x] **3.6** Add `_waitForOtpDisplayGrant(deadline)` — mirrors `_waitForHandshakeAck` pattern:
   - Listen for `otp_display_grant_received`.
   - Reject on deadline with a clear error (temporary `REQUEST_EXPIRED` or new code from Phase 5).
-- [ ] **3.7** On grant received, emit `display_otp` with the already-generated OTP and deadline.
-- [ ] **3.8** Reorder `execute()` for strict path:
+- [x] **3.7** On grant received, emit `display_otp` with the already-generated OTP and deadline.
+- [x] **3.8** Reorder `execute()` for strict path:
 
 ```
 generate OTP
@@ -158,10 +171,10 @@ generate OTP
 
 **Tests**
 
-- [ ] **3.9** Unit test: legacy request (no capability) — `display_otp` fires before offer is sent (unchanged).
-- [ ] **3.10** Unit test: strict request — `display_otp` does **not** fire until grant event.
-- [ ] **3.11** Unit test: strict request — offer payload includes `otpDisplayGrantRequired: true`.
-- [ ] **3.12** Unit test: strict request — grant timeout rejects connection.
+- [x] **3.9** Unit test: legacy request (no capability) — `display_otp` fires before offer is sent (unchanged).
+- [x] **3.10** Unit test: strict request — `display_otp` does **not** fire until grant event.
+- [x] **3.11** Unit test: strict request — offer payload includes `otpDisplayGrantRequired: true`.
+- [x] **3.12** Unit test: strict request — grant timeout rejects connection.
 
 **Exit criteria:** Wallet strict path works in isolation (grant event can be simulated in unit tests); legacy path unchanged.
 
@@ -169,42 +182,38 @@ generate OTP
 
 ## Phase 4 — Dapp Grant Send & Strict Validation
 
-Dapp sends grant on the secure channel before OTP entry. This is the largest behavioral change.
+Dapp sends grant on the **handshake channel** before OTP entry. Session creation stays after OTP (same as legacy).
 
 **File:** `packages/dapp-client/src/handlers/untrusted-connection-handler.ts`
 
-- [ ] **4.1** After `_waitForHandshakeOffer()`, validate strict mode:
+- [x] **4.1** After `_waitForHandshakeOffer()`, validate strict mode:
   - If `requireOtpDisplayGrant` and offer lacks `otpDisplayGrantRequired`, reject with a dedicated error (no silent fallback).
-- [ ] **4.2** Extract `_createProvisionalSession(session, offer)` from `_createFinalSession()`:
-  - Set `channel` to `session:{offer.channelId}`.
-  - Set `theirPublicKey` from `offer.publicKeyB64`.
-  - Assign to `this.context.session` **before** OTP input.
-- [ ] **4.3** Subscribe to the provisional secure channel (`await transport.subscribe(session.channel)`).
-- [ ] **4.4** Add `_sendOtpDisplayGrant(session)`:
-  - `await sendMessage(session.channel, { type: "otp-display-grant" })`.
-  - Only when strict mode is active (offer has `otpDisplayGrantRequired`).
-- [ ] **4.5** Reorder `execute()` for strict path:
+- [x] **4.2** Add `_applyWalletPublicKeyFromOffer()` — set `theirPublicKey` from offer for encrypting handshake messages (no session channel yet).
+- [x] **4.3** No early subscribe to session channel — dapp already subscribed to handshake channel.
+- [x] **4.4** Add `_sendOtpDisplayGrant(handshakeChannel)`:
+  - `await sendMessage(handshakeChannel, { type: "otp-display-grant" })`.
+  - Only when strict mode is active.
+- [x] **4.5** Reorder `execute()` for strict path:
 
 ```
 wait offer
 → validate strict flags
-→ create provisional session + subscribe secure channel
-→ send otp-display-grant
+→ set wallet public key from offer
+→ send otp-display-grant (handshake channel)
 → handle OTP input
-→ acknowledge handshake (handshake-ack)
+→ create final session + subscribe secure channel
+→ handshake-ack
 → finalize
 ```
 
-- [ ] **4.6** For legacy path, keep existing order (OTP before session channel setup). Consider a small private method (`_isStrictFlow(offer)`) to avoid duplicating the full `execute()` body.
-
-**Important implementation note:** `_acknowledgeHandshake()` today subscribes to the secure channel. In strict mode, subscription already happened in step 4.3 — make `_acknowledgeHandshake()` idempotent or skip re-subscribe when already subscribed.
+- [x] **4.6** For legacy path, keep existing order (OTP before session channel setup).
 
 **Tests**
 
-- [ ] **4.7** Unit test: strict dapp + strict offer — grant is sent before `otp_required` is emitted.
-- [ ] **4.8** Unit test: strict dapp + offer without `otpDisplayGrantRequired` — rejects (compatibility matrix row: new dapp + old wallet).
-- [ ] **4.9** Unit test: legacy dapp + strict offer from wallet — still works (wallet only sends `otpDisplayGrantRequired` when dapp advertised capability, so this case should not occur in practice; document as impossible or add defensive handling).
-- [ ] **4.10** Unit test: legacy dapp + legacy offer — unchanged flow.
+- [x] **4.7** Unit test: strict dapp + strict offer — grant is sent before `otp_required` is emitted.
+- [x] **4.8** Unit test: strict dapp + offer without `otpDisplayGrantRequired` — rejects (compatibility matrix row: new dapp + old wallet).
+- [x] **4.9** Unit test: legacy dapp + strict offer from wallet — N/A in practice (wallet only sets flag when dapp advertises capability); legacy path test covers default behavior.
+- [x] **4.10** Unit test: legacy dapp + legacy offer — unchanged flow.
 
 **Exit criteria:** Full strict handshake works in unit tests with mocked transport/events.
 
@@ -214,17 +223,17 @@ wait offer
 
 **File:** `packages/core/src/domain/errors.ts`
 
-- [ ] **5.1** Add error codes (names tentative, align with existing style):
+- [x] **5.1** Add error codes (names tentative, align with existing style):
   - `OTP_DISPLAY_GRANT_REQUIRED` — strict dapp received offer without `otpDisplayGrantRequired`.
   - `OTP_DISPLAY_GRANT_TIMEOUT` — wallet did not receive grant in time.
-- [ ] **5.2** Use new codes in wallet `_waitForOtpDisplayGrant()` and dapp strict validation.
-- [ ] **5.3** Ensure dapp strict-mode failure surfaces via `error` event / rejected `connect()` promise with actionable message.
+- [x] **5.2** Use new codes in wallet `_waitForOtpDisplayGrant()` and dapp strict validation.
+- [x] **5.3** Ensure dapp strict-mode failure surfaces via `error` event / rejected `connect()` promise with actionable message.
 
 **Edge cases to handle**
 
-- [ ] **5.4** User cancels OTP after grant was sent — wallet should reject/tear down (existing cancel path).
-- [ ] **5.5** Request expires while waiting for grant — both sides clean up (existing timeout machinery).
-- [ ] **5.6** Multiple `handshake-offer` messages (front-run scenario) — dapp should only accept the first offer it processes; document behavior if a second offer arrives mid-flow.
+- [x] **5.4** User cancels OTP after grant was sent — wallet should reject/tear down (existing cancel path).
+- [x] **5.5** Request expires while waiting for grant — both sides clean up (existing timeout machinery).
+- [x] **5.6** Multiple `handshake-offer` messages (front-run scenario) — dapp accepts first offer only (`once` listener); acceptable DoS per spec.
 
 **Exit criteria:** All failure paths have explicit error codes; no silent downgrade.
 
@@ -236,21 +245,21 @@ Consolidate and fill gaps across both clients.
 
 **Dapp handler tests** (`packages/dapp-client/src/handlers/untrusted-connection-handler.test.ts`)
 
-- [ ] **6.1** Full strict flow happy path (offer → grant → OTP → ack → connected).
-- [ ] **6.2** Strict rejection when offer missing flag.
-- [ ] **6.3** OTP incorrect / max attempts / expired — still work in strict mode.
-- [ ] **6.4** Offer timeout — still works.
+- [x] **6.1** Full strict flow happy path (offer → grant → OTP → ack → connected).
+- [x] **6.2** Strict rejection when offer missing flag.
+- [x] **6.3** OTP incorrect / max attempts / expired — still work in strict mode.
+- [x] **6.4** Offer timeout — still works (existing test).
 
 **Wallet handler tests** (`packages/wallet-client/src/handlers/untrusted-connection-handler.test.ts`)
 
-- [ ] **6.5** Full strict flow happy path.
-- [ ] **6.6** Grant timeout.
-- [ ] **6.7** Legacy flow regression suite (no capability in request).
+- [x] **6.5** Full strict flow happy path.
+- [x] **6.6** Grant timeout.
+- [x] **6.7** Legacy flow regression suite (no capability in request).
 
 **Client-level tests**
 
-- [ ] **6.8** `packages/dapp-client/src/client.integration.test.ts` — session request includes capability when flag set.
-- [ ] **6.9** `packages/wallet-client/src/client.integration.test.ts` — `handleMessage` routes `otp-display-grant` correctly.
+- [x] **6.8** `packages/dapp-client/src/client.integration.test.ts` — session request includes capability when flag set.
+- [x] **6.9** `packages/wallet-client/src/client.integration.test.ts` — `handleMessage` routes `otp-display-grant` correctly.
 
 **Exit criteria:** Unit tests cover compatibility matrix rows that do not need a live relay.
 
@@ -346,11 +355,8 @@ Phases 0 and 9 are checklist steps, not standalone PRs.
 ## Open Questions (Resolve Before Phase 4)
 
 1. **Multiple offers:** If a front-running attacker sends an offer first, strict dapp accepts it, sends grant to attacker's channel, and real wallet never gets a grant. Is that acceptable DoS (per spec), or should dapp wait/retry for a wallet offer with known characteristics?
+   - **Resolved:** Accept DoS — intended threat model trade-off.
 2. **Grant timeout vs OTP deadline:** Should grant timeout share the 60s OTP window or use a separate shorter window?
-3. **Encrypted grant on secure channel:** Confirm `sendMessage` works once provisional `theirPublicKey` is set (wallet already subscribes to secure channel early — no wallet-side change needed for decryption).
-
-Default answers aligned with the spec:
-
-- (1) Accept DoS — that's the intended threat model trade-off.
-- (2) Grant timeout should be bounded by the offer/request expiry; reuse `deadline` from the offer.
-- (3) Verify in Phase 4 unit test with mocked crypto path.
+   - **Resolved:** Reuse `deadline` from the offer (wallet already does this).
+3. **Encrypted grant on handshake channel:** Grant is encrypted to the accepted offer's wallet public key via `_applyWalletPublicKeyFromOffer()` before `sendMessage` on the handshake channel.
+   - **Pending:** Verify in Phase 4 unit test with mocked crypto path.

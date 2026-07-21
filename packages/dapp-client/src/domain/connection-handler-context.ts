@@ -24,7 +24,4 @@ export interface IConnectionHandlerContext {
 
 	// Actions
 	sendMessage(channel: string, message: ProtocolMessage): Promise<void>;
-
-	/** Whether strict OTP display grant is required for this connection attempt. */
-	readonly requireOtpDisplayGrant?: boolean;
 }
