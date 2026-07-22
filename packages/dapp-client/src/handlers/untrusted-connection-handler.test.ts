@@ -5,7 +5,7 @@ import { vi } from "vitest";
 import type { IConnectionHandlerContext } from "../domain/connection-handler-context";
 import { UntrustedConnectionHandler } from "./untrusted-connection-handler";
 
-function createMockDappHandlerContext(): IConnectionHandlerContext {
+function createMockDappHandlerContext(overrides: Partial<IConnectionHandlerContext> = {}): IConnectionHandlerContext {
 	return {
 		session: null,
 		state: ClientState.DISCONNECTED,
@@ -33,6 +33,7 @@ function createMockDappHandlerContext(): IConnectionHandlerContext {
 		once: vi.fn(),
 		off: vi.fn(),
 		sendMessage: vi.fn(),
+		...overrides,
 	};
 }
 
@@ -195,5 +196,149 @@ t.describe("UntrustedConnectionHandler", () => {
 		context.once = t.vi.fn(); // Do not resolve the handshake offer
 
 		await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow(/Did not receive handshake offer/);
+	});
+
+	t.describe("otp-display-grant", () => {
+		function setupStrictRequest(): void {
+			mockRequest.capabilities = { otpDisplayGrant: true };
+			mockOffer.otpDisplayGrantRequired = true;
+		}
+
+		function setupOtpSubmitMock(): void {
+			const mockEmit = t.vi.fn();
+			mockEmit.mockImplementation((event: string, payload?: unknown) => {
+				if (event === "otp_required" && payload && typeof payload === "object" && "submit" in payload) {
+					(payload as { submit: (otp: string) => void }).submit("123456");
+				}
+			});
+			context.emit = mockEmit as any;
+		}
+
+		t.test("should send otp-display-grant before otp_required in strict flow", async () => {
+			setupStrictRequest();
+
+			const callTimeline: string[] = [];
+			context.emit = t.vi.fn((event: string, payload?: unknown) => {
+				callTimeline.push(`emit:${event}`);
+				if (event === "otp_required" && payload && typeof payload === "object" && "submit" in payload) {
+					(payload as { submit: (otp: string) => void }).submit("123456");
+				}
+			}) as typeof context.emit;
+
+			context.sendMessage = t.vi.fn(async (_channel: string, message: { type: string }) => {
+				callTimeline.push(`send:${message.type}`);
+			}) as typeof context.sendMessage;
+
+			await handler.execute(mockSession, mockRequest);
+
+			const grantIndex = callTimeline.indexOf("send:otp-display-grant");
+			const otpRequiredIndex = callTimeline.indexOf("emit:otp_required");
+			t.expect(grantIndex).toBeGreaterThanOrEqual(0);
+			t.expect(otpRequiredIndex).toBeGreaterThanOrEqual(0);
+			t.expect(grantIndex).toBeLessThan(otpRequiredIndex);
+		});
+
+		t.test("should complete strict flow successfully", async () => {
+			setupStrictRequest();
+			setupOtpSubmitMock();
+
+			await handler.execute(mockSession, mockRequest);
+
+			const subscribeMock = context.transport.subscribe as t.Mock;
+			t.expect(subscribeMock.mock.calls.map((call) => call[0])).toEqual(["handshake:123", "session:secure-channel"]);
+			t.expect(context.sendMessage).toHaveBeenCalledWith("handshake:123", { type: "otp-display-grant" });
+			t.expect(context.sendMessage).toHaveBeenCalledWith("session:secure-channel", { type: "handshake-ack" });
+			t.expect(context.state).toBe("CONNECTED");
+		});
+
+		t.test("should reject offer without otpDisplayGrantRequired when strict mode is required", async () => {
+			mockRequest.capabilities = { otpDisplayGrant: true };
+
+			await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow("Wallet does not support OTP display grant required by this dApp.");
+		});
+
+		t.test("should keep legacy flow when strict mode is not required", async () => {
+			setupOtpSubmitMock();
+
+			const subscribeMock = context.transport.subscribe as t.Mock;
+			await handler.execute(mockSession, mockRequest);
+
+			t.expect(subscribeMock.mock.calls.map((call) => call[0])).toEqual(["handshake:123", "session:secure-channel"]);
+			t.expect(context.sendMessage).not.toHaveBeenCalledWith(t.expect.any(String), { type: "otp-display-grant" });
+		});
+
+		t.test("should still reject incorrect OTP in strict mode", async () => {
+			setupStrictRequest();
+
+			let submitFn: ((otp: string) => Promise<void>) | undefined;
+			context.emit = t.vi.fn((event: string, payload?: unknown) => {
+				if (event === "otp_required" && payload && typeof payload === "object" && "submit" in payload) {
+					submitFn = (payload as { submit: (otp: string) => Promise<void> }).submit;
+				}
+			}) as typeof context.emit;
+
+			const executePromise = handler.execute(mockSession, mockRequest);
+			await new Promise((resolve) => setTimeout(resolve, 20));
+
+			if (submitFn) {
+				try {
+					await submitFn("wrong1");
+				} catch (e) {
+					t.expect((e as Error).message).toMatch("Incorrect OTP");
+				}
+
+				await submitFn("123456");
+				await executePromise;
+			}
+		});
+
+		t.test("should throw if max OTP attempts are reached in strict mode", async () => {
+			setupStrictRequest();
+
+			let submitFn: ((otp: string) => Promise<void>) | undefined;
+			context.emit = t.vi.fn((event: string, payload?: unknown) => {
+				if (event === "otp_required" && payload && typeof payload === "object" && "submit" in payload) {
+					submitFn = (payload as { submit: (otp: string) => Promise<void> }).submit;
+				}
+			}) as typeof context.emit;
+
+			const executePromise = handler.execute(mockSession, mockRequest);
+			await new Promise((resolve) => setTimeout(resolve, 20));
+
+			t.expect(context.sendMessage).toHaveBeenCalledWith("handshake:123", { type: "otp-display-grant" });
+
+			if (submitFn) {
+				for (const wrongOtp of ["wrong1", "wrong2"]) {
+					await t.expect(submitFn(wrongOtp)).rejects.toThrow("Incorrect OTP");
+				}
+				try {
+					await submitFn("wrong3");
+				} catch (e) {
+					t.expect((e as Error).message).toMatch("Maximum OTP attempts reached");
+				}
+			}
+
+			await t.expect(executePromise).rejects.toThrow("Maximum OTP attempts reached");
+		});
+
+		t.test("should throw if OTP has already expired in strict mode", async () => {
+			setupStrictRequest();
+			mockOffer.deadline = Date.now() - 1000;
+
+			await t.expect(handler.execute(mockSession, mockRequest)).rejects.toThrow("The OTP has already expired");
+			t.expect(context.sendMessage).toHaveBeenCalledWith("handshake:123", { type: "otp-display-grant" });
+		});
+
+		t.test("should apply wallet public key from offer before sending otp-display-grant", async () => {
+			setupStrictRequest();
+			setupOtpSubmitMock();
+
+			await handler.execute(mockSession, mockRequest);
+
+			t.expect(context.keymanager.validatePeerKey).toHaveBeenCalled();
+			const sessionAfterGrant = context.session;
+			t.expect(sessionAfterGrant?.theirPublicKey).toEqual(t.expect.any(Uint8Array));
+			t.expect(sessionAfterGrant?.channel).toBe("session:secure-channel");
+		});
 	});
 });

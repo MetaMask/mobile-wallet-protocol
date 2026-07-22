@@ -77,6 +77,31 @@ async function connectClients(dappClient: DappClient, walletClient: WalletClient
 	await Promise.all([dappConnectPromise, walletConnectPromise]);
 }
 
+// Helper for strict untrusted flow (dapp advertises otpDisplayGrant capability).
+async function connectClientsStrict(dappClient: DappClient, walletClient: WalletClient) {
+	const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+		dappClient.on("session_request", resolve);
+	});
+	const dappConnectPromise = dappClient.connect({ mode: "untrusted", requireOtpDisplayGrant: true });
+
+	const sessionRequest = await sessionRequestPromise;
+	t.expect(sessionRequest.capabilities?.otpDisplayGrant).toBe(true);
+
+	const otpPromise = new Promise<string>((resolve) => {
+		walletClient.once("display_otp", (otp) => resolve(otp));
+	});
+
+	const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
+		dappClient.once("otp_required", resolve);
+	});
+
+	const walletConnectPromise = walletClient.connect({ sessionRequest });
+	const [otp, otpPayload] = await Promise.all([otpPromise, otpRequiredPromise]);
+	await otpPayload.submit(otp);
+
+	await Promise.all([dappConnectPromise, walletConnectPromise]);
+}
+
 // Helper to assert that a promise does NOT resolve within a given time
 async function assertPromiseNotResolve(promise: Promise<unknown>, timeout: number, message: string) {
 	const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error(message)), timeout));
@@ -240,6 +265,113 @@ t.describe("E2E Integration Test", () => {
 		const messagePromise = new Promise((resolve) => resumedWalletClient.on("message", resolve));
 		await resumedDappClient.sendRequest(testPayload);
 		await t.expect(messagePromise).resolves.toEqual(testPayload);
+	});
+
+	t.describe("otp-display-grant strict flow", () => {
+		t.test("should complete strict untrusted connection and allow bidirectional messaging", async () => {
+			await connectClientsStrict(dappClient, walletClient);
+
+			t.expect((dappClient as any).state).toBe("CONNECTED");
+			t.expect((walletClient as any).state).toBe("CONNECTED");
+
+			const requestPayload = { method: "eth_accounts_strict" };
+			const messageFromDappPromise = new Promise((resolve) => walletClient.on("message", resolve));
+			await dappClient.sendRequest(requestPayload);
+			await t.expect(messageFromDappPromise).resolves.toEqual(requestPayload);
+
+			const responsePayload = { result: ["0x789..."] };
+			const messageFromWalletPromise = new Promise((resolve) => dappClient.on("message", resolve));
+			await walletClient.sendResponse(responsePayload);
+			await t.expect(messageFromWalletPromise).resolves.toEqual(responsePayload);
+		});
+
+		t.test("should reject strict dapp when wallet simulates legacy offer (no otpDisplayGrantRequired)", async () => {
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
+			const dappConnectPromise = dappClient.connect({ mode: "untrusted", requireOtpDisplayGrant: true });
+			const sessionRequest = await sessionRequestPromise;
+
+			// Simulate an older wallet that ignores capabilities.otpDisplayGrant on the session request.
+			const legacyWalletRequest = { ...sessionRequest, capabilities: undefined };
+			const walletConnectPromise = walletClient.connect({ sessionRequest: legacyWalletRequest });
+			void walletConnectPromise.catch(() => {});
+
+			const displayOtpPromise = new Promise<void>((resolve) => {
+				walletClient.once("display_otp", () => resolve());
+			});
+
+			await t.expect(dappConnectPromise).rejects.toMatchObject({ code: ErrorCode.OTP_DISPLAY_GRANT_REQUIRED });
+			await t.expect(displayOtpPromise).resolves.toBeUndefined();
+			await assertPromiseNotResolve(walletConnectPromise, 1000, "Wallet should not complete strict-incompatible connection");
+		});
+
+		t.test("should keep legacy untrusted flow when dapp does not require otp display grant", async () => {
+			let displayOtpFired = false;
+			let displayOtpBeforeOffer = false;
+
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
+			const dappConnectPromise = dappClient.connect({ mode: "untrusted" });
+			const sessionRequest = await sessionRequestPromise;
+			t.expect(sessionRequest.capabilities?.otpDisplayGrant).toBeUndefined();
+
+			(dappClient as any).on("handshake_offer_received", () => {
+				displayOtpBeforeOffer = displayOtpFired;
+			});
+			walletClient.on("display_otp", () => {
+				displayOtpFired = true;
+			});
+
+			const walletConnectPromise = walletClient.connect({ sessionRequest });
+
+			const otpPromise = new Promise<string>((resolve) => {
+				walletClient.on("display_otp", (otp) => resolve(otp));
+			});
+			const otp = await otpPromise;
+			const otpPayload = await new Promise<OtpRequiredPayload>((resolve) => {
+				dappClient.on("otp_required", resolve);
+			});
+			await otpPayload.submit(otp);
+			await Promise.all([dappConnectPromise, walletConnectPromise]);
+
+			t.expect(displayOtpFired).toBe(true);
+			t.expect(displayOtpBeforeOffer).toBe(true);
+		});
+
+		t.test("should defer wallet display_otp until after dapp receives handshake offer in strict mode", async () => {
+			let dappReceivedOffer = false;
+			let displayOtpFired = false;
+
+			const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+				dappClient.on("session_request", resolve);
+			});
+			const dappConnectPromise = dappClient.connect({ mode: "untrusted", requireOtpDisplayGrant: true });
+			const sessionRequest = await sessionRequestPromise;
+
+			(dappClient as any).on("handshake_offer_received", () => {
+				dappReceivedOffer = true;
+			});
+			const otpPromise = new Promise<string>((resolve) => {
+				walletClient.once("display_otp", (otp) => {
+					t.expect(dappReceivedOffer, "display_otp must not fire before dapp receives handshake offer").toBe(true);
+					displayOtpFired = true;
+					resolve(otp);
+				});
+			});
+
+			const otpRequiredPromise = new Promise<OtpRequiredPayload>((resolve) => {
+				dappClient.once("otp_required", resolve);
+			});
+
+			const walletConnectPromise = walletClient.connect({ sessionRequest });
+			const [otp, otpPayload] = await Promise.all([otpPromise, otpRequiredPromise]);
+			t.expect(displayOtpFired).toBe(true);
+
+			await otpPayload.submit(otp);
+			await Promise.all([dappConnectPromise, walletConnectPromise]);
+		});
 	});
 });
 

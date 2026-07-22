@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: test code */
-import { type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
+import { ClientState, type IKeyManager, type IKVStore, type KeyPair, type SessionRequest, SessionStore, WebSocketTransport } from "@metamask/mobile-wallet-protocol-core";
 import { bytesToBase64 } from "@metamask/utils";
 import { decrypt, encrypt, PrivateKey, PublicKey } from "eciesjs";
 import * as t from "vitest";
@@ -119,5 +119,27 @@ t.describe("WalletClient Integration Tests", () => {
 
 	t.test("should have correct initial state", async () => {
 		t.expect((walletClient as any).state).toBe("DISCONNECTED");
+	});
+
+	t.describe("otp-display-grant", () => {
+		t.test("should route otp-display-grant to internal event while CONNECTING", () => {
+			const listener = t.vi.fn();
+			(walletClient as any).state = ClientState.CONNECTING;
+			walletClient.on("otp_display_grant_received" as any, listener);
+
+			(walletClient as any).handleMessage({ type: "otp-display-grant" });
+
+			t.expect(listener).toHaveBeenCalledOnce();
+		});
+
+		t.test("should ignore otp-display-grant when not CONNECTING", () => {
+			const listener = t.vi.fn();
+			(walletClient as any).state = ClientState.CONNECTED;
+			walletClient.on("otp_display_grant_received" as any, listener);
+
+			(walletClient as any).handleMessage({ type: "otp-display-grant" });
+
+			t.expect(listener).not.toHaveBeenCalled();
+		});
 	});
 });

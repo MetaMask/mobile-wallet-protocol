@@ -94,6 +94,52 @@ t.describe("DappClient Integration Tests", () => {
 			const expectedMessage = { type: "message", payload: initialPayload };
 			t.expect(request.initialMessage).toEqual(expectedMessage);
 		});
+
+		t.describe("otp-display-grant", () => {
+			t.test("should include otpDisplayGrant capability on session_request when requireOtpDisplayGrant is true", async () => {
+				const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+					dappClient.on("session_request", resolve);
+				});
+
+				dappClient.connect({ mode: "untrusted", requireOtpDisplayGrant: true }); // Don't await
+
+				const request = await sessionRequestPromise;
+				t.expect(request.capabilities?.otpDisplayGrant).toBe(true);
+			});
+
+			t.test("should not include otpDisplayGrant capability on session_request by default", async () => {
+				const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+					dappClient.on("session_request", resolve);
+				});
+
+				dappClient.connect({ mode: "untrusted" }); // Don't await
+
+				const request = await sessionRequestPromise;
+				t.expect(request.capabilities?.otpDisplayGrant).toBeUndefined();
+			});
+
+			t.test("should not include otpDisplayGrant capability on session_request when requireOtpDisplayGrant is false", async () => {
+				const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+					dappClient.on("session_request", resolve);
+				});
+
+				dappClient.connect({ mode: "untrusted", requireOtpDisplayGrant: false }); // Don't await
+
+				const request = await sessionRequestPromise;
+				t.expect(request.capabilities?.otpDisplayGrant).toBeUndefined();
+			});
+
+			t.test("should not include otpDisplayGrant capability on session_request in trusted mode", async () => {
+				const sessionRequestPromise = new Promise<SessionRequest>((resolve) => {
+					dappClient.on("session_request", resolve);
+				});
+
+				dappClient.connect({ mode: "trusted", requireOtpDisplayGrant: true }); // Don't await
+
+				const request = await sessionRequestPromise;
+				t.expect(request.capabilities?.otpDisplayGrant).toBeUndefined();
+			});
+		});
 	});
 
 	t.describe("Untrusted Flow", () => {

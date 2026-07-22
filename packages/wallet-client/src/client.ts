@@ -142,6 +142,10 @@ export class WalletClient extends BaseClient {
 	 * @param message - The incoming message to handle
 	 */
 	protected handleMessage(message: ProtocolMessage): void {
+		if (this.state === ClientState.CONNECTING && message.type === "otp-display-grant") {
+			this.emit("otp_display_grant_received");
+			return;
+		}
 		if (message.type === "handshake-ack") {
 			// Internal event to resolve the connection handler
 			this.emit("handshake_ack_received");

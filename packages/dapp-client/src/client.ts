@@ -44,6 +44,11 @@ export interface DappConnectOptions {
 	mode?: ConnectionMode;
 	/** An optional unencrypted payload to be sent as the first message upon connection. */
 	initialPayload?: unknown;
+	/**
+	 * When true (untrusted mode only), advertises `capabilities.otpDisplayGrant` on the session
+	 * request and requires the wallet to defer OTP display until the dApp sends `otp-display-grant`.
+	 */
+	requireOtpDisplayGrant?: boolean;
 }
 
 /**
@@ -109,11 +114,11 @@ export class DappClient extends BaseClient {
 	public async connect(options: DappConnectOptions = {}): Promise<void> {
 		if (this.state !== ClientState.DISCONNECTED) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Cannot connect when state is ${this.state}`);
 
-		const { mode = "untrusted", initialPayload } = options;
+		const { mode = "untrusted", initialPayload, requireOtpDisplayGrant = false } = options;
 		if (!isValidConnectionMode(mode)) throw new SessionError(ErrorCode.SESSION_INVALID_STATE, `Invalid connection mode: "${String(mode)}"`);
 
 		this.state = ClientState.CONNECTING;
-		const { pendingSession, request } = this._createPendingSessionAndRequest(mode, initialPayload);
+		const { pendingSession, request } = this._createPendingSessionAndRequest(mode, initialPayload, requireOtpDisplayGrant);
 		this.session = pendingSession;
 		this.emit("session_request", request);
 
@@ -185,7 +190,7 @@ export class DappClient extends BaseClient {
 	 * @param mode - The connection mode to use for this session
 	 * @returns An object containing the pending session and session request
 	 */
-	private _createPendingSessionAndRequest(mode: ConnectionMode, initialPayload?: unknown): { pendingSession: Session; request: SessionRequest } {
+	private _createPendingSessionAndRequest(mode: ConnectionMode, initialPayload?: unknown, requireOtpDisplayGrant = false): { pendingSession: Session; request: SessionRequest } {
 		const id = uuid();
 		const keyPair = this.keymanager.generateKeyPair();
 
@@ -208,6 +213,11 @@ export class DappClient extends BaseClient {
 			expiresAt: Date.now() + SESSION_REQUEST_TTL,
 			initialMessage: message,
 		};
+
+		// if in untrusted mode and requireOtpDisplayGrant is true, add the otpDisplayGrant capability to the request
+		if (mode === "untrusted" && requireOtpDisplayGrant) {
+			request.capabilities = { otpDisplayGrant: true };
+		}
 
 		return { pendingSession, request };
 	}
