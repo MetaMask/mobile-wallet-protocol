@@ -33,6 +33,7 @@ type PendingRequest = {
 export default function UntrustedDemo() {
 	// UI State
 	const [showWalletClient, setShowWalletClient] = useState(true);
+	const [requireOtpDisplayGrant, setRequireOtpDisplayGrant] = useState(false);
 
 	// DApp State
 	const [dappClient, setDappClient] = useState<DappClient | null>(null);
@@ -123,7 +124,7 @@ export default function UntrustedDemo() {
 			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// Start new connection, which will trigger 'session-request' and start a new timer
-			dappClient.connect({ initialPayload }).catch((error) => {
+			dappClient.connect({ mode: "untrusted", initialPayload, requireOtpDisplayGrant }).catch((error) => {
 				console.error("New QR code generation failed:", error);
 				addDappLog("system", `New QR code generation failed: ${error.message}`);
 			});
@@ -268,14 +269,14 @@ export default function UntrustedDemo() {
 
 		try {
 			setDappStatus("Connecting...");
-			addDappLog("system", "Starting connection process with initial payload...");
+			addDappLog("system", `Starting ${requireOtpDisplayGrant ? "strict" : "legacy"} untrusted connection process with initial payload...`);
 
 			// Define the initial message to be sent
 			const initialPayload = "Hello from Untrusted Demo!";
 			addDappLog("sent", `Queuing initial payload: ${JSON.stringify(initialPayload, null, 2)}`);
 
 			// This will trigger the session-request event and generate QR code
-			dappClient.connect({ initialPayload }).catch((error) => {
+			dappClient.connect({ mode: "untrusted", initialPayload, requireOtpDisplayGrant }).catch((error) => {
 				addDappLog("system", `Connection failed: ${error.message}`);
 				setDappStatus("Connection failed");
 			});
@@ -587,6 +588,22 @@ export default function UntrustedDemo() {
 						<h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Connection</h4>
 
 						<div className="space-y-4">
+							<label className="flex items-start gap-3 text-sm text-gray-700 dark:text-gray-300">
+								<input
+									type="checkbox"
+									checked={requireOtpDisplayGrant}
+									onChange={(event) => setRequireOtpDisplayGrant(event.target.checked)}
+									disabled={dappConnected || !!qrCodeData}
+									className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+								/>
+								<span>
+									<span className="block font-medium">Require OTP display grant</span>
+									<span className="block text-xs text-gray-500 dark:text-gray-400">
+										When enabled, the wallet waits for the dapp to accept its handshake offer before displaying the OTP.
+									</span>
+								</span>
+							</label>
+
 							<div className="flex gap-3">
 								{!dappConnected ? (
 									<button
