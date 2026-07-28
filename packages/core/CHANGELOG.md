@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Publish the ESM build by adding `module` and `exports` to the manifest, so `dist/index.mjs` is reachable instead of always resolving to the CommonJS build ([#85](https://github.com/MetaMask/mobile-wallet-protocol/pull/85))
+
 ## [0.4.0]
 
 ### Added
